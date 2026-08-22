@@ -6,10 +6,12 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <sstream>
 
 #include "physics/physics.h"
 #include "controller/third_person_controller.h"
 #include "combat/combat_system.h"
+#include "rpg/progression.h"
 
 namespace {
 constexpr float PI = 3.14159265359f;
@@ -35,13 +37,18 @@ int gStone = 4;
 int gCraftPulse = 0;
 int gAttackPulse = 0;
 int gDodgePulse = 0;
+int gLevelPulse = 0;
+int gQuestPulse = 0;
 float gHunger = 0.82f;
 double gPhysicsAccumulator = 0.0;
 constexpr float kPhysicsStep = 1.0f / 60.0f;
 forest::controller::ThirdPersonController gController{};
 forest::combat::CombatSystem gCombat{};
+forest::rpg::Progression gProgression{};
 bool gHitRegistered = false;
 float gEnemyHealth = 1.0f;
+float gEnemyHitFlash = 0.0f;
+float gEnemyDefeatTimer = 0.0f;
 float gEnemyX = 0.36f;
 float gEnemyY = 0.03f;
 const forest::physics::StaticObstacle gObstacles[] = {
@@ -181,12 +188,38 @@ void drawAnimal(float x, float y, float tint) {
     drawCircle(x + 0.09f, y + 0.045f, 0.007f, 0.95f, 0.85f, 0.47f);
 }
 
+void awardExperience(int amount) {
+    const int previousLevel = gProgression.level;
+    gProgression.awardExperience(amount);
+    if (gProgression.level > previousLevel) gLevelPulse = 120;
+}
+
+void drawWarden() {
+    if (gEnemyDefeatTimer > 0.0f) {
+        const float fade = std::clamp(gEnemyDefeatTimer / 1.5f, 0.0f, 1.0f);
+        drawCircle(gEnemyX, gEnemyY + 0.04f, 0.14f, 0.74f, 0.22f, 0.25f, 0.10f * fade);
+        return;
+    }
+    const float flash = gEnemyHitFlash > 0.0f ? 0.28f : 0.0f;
+    drawCircle(gEnemyX + 0.012f, gEnemyY - 0.025f, 0.095f, 0.02f, 0.03f, 0.04f, 0.5f);
+    drawCircle(gEnemyX, gEnemyY, 0.10f, 0.30f + flash, 0.08f, 0.14f, 1.0f);
+    drawTriangle(gEnemyX - 0.055f, gEnemyY + 0.095f, 0.06f, 0.09f, 0.58f, 0.14f, 0.18f);
+    drawTriangle(gEnemyX + 0.055f, gEnemyY + 0.095f, 0.06f, 0.09f, 0.58f, 0.14f, 0.18f);
+    drawCircle(gEnemyX - 0.035f, gEnemyY + 0.025f, 0.012f, 1.0f, 0.76f, 0.28f);
+    drawCircle(gEnemyX + 0.035f, gEnemyY + 0.025f, 0.012f, 1.0f, 0.76f, 0.28f);
+    drawQuad(gEnemyX, gEnemyY + 0.18f, 0.24f, 0.018f, 0.08f, 0.03f, 0.05f, 0.9f);
+    drawQuad(gEnemyX - 0.12f + 0.12f * gEnemyHealth, gEnemyY + 0.18f,
+             0.24f * std::clamp(gEnemyHealth, 0.0f, 1.0f), 0.012f, 0.86f, 0.18f, 0.24f, 0.95f);
+}
+
 void simulatePhysicsStep() {
     gTime += kPhysicsStep;
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
     const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
     gCombat.tick(kPhysicsStep);
+    gEnemyHitFlash = std::max(0.0f, gEnemyHitFlash - kPhysicsStep);
+    gEnemyDefeatTimer = std::max(0.0f, gEnemyDefeatTimer - kPhysicsStep);
     const forest::combat::CombatEvent combatEvent = gCombat.consumeEvent();
     if (combatEvent.attackStarted) {
         gAttackPulse = 6 + combatEvent.comboIndex * 2;
@@ -205,14 +238,23 @@ void simulatePhysicsStep() {
         const forest::physics::Aabb enemyBox{{gEnemyX, gEnemyY}, {0.07f, 0.06f}};
         if (forest::combat::intersects(attackBox, enemyBox)) {
             gEnemyHealth = std::max(0.0f, gEnemyHealth - hitbox.damage);
+            gEnemyHitFlash = 0.12f;
             gHitRegistered = true;
             gCombat.confirmHit();
+            awardExperience(10);
+            if (gEnemyHealth <= 0.0f && !gProgression.wardenDefeated) {
+                gProgression.recordWardenDefeat();
+                gEnemyDefeatTimer = 1.5f;
+                gQuestPulse = 150;
+            }
         }
     }
     gPlayerX = gController.body.position.x;
     gPlayerY = gController.body.position.y;
     gHunger = std::max(0.0f, gHunger - kPhysicsStep * 0.001f);
     if (gHunger < 0.20f) gController.health = std::max(0.0f, gController.health - kPhysicsStep * 0.004f);
+    gLevelPulse = std::max(0, gLevelPulse - 1);
+    gQuestPulse = std::max(0, gQuestPulse - 1);
 }
 
 void drawWorld() {
@@ -240,7 +282,7 @@ void drawWorld() {
     drawCircle(-0.05f, -0.30f, 0.035f, 0.81f, 0.66f, 0.25f);
     drawCircle(-0.00f, -0.27f, 0.035f, 0.66f, 0.84f, 0.36f);
     drawAnimal(-0.60f, -0.30f, 0.02f);
-    drawAnimal(0.36f, 0.03f, 0.10f);
+    if (gEnemyHealth > 0.0f || gEnemyDefeatTimer > 0.0f) drawWarden();
     drawPlayer();
 }
 }
@@ -252,6 +294,16 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_init(JNIEnv*, jobject, jint wi
     gHeight = static_cast<float>(std::max(1, height));
     gController = {};
     gCombat = {};
+    gProgression = {};
+    gWood = 12;
+    gFiber = 8;
+    gStone = 4;
+    gHunger = 0.82f;
+    gEnemyHealth = 1.0f;
+    gEnemyHitFlash = 0.0f;
+    gEnemyDefeatTimer = 0.0f;
+    gLevelPulse = 0;
+    gQuestPulse = 0;
     gController.body.position = {0.0f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
@@ -339,6 +391,8 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_gather(JNIEnv*, jobject) {
     if (nearestResource < 0.42f) {
         gWood += 1;
         gFiber += 1;
+        gProgression.recordGather();
+        gQuestPulse = 90;
         gHunger = std::min(1.0f, gHunger + 0.003f);
     } else {
         gStone += 1;
@@ -351,7 +405,33 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_craft(JNIEnv*, jobject) {
         gWood -= 3;
         gFiber -= 2;
         ++gCraftPulse;
+        if (!gProgression.emberKitCrafted) {
+            gProgression.recordCraft();
+            gQuestPulse = 120;
+        } else {
+            awardExperience(8);
+        }
     } else {
         gStone += 1;
     }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_getHudState(JNIEnv* env, jobject) {
+    std::ostringstream state;
+    state << gProgression.level << '|'
+          << gProgression.experience << '|'
+          << gProgression.experienceToNext << '|'
+          << static_cast<int>(std::round(gController.health * 100.0f)) << '|'
+          << static_cast<int>(std::round(gController.stamina * 100.0f)) << '|'
+          << static_cast<int>(std::round(gHunger * 100.0f)) << '|'
+          << gWood << '|'
+          << gFiber << '|'
+          << gStone << '|'
+          << static_cast<int>(std::round(gEnemyHealth * 100.0f)) << '|'
+          << gLevelPulse << '|'
+          << gQuestPulse << '|'
+          << gProgression.questObjective();
+    const std::string value = state.str();
+    return env->NewStringUTF(value.c_str());
 }

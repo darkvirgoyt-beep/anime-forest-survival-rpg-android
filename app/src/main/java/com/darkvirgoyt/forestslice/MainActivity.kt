@@ -9,6 +9,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -42,6 +44,7 @@ object NativeGameBridge {
     external fun slide()
     external fun gather()
     external fun craft()
+    external fun getHudState(): String
 }
 
 class MainActivity : Activity(), SensorEventListener {
@@ -52,6 +55,20 @@ class MainActivity : Activity(), SensorEventListener {
     private var gyroEnabled = false
     private val gyroSensitivity = 1.0f
     private lateinit var audio: GameAudio
+    private lateinit var stateLabel: TextView
+    private lateinit var questLabel: TextView
+    private val hudHandler = Handler(Looper.getMainLooper())
+    private val hudUpdater = object : Runnable {
+        override fun run() {
+            if (::gameView.isInitialized) {
+                gameView.queueEvent {
+                    val snapshot = NativeGameBridge.getHudState()
+                    runOnUiThread { applyHudSnapshot(snapshot) }
+                }
+            }
+            hudHandler.postDelayed(this, 200L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,6 +140,7 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onPause() {
         audio.stopMusic()
         gyroEnabled = false
+        hudHandler.removeCallbacks(hudUpdater)
         sensorManager?.unregisterListener(this)
         gameView.queueEvent { NativeGameBridge.setGyroEnabled(false) }
         gameView.onPause()
@@ -135,9 +153,11 @@ class MainActivity : Activity(), SensorEventListener {
         gameView.onResume()
         registerGyro()
         updateGyroButton()
+        hudHandler.postDelayed(hudUpdater, 350L)
     }
 
     override fun onDestroy() {
+        hudHandler.removeCallbacks(hudUpdater)
         audio.release()
         super.onDestroy()
     }
@@ -155,10 +175,18 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(244, 218, 155))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
-        val state = TextView(this).apply {
-            text = "     HP  100     HUNGER  82     WOOD  12     FIBER  08"
+        stateLabel = TextView(this).apply {
+            text = "HP 100  |  STA 100  |  HUN 82  |  LV 1  |  XP 0/100  |  W 12  F 08  S 04"
             textSize = 13f
             setTextColor(Color.WHITE)
+            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+        }
+        questLabel = TextView(this).apply {
+            text = "THE FIRST EMBER  •  Gather 3 resource caches"
+            textSize = 13f
+            setTextColor(Color.rgb(255, 226, 164))
+            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            setPadding(28, 0, 28, 0)
         }
         gyroButton = actionButton("GYRO: OFF") {
             audio.playEffect("ui")
@@ -167,9 +195,10 @@ class MainActivity : Activity(), SensorEventListener {
             updateGyroButton()
         }
         top.addView(title)
-        top.addView(state)
+        top.addView(stateLabel)
         top.addView(gyroButton, LinearLayout.LayoutParams(142, 44).apply { leftMargin = 18 })
         overlay.addView(top, FrameLayout.LayoutParams(-1, 54, Gravity.TOP))
+        overlay.addView(questLabel, FrameLayout.LayoutParams(-1, 42, Gravity.TOP).apply { topMargin = 54 })
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -205,6 +234,29 @@ class MainActivity : Activity(), SensorEventListener {
         actions.addView(settings, LinearLayout.LayoutParams(150, 50))
         overlay.addView(actions, FrameLayout.LayoutParams(-1, -1))
         return overlay
+    }
+
+    private fun applyHudSnapshot(snapshot: String) {
+        val values = snapshot.split('|')
+        if (values.size < 13 || !::stateLabel.isInitialized || !::questLabel.isInitialized) return
+        fun number(index: Int): Int = values.getOrNull(index)?.toIntOrNull() ?: 0
+        val level = number(0)
+        val xp = number(1)
+        val next = number(2).coerceAtLeast(1)
+        val health = number(3).coerceIn(0, 100)
+        val stamina = number(4).coerceIn(0, 100)
+        val hunger = number(5).coerceIn(0, 100)
+        val wood = number(6)
+        val fiber = number(7)
+        val stone = number(8)
+        val warden = number(9).coerceIn(0, 100)
+        val levelPulse = number(10) > 0
+        val questPulse = number(11) > 0
+        val objective = values.drop(12).joinToString("|")
+        stateLabel.text = "HP $health  |  STA $stamina  |  HUN $hunger  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
+        stateLabel.setTextColor(if (levelPulse) Color.rgb(255, 236, 157) else Color.WHITE)
+        questLabel.text = if (warden in 1..99) "$objective  •  WARDEN HP $warden%" else objective
+        questLabel.setTextColor(if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
     private fun showAudioSettings() {
