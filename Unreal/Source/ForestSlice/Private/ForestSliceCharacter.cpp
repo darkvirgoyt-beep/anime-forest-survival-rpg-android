@@ -89,7 +89,12 @@ void AForestSliceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 void AForestSliceCharacter::Move(const FInputActionValue& Value)
 {
-    const FVector2D MoveVector = Value.Get<FVector2D>();
+    ApplyMoveVector(Value.Get<FVector2D>());
+}
+
+void AForestSliceCharacter::ApplyMoveVector(FVector2D MoveVector)
+{
+    MoveVector = MoveVector.GetClampedToMaxSize(1.0f);
     if (!Controller || MoveVector.IsNearlyZero()) return;
 
     const FRotator ControlRotation = Controller->GetControlRotation();
@@ -100,9 +105,52 @@ void AForestSliceCharacter::Move(const FInputActionValue& Value)
 
 void AForestSliceCharacter::Look(const FInputActionValue& Value)
 {
-    const FVector2D LookVector = Value.Get<FVector2D>();
+    ApplyLookVector(Value.Get<FVector2D>());
+}
+
+void AForestSliceCharacter::ApplyLookVector(FVector2D LookVector)
+{
     AddControllerYawInput(LookVector.X);
     AddControllerPitchInput(LookVector.Y);
+}
+
+void AForestSliceCharacter::SetVirtualMove(FVector2D MoveVector)
+{
+    ApplyMoveVector(MoveVector);
+}
+
+void AForestSliceCharacter::SetVirtualLook(FVector2D LookVector)
+{
+    ApplyLookVector(LookVector);
+}
+
+void AForestSliceCharacter::SetVirtualSprintHeld(bool bHeld)
+{
+    if (bHeld) {
+        StartSprint(FInputActionValue());
+    } else {
+        StopSprint(FInputActionValue());
+    }
+}
+
+void AForestSliceCharacter::TriggerVirtualSlide()
+{
+    StartSlide(FInputActionValue());
+}
+
+void AForestSliceCharacter::TriggerVirtualDodge()
+{
+    StartDodge(FInputActionValue());
+}
+
+void AForestSliceCharacter::TriggerVirtualLightAttack()
+{
+    StartLightAttack(FInputActionValue());
+}
+
+void AForestSliceCharacter::TriggerVirtualJump()
+{
+    StartJump(FInputActionValue());
 }
 
 void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)
@@ -113,8 +161,10 @@ void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)
 
 void AForestSliceCharacter::StopSprint(const FInputActionValue& Value)
 {
+    const bool ShouldSlide = bSprintHeld && GetCharacterMovement()->IsMovingOnGround();
     bSprintHeld = false;
     GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+    if (ShouldSlide) StartSlide(Value);
 }
 
 void AForestSliceCharacter::StartSlide(const FInputActionValue& Value)
@@ -145,9 +195,25 @@ void AForestSliceCharacter::StartJump(const FInputActionValue& Value)
     Jump();
 }
 
+bool AForestSliceCharacter::DetectGyroscopeSupport() const
+{
+#if PLATFORM_ANDROID
+    // The Android platform bridge should set this from Sensor.TYPE_GYROSCOPE at startup.
+    return bDeviceHasGyroscope;
+#else
+    return false;
+#endif
+}
+
+void AForestSliceCharacter::SetDeviceGyroscopeSupport(bool bSupported)
+{
+    bDeviceHasGyroscope = bSupported;
+    if (!bDeviceHasGyroscope) bGyroEnabled = false;
+}
+
 void AForestSliceCharacter::SetGyroEnabled(bool bEnabled)
 {
-    bGyroEnabled = bDeviceHasGyroscope && bEnabled;
+    bGyroEnabled = DetectGyroscopeSupport() && bEnabled;
 }
 
 void AForestSliceCharacter::ApplyGyroInput(float RotationX, float RotationY, float Sensitivity)

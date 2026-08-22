@@ -27,6 +27,30 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Mobile|Aim")
     void ApplyGyroInput(float RotationX, float RotationY, float Sensitivity);
 
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Aim")
+    void SetDeviceGyroscopeSupport(bool bSupported);
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void SetVirtualMove(FVector2D MoveVector);
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void SetVirtualLook(FVector2D LookVector);
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void SetVirtualSprintHeld(bool bHeld);
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void TriggerVirtualSlide();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void TriggerVirtualDodge();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void TriggerVirtualLightAttack();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
+    void TriggerVirtualJump();
+
     UFUNCTION(BlueprintPure, Category = "Survival")
     float GetStaminaNormalized() const;
 
@@ -116,6 +140,10 @@ private:
     bool bSprintHeld = false;
     float SlideCooldown = 0.0f;
     float DodgeCooldown = 0.0f;
+
+    void ApplyMoveVector(FVector2D MoveVector);
+    void ApplyLookVector(FVector2D LookVector);
+    bool DetectGyroscopeSupport() const;
 
     virtual void Tick(float DeltaSeconds) override;
 };
