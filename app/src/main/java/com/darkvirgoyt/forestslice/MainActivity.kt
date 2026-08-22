@@ -229,6 +229,7 @@ class MainActivity : Activity(), SensorEventListener {
         slider("Music", current.music, audio::setMusic)
         slider("Effects", current.effects, audio::setEffects)
         slider("Ambience", current.ambience, audio::setAmbience)
+        slider("Voice", current.voice, audio::setVoice)
         AlertDialog.Builder(this)
             .setTitle("AETHELGARD AUDIO")
             .setView(panel)

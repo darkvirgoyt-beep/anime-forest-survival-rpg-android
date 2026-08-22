@@ -14,15 +14,17 @@ class GameAudio(context: Context) {
         var music: Float = .75f,
         var effects: Float = 1f,
         var ambience: Float = .8f,
+        var voice: Float = 1f,
         var muted: Boolean = false,
     )
 
-    private val preferences = context.getSharedPreferences("aethelgard_audio", Context.MODE_PRIVATE)
+    private val preferences = appContext.getSharedPreferences("aethelgard_audio", Context.MODE_PRIVATE)
     private val settings = Settings(
         master = preferences.getFloat("master", 1f),
         music = preferences.getFloat("music", .75f),
         effects = preferences.getFloat("effects", 1f),
         ambience = preferences.getFloat("ambience", .8f),
+        voice = preferences.getFloat("voice", 1f),
         muted = preferences.getBoolean("muted", false),
     )
     private val soundPool = SoundPool.Builder()
@@ -79,6 +81,13 @@ class GameAudio(context: Context) {
     fun setMusic(value: Float) { settings.music = clamp(value); playMusic(); persist() }
     fun setEffects(value: Float) { settings.effects = clamp(value); persist() }
     fun setAmbience(value: Float) { settings.ambience = clamp(value); persist() }
+    fun setVoice(value: Float) { settings.voice = clamp(value); persist() }
+    fun playVoice(name: String, loop: Int = 0, rate: Float = 1f) {
+        val id = sounds[name] ?: return
+        val volume = effective(settings.voice)
+        if (volume <= 0f) return
+        soundPool.play(id, volume, volume, 1, loop, rate)
+    }
     fun setMuted(value: Boolean) { settings.muted = value; if (value) stopMusic() else playMusic(); persist() }
     fun getSettings(): Settings = settings.copy()
 
@@ -96,6 +105,7 @@ class GameAudio(context: Context) {
             .putFloat("music", settings.music)
             .putFloat("effects", settings.effects)
             .putFloat("ambience", settings.ambience)
+            .putFloat("voice", settings.voice)
             .putBoolean("muted", settings.muted)
             .apply()
     }
