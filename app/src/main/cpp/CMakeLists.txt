@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(forestgame SHARED
     forest_game.cpp
     physics/physics.cpp
+    controller/third_person_controller.cpp
+    combat/combat_system.cpp
 )
 
 target_compile_options(forestgame PRIVATE -Wall -Wextra -Wpedantic)

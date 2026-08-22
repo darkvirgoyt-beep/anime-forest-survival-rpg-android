@@ -19,6 +19,14 @@ jobs:
             tests/physics_test.cpp app/src/main/cpp/physics/physics.cpp \
             -o physics_test
           ./physics_test
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/combat_controller_test.cpp \
+            app/src/main/cpp/physics/physics.cpp \
+            app/src/main/cpp/controller/third_person_controller.cpp \
+            app/src/main/cpp/combat/combat_system.cpp \
+            -o combat_controller_test
+          ./combat_controller_test
 
   build:
     runs-on: ubuntu-latest

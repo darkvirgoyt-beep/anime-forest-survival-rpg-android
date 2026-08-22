@@ -26,6 +26,7 @@ object NativeGameBridge {
     external fun resize(width: Int, height: Int)
     external fun render(deltaSeconds: Float)
     external fun setMove(x: Float, y: Float)
+    external fun orbitCamera(deltaYaw: Float, deltaPitch: Float)
     external fun attack()
     external fun jump()
     external fun dodge()
@@ -135,6 +136,8 @@ class MainActivity : Activity() {
 
 private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
     private val renderer = GameRenderer()
+    private var lastLookX = 0f
+    private var lastLookY = 0f
 
     init {
         setEGLContextClientVersion(3)
@@ -145,8 +148,23 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_UP) {
-            queueEvent { NativeGameBridge.setMove(0f, 0f) }
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                lastLookX = event.x
+                lastLookY = event.y
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (event.x > width * 0.42f) {
+                    val dx = event.x - lastLookX
+                    val dy = event.y - lastLookY
+                    queueEvent { NativeGameBridge.orbitCamera(dx * 0.006f, dy * 0.004f) }
+                }
+                lastLookX = event.x
+                lastLookY = event.y
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                queueEvent { NativeGameBridge.setMove(0f, 0f) }
+            }
         }
         return true
     }

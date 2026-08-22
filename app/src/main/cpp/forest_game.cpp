@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "physics/physics.h"
+#include "controller/third_person_controller.h"
+#include "combat/combat_system.h"
 
 namespace {
 constexpr float PI = 3.14159265359f;
@@ -23,19 +25,21 @@ float gPlayerX = 0.0f;
 float gPlayerY = -0.08f;
 float gMoveX = 0.0f;
 float gMoveY = 0.0f;
-float gHealth = 1.0f;
 int gWood = 12;
 int gFiber = 8;
 int gStone = 4;
 int gCraftPulse = 0;
 int gAttackPulse = 0;
 int gDodgePulse = 0;
-float gStamina = 1.0f;
 float gHunger = 0.82f;
-float gAttackCooldown = 0.0f;
 double gPhysicsAccumulator = 0.0;
 constexpr float kPhysicsStep = 1.0f / 60.0f;
-forest::physics::CharacterBody gPlayerBody{};
+forest::controller::ThirdPersonController gController{};
+forest::combat::CombatSystem gCombat{};
+bool gHitRegistered = false;
+float gEnemyHealth = 1.0f;
+float gEnemyX = 0.36f;
+float gEnemyY = 0.03f;
 const forest::physics::StaticObstacle gObstacles[] = {
     {{{-0.30f, -0.28f}, {0.07f, 0.04f}}},
     {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
@@ -175,13 +179,35 @@ void drawAnimal(float x, float y, float tint) {
 
 void simulatePhysicsStep() {
     gTime += kPhysicsStep;
-    gAttackCooldown = std::max(0.0f, gAttackCooldown - kPhysicsStep);
-    gPlayerBody.step({gMoveX, -gMoveY}, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
-    gPlayerX = gPlayerBody.position.x;
-    gPlayerY = gPlayerBody.position.y;
-    gStamina = std::min(1.0f, gStamina + kPhysicsStep * 0.09f);
+    const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, false};
+    gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
+    gCombat.tick(kPhysicsStep);
+    const forest::combat::CombatEvent combatEvent = gCombat.consumeEvent();
+    if (combatEvent.attackStarted) {
+        gAttackPulse = 6 + combatEvent.comboIndex * 2;
+        gHitRegistered = false;
+    }
+    if (gCombat.isHitActive() && !gHitRegistered) {
+        const forest::physics::Vec2 facing{
+            std::cos(gController.facingRadians),
+            std::sin(gController.facingRadians)
+        };
+        const forest::combat::Hitbox hitbox = gCombat.currentHitbox(facing);
+        const forest::physics::Aabb attackBox{
+            gController.body.position + hitbox.offset,
+            hitbox.halfExtents
+        };
+        const forest::physics::Aabb enemyBox{{gEnemyX, gEnemyY}, {0.07f, 0.06f}};
+        if (forest::combat::intersects(attackBox, enemyBox)) {
+            gEnemyHealth = std::max(0.0f, gEnemyHealth - hitbox.damage);
+            gHitRegistered = true;
+            gCombat.confirmHit();
+        }
+    }
+    gPlayerX = gController.body.position.x;
+    gPlayerY = gController.body.position.y;
     gHunger = std::max(0.0f, gHunger - kPhysicsStep * 0.001f);
-    if (gHunger < 0.20f) gHealth = std::max(0.0f, gHealth - kPhysicsStep * 0.004f);
+    if (gHunger < 0.20f) gController.health = std::max(0.0f, gController.health - kPhysicsStep * 0.004f);
 }
 
 void drawWorld() {
@@ -219,8 +245,10 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_init(JNIEnv*, jobject, jint wi
     gPhysicsAccumulator = 0.0;
     gWidth = static_cast<float>(std::max(1, width));
     gHeight = static_cast<float>(std::max(1, height));
-    gPlayerBody.position = {0.0f, -0.08f};
-    gPlayerBody.velocity = {0.0f, 0.0f};
+    gController = {};
+    gCombat = {};
+    gController.body.position = {0.0f, -0.08f};
+    gController.body.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
     glViewport(0, 0, width, height);
 }
@@ -253,28 +281,23 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_setMove(JNIEnv*, jobject, jflo
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_orbitCamera(JNIEnv*, jobject, jfloat deltaYaw, jfloat deltaPitch) {
+    gController.camera.orbit(static_cast<float>(deltaYaw), static_cast<float>(deltaPitch));
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_attack(JNIEnv*, jobject) {
-    if (gAttackCooldown > 0.0f || gStamina < 0.18f) return;
-    gAttackPulse = 10;
-    gAttackCooldown = 0.35f;
-    gStamina -= 0.18f;
-    gHealth = std::min(1.0f, gHealth + 0.015f);
+    if (gCombat.requestAttack()) gController.state = forest::controller::LocomotionState::Attack;
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_jump(JNIEnv*, jobject) {
-    if (gStamina < 0.12f) return;
-    gPlayerBody.jump();
-    gStamina -= 0.12f;
+    gController.jump();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_dodge(JNIEnv*, jobject) {
-    if (gStamina < 0.25f) return;
-    const float direction = std::abs(gMoveX) > 0.05f ? (gMoveX > 0.0f ? 1.0f : -1.0f) : 1.0f;
-    gPlayerBody.velocity.x += direction * 0.65f;
-    gDodgePulse = 8;
-    gStamina -= 0.25f;
+    if (gCombat.requestDodge() && gController.dodge()) gDodgePulse = 8;
 }
 
 extern "C" JNIEXPORT void JNICALL
