@@ -15,20 +15,20 @@ The first slice renders a stylized forest scene through OpenGL ES 3, includes an
 | Kotlin | `Activity` lifecycle, landscape/full-screen mode, HUD, touch controls, Android integration, future save and device capability APIs. |
 | C++17 | OpenGL ES renderer, fixed-step physics, collision primitives, movement, jump/dodge, combat pulse, resource counters, and deterministic gameplay primitives. |
 | Gradle + CMake | Reproducible Android/NDK build configuration for `arm64-v8a` and `x86_64`. |
-| GitHub Actions | CI configuration for debug APK assembly and native source checks. |
+| GitHub Actions | CI configuration for release-style APK assembly, artifact upload, and native source checks. |
 
 ## Build locally
 
 Install Android Studio with SDK 35, NDK 27.x, CMake 3.22.1, and a JDK 17 runtime. Then run:
 
 ```bash
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
-The debug APK is produced under `app/build/outputs/apk/debug/`. The app is configured as a full-screen landscape experience with immersive system UI flags and GLES 3 capability requirements. Install it on a landscape Android phone with:
+The release-style APK is produced under `app/build/outputs/apk/release/`. It is signed with the automatically generated Android debug keystore for test installation only; a protected production keystore is required for Play Store publishing. The app is configured as a full-screen landscape experience with immersive system UI flags and GLES 3 capability requirements. Install it on a landscape Android phone with:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 The sandbox used to create this repository does not include the Android SDK or Godot editor, so final APK compilation must run on a machine or GitHub Actions runner with Android tooling installed.

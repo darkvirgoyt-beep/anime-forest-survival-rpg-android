@@ -28,6 +28,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Test-distribution signing only. Replace with a protected release keystore for Play Store publishing.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
