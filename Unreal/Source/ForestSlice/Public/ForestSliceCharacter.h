@@ -5,6 +5,9 @@
 #include "ForestSliceCharacter.generated.h"
 
 class UCameraComponent;
+class UForestSliceCombatComponent;
+class UForestSliceSurvivalComponent;
+class UForestSliceWeaponComponent;
 class UInputAction;
 class UInputMappingContext;
 class USpringArmComponent;
@@ -58,6 +61,15 @@ public:
     bool HasGyroscopeSupport() const { return bDeviceHasGyroscope; }
 
 protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceCombatComponent> CombatComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceWeaponComponent> WeaponComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceSurvivalComponent> SurvivalComponent;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TObjectPtr<USpringArmComponent> CameraBoom;
 

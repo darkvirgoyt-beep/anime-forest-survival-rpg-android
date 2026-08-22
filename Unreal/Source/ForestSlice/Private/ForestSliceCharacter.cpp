@@ -1,4 +1,7 @@
 #include "ForestSliceCharacter.h"
+#include "ForestSliceCombatComponent.h"
+#include "ForestSliceSurvivalComponent.h"
+#include "ForestSliceWeaponComponent.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -15,6 +18,9 @@ AForestSliceCharacter::AForestSliceCharacter()
     PrimaryActorTick.bCanEverTick = true;
 
     GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
+    CombatComponent = CreateDefaultSubobject<UForestSliceCombatComponent>(TEXT("CombatComponent"));
+    WeaponComponent = CreateDefaultSubobject<UForestSliceWeaponComponent>(TEXT("WeaponComponent"));
+    SurvivalComponent = CreateDefaultSubobject<UForestSliceSurvivalComponent>(TEXT("SurvivalComponent"));
     bUseControllerRotationYaw = false;
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 620.0f, 0.0f);
@@ -186,8 +192,7 @@ void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
 
 void AForestSliceCharacter::StartLightAttack(const FInputActionValue& Value)
 {
-    // The production ability component will consume this request and resolve damage on the server.
-    // Keeping the input endpoint here allows touch, gamepad, and gyro aim to share one action path.
+    if (CombatComponent) CombatComponent->RequestLightAttack();
 }
 
 void AForestSliceCharacter::StartJump(const FInputActionValue& Value)

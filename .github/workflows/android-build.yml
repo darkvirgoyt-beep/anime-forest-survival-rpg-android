@@ -18,8 +18,30 @@ jobs:
           test -f Unreal/Source/ForestSlice/ForestSlice.Build.cs
           test -f Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceCombatComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceWeaponComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceWeaponComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceSurvivalComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceSurvivalComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceWorldClock.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceWorldClock.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceBed.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceBed.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceMobileHUD.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceAccountSubsystem.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceAccountSubsystem.cpp
           grep -q 'EngineAssociation.*5.6' Unreal/ForestSlice.uproject
           grep -q 'bSupportsVulkan=True' Unreal/Config/DefaultEngine.ini
+          grep -q 'RequestHeavyAttack' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
+          grep -q 'GenerateAroundLocation' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
+          grep -q 'RestoreFromSleep' Unreal/Source/ForestSlice/Private/ForestSliceSurvivalComponent.cpp
+          grep -q 'RequestSleep' Unreal/Source/ForestSlice/Private/ForestSliceWorldClock.cpp
+          grep -q 'SetGyroSensorSupport' Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
+          grep -q 'StartGooglePlaySignIn' Unreal/Source/ForestSlice/Public/ForestSliceAccountSubsystem.h
 
   native-tests:
     runs-on: ubuntu-latest

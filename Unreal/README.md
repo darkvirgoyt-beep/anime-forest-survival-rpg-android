@@ -10,6 +10,12 @@ Install Unreal Engine 5.6 or later, Android Studio with SDK 35, NDK and JDK vers
 
 `Source/ForestSlice/Public/ForestSliceCharacter.h` and its implementation define the production-shaped third-person character boundary. It includes a capsule movement motor, spring-arm camera, camera-relative movement, sprint stamina, slide, dodge, jump, camera look, and a gyro input API. Damage, invulnerability, combo abilities, target hurtboxes, and server authority remain separate systems and must not be implemented as client-only UI behavior.
 
+## Current production modules
+
+The Unreal source now includes data-driven combat and weapon boundaries in `ForestSliceCombatComponent` and `ForestSliceWeaponComponent`, with light/heavy attack phases, combo buffering, hit-window events, replicated equipment slots, and server request methods. `ForestSliceProceduralForest` provides deterministic seed-and-chunk generation with hierarchical instanced tree/rock placement and bounded active records. `ForestSliceSurvivalComponent` owns replicated health, hunger, thirst, stamina, temperature, shelter, injury, and sleep restoration. `ForestSliceWorldClock` provides authoritative day/night progression, and `ForestSliceBed` validates nighttime sleep at a safe bed. `ForestSliceMobileHUD` routes UMG joystick, look, sprint/slide, attack, weapon switch, and gyro commands to the same character path. `ForestSliceAccountSubsystem` defines guest mode and the Google Play credential-to-backend session boundary.
+
+These are production-shaped foundations, not claims that final art, full hit traces, engine-generated UMG assets, Play Games credentials, or a live backend already exist.
+
 ## Asset rules
 
 The `Content` folders are reserved for original or licensed assets. A production character requires a rigged skeletal mesh, locomotion and combat animation clips, materials, VFX, and platform-specific LODs. Do not place ripped assets from existing games in this repository.
