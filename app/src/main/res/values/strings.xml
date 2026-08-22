@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aethelgard: Wild Horizons – Crafting</string>
+    <string name="audio_settings_title">Audio Settings</string>
+    <string name="music_volume">Music Volume</string>
+    <string name="effects_volume">Effects Volume</string>
+    <string name="ambience_volume">Ambience Volume</string>
+    <string name="voice_volume">Voice Volume</string>
+    <string name="gyro_unsupported">GYRO: UNSUPPORTED</string>
+</resources>

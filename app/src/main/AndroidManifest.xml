@@ -5,7 +5,8 @@
 
     <application
         android:allowBackup="true"
-        android:label="Forest Slice"
+        android:label="@string/app_name"
+        android:icon="@drawable/aethelgard_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.ForestSlice">
         <activity

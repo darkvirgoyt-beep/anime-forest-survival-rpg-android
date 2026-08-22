@@ -1,6 +1,7 @@
 package com.darkvirgoyt.forestslice
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.hardware.Sensor
@@ -19,6 +20,7 @@ import android.content.Context
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -49,6 +51,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var gyroSensor: Sensor? = null
     private var gyroEnabled = false
     private val gyroSensitivity = 1.0f
+    private lateinit var audio: GameAudio
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +62,8 @@ class MainActivity : Activity(), SensorEventListener {
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+        audio = GameAudio(this)
+        audio.playMusic()
 
         val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
@@ -116,6 +121,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     override fun onPause() {
+        audio.stopMusic()
         gyroEnabled = false
         sensorManager?.unregisterListener(this)
         gameView.queueEvent { NativeGameBridge.setGyroEnabled(false) }
@@ -125,9 +131,15 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
+        audio.playMusic()
         gameView.onResume()
         registerGyro()
         updateGyroButton()
+    }
+
+    override fun onDestroy() {
+        audio.release()
+        super.onDestroy()
     }
 
     private fun buildHud(): View {
@@ -138,7 +150,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(28, 16, 28, 0)
         }
         val title = TextView(this).apply {
-            text = "FOREST SLICE  •  DAY 01"
+            text = "AETHELGARD  •  DAY 01"
             textSize = 15f
             setTextColor(Color.rgb(244, 218, 155))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
@@ -149,6 +161,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.WHITE)
         }
         gyroButton = actionButton("GYRO: OFF") {
+            audio.playEffect("ui")
             gyroEnabled = gyroSensor != null && !gyroEnabled
             gameView.queueEvent { NativeGameBridge.setGyroEnabled(gyroEnabled) }
             updateGyroButton()
@@ -177,19 +190,50 @@ class MainActivity : Activity(), SensorEventListener {
             }
             true
         }
-        val attack = actionButton("ATTACK") { gameView.queueEvent { NativeGameBridge.attack() } }
-        val jump = actionButton("JUMP") { gameView.queueEvent { NativeGameBridge.jump() } }
-        val dodge = actionButton("DODGE") { gameView.queueEvent { NativeGameBridge.dodge() } }
-        val gather = actionButton("GATHER") { gameView.queueEvent { NativeGameBridge.gather() } }
-        val craft = actionButton("CRAFT") { gameView.queueEvent { NativeGameBridge.craft() } }
+        val attack = actionButton("ATTACK") { audio.playEffect("attack"); gameView.queueEvent { NativeGameBridge.attack() } }
+        val jump = actionButton("JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
+        val dodge = actionButton("DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
+        val gather = actionButton("GATHER") { audio.playEffect("gather"); gameView.queueEvent { NativeGameBridge.gather() } }
+        val craft = actionButton("CRAFT") { audio.playEffect("craft"); gameView.queueEvent { NativeGameBridge.craft() } }
+        val settings = actionButton("AUDIO SETTINGS") { showAudioSettings() }
         actions.addView(sprintSlide, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(attack, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(jump, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(dodge, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(gather, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(craft, LinearLayout.LayoutParams(150, 50))
+        actions.addView(craft, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
+        actions.addView(settings, LinearLayout.LayoutParams(150, 50))
         overlay.addView(actions, FrameLayout.LayoutParams(-1, -1))
         return overlay
+    }
+
+    private fun showAudioSettings() {
+        val current = audio.getSettings()
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 8, 32, 8)
+        }
+        fun slider(label: String, initial: Float, apply: (Float) -> Unit) {
+            panel.addView(TextView(this).apply { text = label })
+            panel.addView(SeekBar(this).apply {
+                max = 100
+                progress = (initial * 100f).toInt()
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) = apply(value / 100f)
+                    override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+                })
+            })
+        }
+        slider("Master", current.master, audio::setMaster)
+        slider("Music", current.music, audio::setMusic)
+        slider("Effects", current.effects, audio::setEffects)
+        slider("Ambience", current.ambience, audio::setAmbience)
+        AlertDialog.Builder(this)
+            .setTitle("AETHELGARD AUDIO")
+            .setView(panel)
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     private fun actionButton(label: String, onClick: () -> Unit): Button = Button(this).apply {

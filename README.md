@@ -1,12 +1,18 @@
-# Forest Slice — Android RPG Prototype
+# Aethelgard: Wild Horizons – Crafting
 
-**Forest Slice** is an original anime-inspired Android game prototype built around a small third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
+**Aethelgard: Wild Horizons – Crafting** is an original anime-inspired Android game prototype built around a small third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
 
 > This repository is a vertical slice, not a claim to reproduce the production scale or visual fidelity of a large commercial title.
 
 ## Current milestone
 
-The first slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future local save wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
+The current slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future local save wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
+
+## Brand and audio assets
+
+The launcher is branded as **Aethelgard: Wild Horizons – Crafting** and uses `assets/ui/aethelgard_game_icon.png`. The generated audio bank is cataloged in [`assets/audio/AUDIO_MANIFEST.md`](assets/audio/AUDIO_MANIFEST.md). The Android harness loads the forest exploration track and gameplay/UI Foley through `GameAudio`, with persistent Master, Music, Effects, Ambience, and Mute controls. The Unreal path uses `UForestSliceAudioSubsystem` as the settings boundary.
+
+The current image-service quota and external audio-service availability prevented final AI character sheets and a full AAA sound library in this run. The icon and procedural SFX are original fallback assets and are intentionally marked for later replacement by production-quality original or licensed content.
 
 ## Technology split
 
@@ -43,7 +49,7 @@ The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PL
 
 ## Roadmap
 
-The next production slices should add a proper 3D camera, authored or legally licensed low-poly assets, animation clips, collision geometry, real inventory/crafting UI, enemy state machines, save/load, audio, device performance profiles, and a signed release pipeline. Generated or imported assets must be original or carry a compatible license.
+The next production slices should add a proper 3D camera, original rigged anime characters, authored or legally licensed environment assets, animation clips, collision geometry, real inventory/crafting UI, enemy state machines, save/load, dynamic music states, voice/animal libraries, device performance profiles, and a signed release pipeline. Generated or imported assets must be original or carry a compatible license.
 
 ## Repository status
 
