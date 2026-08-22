@@ -6,14 +6,14 @@
 
 ## Current milestone
 
-The first slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, touch UI, haptics-ready integration points, and future local save wiring.
+The first slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future local save wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
 
 ## Technology split
 
 | Layer | Responsibility |
 |---|---|
 | Kotlin | `Activity` lifecycle, landscape/full-screen mode, HUD, touch controls, Android integration, future save and device capability APIs. |
-| C++17 | OpenGL ES renderer, movement state, combat pulse, resource counters, and deterministic gameplay primitives. |
+| C++17 | OpenGL ES renderer, fixed-step physics, collision primitives, movement, jump/dodge, combat pulse, resource counters, and deterministic gameplay primitives. |
 | Gradle + CMake | Reproducible Android/NDK build configuration for `arm64-v8a` and `x86_64`. |
 | GitHub Actions | CI configuration for debug APK assembly and native source checks. |
 
@@ -25,7 +25,7 @@ Install Android Studio with SDK 35, NDK 27.x, CMake 3.22.1, and a JDK 17 runtime
 ./gradlew assembleDebug
 ```
 
-The debug APK is produced under `app/build/outputs/apk/debug/`. Install it on a landscape Android phone with:
+The debug APK is produced under `app/build/outputs/apk/debug/`. The app is configured as a full-screen landscape experience with immersive system UI flags and GLES 3 capability requirements. Install it on a landscape Android phone with:
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
@@ -35,7 +35,11 @@ The sandbox used to create this repository does not include the Android SDK or G
 
 ## Controls
 
-The left virtual joystick moves the hero. `ATTACK` shows the native combat feedback pulse. `CRAFT` consumes wood and fiber when available; the prototype keeps the inventory values in the native layer for the next UI-binding pass.
+The left virtual joystick moves the hero. `JUMP` applies a grounded impulse, `DODGE` applies a stamina-gated burst, `ATTACK` shows native combat feedback, `GATHER` rewards nearby resource collection, and `CRAFT` consumes wood and fiber when available. The prototype keeps inventory values in the native layer for the next UI-binding pass.
+
+## Full implementation blueprint
+
+The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). It covers the physics loop, player survival, animal AI, crafting and building, visual direction, multiplayer path, testing, CI, release signing, and production gates.
 
 ## Roadmap
 

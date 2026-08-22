@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "physics/physics.h"
+
 namespace {
 constexpr float PI = 3.14159265359f;
 GLuint gProgram = 0;
@@ -27,6 +29,17 @@ int gFiber = 8;
 int gStone = 4;
 int gCraftPulse = 0;
 int gAttackPulse = 0;
+int gDodgePulse = 0;
+float gStamina = 1.0f;
+float gHunger = 0.82f;
+float gAttackCooldown = 0.0f;
+double gPhysicsAccumulator = 0.0;
+constexpr float kPhysicsStep = 1.0f / 60.0f;
+forest::physics::CharacterBody gPlayerBody{};
+const forest::physics::StaticObstacle gObstacles[] = {
+    {{{-0.30f, -0.28f}, {0.07f, 0.04f}}},
+    {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
+};
 
 const char* kVertexShader = R"GLSL(
 #version 300 es
@@ -145,6 +158,10 @@ void drawPlayer() {
         drawCircle(gPlayerX + 0.14f, gPlayerY + 0.03f, 0.06f, 0.97f, 0.85f, 0.42f, 0.70f);
         --gAttackPulse;
     }
+    if (gDodgePulse > 0) {
+        drawCircle(gPlayerX, gPlayerY + 0.03f, 0.13f, 0.40f, 0.85f, 0.95f, 0.22f);
+        --gDodgePulse;
+    }
 }
 
 void drawAnimal(float x, float y, float tint) {
@@ -154,6 +171,17 @@ void drawAnimal(float x, float y, float tint) {
     drawTriangle(x + 0.045f, y + 0.083f, 0.035f, 0.045f, 0.48f + tint, 0.38f, 0.27f);
     drawTriangle(x + 0.084f, y + 0.083f, 0.035f, 0.045f, 0.48f + tint, 0.38f, 0.27f);
     drawCircle(x + 0.09f, y + 0.045f, 0.007f, 0.95f, 0.85f, 0.47f);
+}
+
+void simulatePhysicsStep() {
+    gTime += kPhysicsStep;
+    gAttackCooldown = std::max(0.0f, gAttackCooldown - kPhysicsStep);
+    gPlayerBody.step({gMoveX, -gMoveY}, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
+    gPlayerX = gPlayerBody.position.x;
+    gPlayerY = gPlayerBody.position.y;
+    gStamina = std::min(1.0f, gStamina + kPhysicsStep * 0.09f);
+    gHunger = std::max(0.0f, gHunger - kPhysicsStep * 0.001f);
+    if (gHunger < 0.20f) gHealth = std::max(0.0f, gHealth - kPhysicsStep * 0.004f);
 }
 
 void drawWorld() {
@@ -188,8 +216,11 @@ void drawWorld() {
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_init(JNIEnv*, jobject, jint width, jint height) {
+    gPhysicsAccumulator = 0.0;
     gWidth = static_cast<float>(std::max(1, width));
     gHeight = static_cast<float>(std::max(1, height));
+    gPlayerBody.position = {0.0f, -0.08f};
+    gPlayerBody.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
     glViewport(0, 0, width, height);
 }
@@ -203,11 +234,15 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_resize(JNIEnv*, jobject, jint 
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_render(JNIEnv*, jobject, jfloat delta) {
-    const float dt = std::min(0.05f, std::max(0.0f, static_cast<float>(delta)));
-    gTime += dt;
-    gPlayerX = std::clamp(gPlayerX + gMoveX * dt * 0.55f, -0.88f, 0.88f);
-    gPlayerY = std::clamp(gPlayerY - gMoveY * dt * 0.40f, -0.50f, 0.50f);
-    gHealth = std::max(0.45f, gHealth - dt * 0.0005f);
+    const double dt = std::min(0.10, std::max(0.0, static_cast<double>(delta)));
+    gPhysicsAccumulator = std::min(0.25, gPhysicsAccumulator + dt);
+    int steps = 0;
+    while (gPhysicsAccumulator >= kPhysicsStep && steps < 8) {
+        simulatePhysicsStep();
+        gPhysicsAccumulator -= kPhysicsStep;
+        ++steps;
+    }
+    if (steps == 8 && gPhysicsAccumulator >= kPhysicsStep) gPhysicsAccumulator = 0.0;
     drawWorld();
 }
 
@@ -219,8 +254,42 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_setMove(JNIEnv*, jobject, jflo
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_attack(JNIEnv*, jobject) {
+    if (gAttackCooldown > 0.0f || gStamina < 0.18f) return;
     gAttackPulse = 10;
+    gAttackCooldown = 0.35f;
+    gStamina -= 0.18f;
     gHealth = std::min(1.0f, gHealth + 0.015f);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_jump(JNIEnv*, jobject) {
+    if (gStamina < 0.12f) return;
+    gPlayerBody.jump();
+    gStamina -= 0.12f;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_dodge(JNIEnv*, jobject) {
+    if (gStamina < 0.25f) return;
+    const float direction = std::abs(gMoveX) > 0.05f ? (gMoveX > 0.0f ? 1.0f : -1.0f) : 1.0f;
+    gPlayerBody.velocity.x += direction * 0.65f;
+    gDodgePulse = 8;
+    gStamina -= 0.25f;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_gather(JNIEnv*, jobject) {
+    const float nearestResource = std::min(
+        std::abs(gPlayerX + 0.05f) + std::abs(gPlayerY + 0.30f),
+        std::abs(gPlayerX - 0.60f) + std::abs(gPlayerY + 0.32f)
+    );
+    if (nearestResource < 0.42f) {
+        gWood += 1;
+        gFiber += 1;
+        gHunger = std::min(1.0f, gHunger + 0.003f);
+    } else {
+        gStone += 1;
+    }
 }
 
 extern "C" JNIEXPORT void JNICALL

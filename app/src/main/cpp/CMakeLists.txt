@@ -4,9 +4,13 @@ project("forestgame")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(forestgame SHARED forest_game.cpp)
+add_library(forestgame SHARED
+    forest_game.cpp
+    physics/physics.cpp
+)
 
 target_compile_options(forestgame PRIVATE -Wall -Wextra -Wpedantic)
+target_include_directories(forestgame PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(forestgame
     android

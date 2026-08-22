@@ -27,6 +27,9 @@ object NativeGameBridge {
     external fun render(deltaSeconds: Float)
     external fun setMove(x: Float, y: Float)
     external fun attack()
+    external fun jump()
+    external fun dodge()
+    external fun gather()
     external fun craft()
 }
 
@@ -38,6 +41,7 @@ class MainActivity : Activity() {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        enterImmersiveMode()
 
         val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
@@ -47,6 +51,22 @@ class MainActivity : Activity() {
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
         })
         setContentView(root)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersiveMode()
+    }
+
+    private fun enterImmersiveMode() {
+        window.decorView.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        )
     }
 
     override fun onPause() {
@@ -87,9 +107,15 @@ class MainActivity : Activity() {
             setPadding(0, 0, 24, 24)
         }
         val attack = actionButton("ATTACK") { gameView.queueEvent { NativeGameBridge.attack() } }
+        val jump = actionButton("JUMP") { gameView.queueEvent { NativeGameBridge.jump() } }
+        val dodge = actionButton("DODGE") { gameView.queueEvent { NativeGameBridge.dodge() } }
+        val gather = actionButton("GATHER") { gameView.queueEvent { NativeGameBridge.gather() } }
         val craft = actionButton("CRAFT") { gameView.queueEvent { NativeGameBridge.craft() } }
-        actions.addView(attack, LinearLayout.LayoutParams(150, 58).apply { bottomMargin = 10 })
-        actions.addView(craft, LinearLayout.LayoutParams(150, 58))
+        actions.addView(attack, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
+        actions.addView(jump, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
+        actions.addView(dodge, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
+        actions.addView(gather, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
+        actions.addView(craft, LinearLayout.LayoutParams(150, 50))
         overlay.addView(actions, FrameLayout.LayoutParams(-1, -1))
         return overlay
     }

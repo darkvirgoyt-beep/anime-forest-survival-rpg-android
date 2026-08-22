@@ -7,6 +7,19 @@ on:
     branches: ["main"]
 
 jobs:
+  native-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and run physics tests
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/physics_test.cpp app/src/main/cpp/physics/physics.cpp \
+            -o physics_test
+          ./physics_test
+
   build:
     runs-on: ubuntu-latest
     steps:
