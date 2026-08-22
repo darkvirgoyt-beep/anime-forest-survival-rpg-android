@@ -35,11 +35,11 @@ The sandbox used to create this repository does not include the Android SDK or G
 
 ## Controls
 
-The left virtual joystick moves the hero. `JUMP` applies a grounded impulse, `DODGE` applies a stamina-gated burst, `ATTACK` shows native combat feedback, `GATHER` rewards nearby resource collection, and `CRAFT` consumes wood and fiber when available. The prototype keeps inventory values in the native layer for the next UI-binding pass.
+The left virtual joystick moves the hero. Right-side drag controls camera orbit. `JUMP` applies a grounded impulse, `DODGE` applies a stamina-gated burst, `ATTACK` shows native combat feedback, `GATHER` rewards nearby resource collection, and `CRAFT` consumes wood and fiber when available. The gyro toggle is enabled only when Android reports a gyroscope; otherwise it is visibly disabled as `GYRO: UNSUPPORTED`. The prototype keeps inventory values in the native layer for the next UI-binding pass.
 
-## Full implementation blueprint
+## Production blueprint and GDD map
 
-The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). It covers the physics loop, player survival, animal AI, crafting and building, visual direction, multiplayer path, testing, CI, release signing, and production gates.
+The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). The AAA engine and multiplayer decision is documented in [`docs/AAA_PRODUCTION_ARCHITECTURE.md`](docs/AAA_PRODUCTION_ARCHITECTURE.md), and the supplied GDD requirements are mapped in [`docs/GDD_IMPLEMENTATION_MAP.md`](docs/GDD_IMPLEMENTATION_MAP.md). These documents separate the current prototype from the future Unreal C++ production path instead of claiming that a small OpenGL prototype is already a finished AAA game.
 
 ## Roadmap
 

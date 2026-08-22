@@ -25,6 +25,9 @@ float gPlayerX = 0.0f;
 float gPlayerY = -0.08f;
 float gMoveX = 0.0f;
 float gMoveY = 0.0f;
+float gGyroX = 0.0f;
+float gGyroY = 0.0f;
+bool gGyroEnabled = false;
 int gWood = 12;
 int gFiber = 8;
 int gStone = 4;
@@ -179,6 +182,7 @@ void drawAnimal(float x, float y, float tint) {
 
 void simulatePhysicsStep() {
     gTime += kPhysicsStep;
+    if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
     const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, false};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
     gCombat.tick(kPhysicsStep);
@@ -283,6 +287,21 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_setMove(JNIEnv*, jobject, jflo
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_orbitCamera(JNIEnv*, jobject, jfloat deltaYaw, jfloat deltaPitch) {
     gController.camera.orbit(static_cast<float>(deltaYaw), static_cast<float>(deltaPitch));
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_setGyroEnabled(JNIEnv*, jobject, jboolean enabled) {
+    gGyroEnabled = enabled == JNI_TRUE;
+    if (!gGyroEnabled) {
+        gGyroX = 0.0f;
+        gGyroY = 0.0f;
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_setGyro(JNIEnv*, jobject, jfloat rotationX, jfloat rotationY, jfloat sensitivity) {
+    gGyroX = static_cast<float>(rotationX) * static_cast<float>(sensitivity);
+    gGyroY = static_cast<float>(rotationY) * static_cast<float>(sensitivity);
 }
 
 extern "C" JNIEXPORT void JNICALL

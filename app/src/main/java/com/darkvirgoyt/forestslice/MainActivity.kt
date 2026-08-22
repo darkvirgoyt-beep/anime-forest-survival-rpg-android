@@ -3,6 +3,10 @@ package com.darkvirgoyt.forestslice
 import android.app.Activity
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
@@ -27,6 +31,8 @@ object NativeGameBridge {
     external fun render(deltaSeconds: Float)
     external fun setMove(x: Float, y: Float)
     external fun orbitCamera(deltaYaw: Float, deltaPitch: Float)
+    external fun setGyroEnabled(enabled: Boolean)
+    external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun attack()
     external fun jump()
     external fun dodge()
@@ -34,8 +40,13 @@ object NativeGameBridge {
     external fun craft()
 }
 
-class MainActivity : Activity() {
+class MainActivity : Activity(), SensorEventListener {
     private lateinit var gameView: GameSurfaceView
+    private lateinit var gyroButton: Button
+    private var sensorManager: SensorManager? = null
+    private var gyroSensor: Sensor? = null
+    private var gyroEnabled = false
+    private val gyroSensitivity = 1.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +54,9 @@ class MainActivity : Activity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enterImmersiveMode()
+
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
         val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
@@ -52,7 +66,36 @@ class MainActivity : Activity() {
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
         })
         setContentView(root)
+        updateGyroButton()
+        registerGyro()
     }
+
+    private fun registerGyro() {
+        gyroSensor?.let { sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+    }
+
+    private fun updateGyroButton() {
+        if (!::gyroButton.isInitialized) return
+        if (gyroSensor == null) {
+            gyroEnabled = false
+            gyroButton.text = "GYRO: UNSUPPORTED"
+            gyroButton.isEnabled = false
+            gyroButton.alpha = 0.45f
+        } else {
+            gyroButton.text = if (gyroEnabled) "GYRO: ON" else "GYRO: OFF"
+            gyroButton.isEnabled = true
+            gyroButton.alpha = 1.0f
+        }
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type != Sensor.TYPE_GYROSCOPE || !gyroEnabled) return
+        val x = event.values.getOrNull(0) ?: 0.0f
+        val y = event.values.getOrNull(1) ?: 0.0f
+        gameView.queueEvent { NativeGameBridge.setGyro(x, y, gyroSensitivity) }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -71,6 +114,9 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        gyroEnabled = false
+        sensorManager?.unregisterListener(this)
+        gameView.queueEvent { NativeGameBridge.setGyroEnabled(false) }
         gameView.onPause()
         super.onPause()
     }
@@ -78,6 +124,8 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         gameView.onResume()
+        registerGyro()
+        updateGyroButton()
     }
 
     private fun buildHud(): View {
@@ -98,8 +146,14 @@ class MainActivity : Activity() {
             textSize = 13f
             setTextColor(Color.WHITE)
         }
+        gyroButton = actionButton("GYRO: OFF") {
+            gyroEnabled = gyroSensor != null && !gyroEnabled
+            gameView.queueEvent { NativeGameBridge.setGyroEnabled(gyroEnabled) }
+            updateGyroButton()
+        }
         top.addView(title)
         top.addView(state)
+        top.addView(gyroButton, LinearLayout.LayoutParams(142, 44).apply { leftMargin = 18 })
         overlay.addView(top, FrameLayout.LayoutParams(-1, 54, Gravity.TOP))
 
         val actions = LinearLayout(this).apply {
