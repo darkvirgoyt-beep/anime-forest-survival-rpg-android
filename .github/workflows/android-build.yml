@@ -7,6 +7,20 @@ on:
     branches: ["main"]
 
 jobs:
+  production-foundation-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate Unreal project descriptor
+        run: |
+          python3 -m json.tool Unreal/ForestSlice.uproject >/dev/null
+          test -f Unreal/Source/ForestSlice/ForestSlice.Build.cs
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          grep -q 'EngineAssociation.*5.6' Unreal/ForestSlice.uproject
+          grep -q 'bSupportsVulkan=True' Unreal/Config/DefaultEngine.ini
+
   native-tests:
     runs-on: ubuntu-latest
     steps:
