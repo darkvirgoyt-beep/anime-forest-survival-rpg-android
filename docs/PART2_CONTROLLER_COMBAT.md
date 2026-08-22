@@ -89,7 +89,9 @@ The first authoring target is one original hero with idle, walk, sprint, jump, f
 
 ## Mobile input contract
 
-The left joystick is continuous input and can be sampled every simulation tick. Attack, jump, dodge, gather, and craft are edge events and should be queued exactly once. Right-side drags update camera orbit on the GL thread. All JNI calls touching native state are issued through `GLSurfaceView.queueEvent`; no UI-thread call should mutate gameplay directly.
+The left joystick is continuous input and can be sampled every simulation tick. The `SPRINT / SLIDE` button is a press-and-hold control: press begins sprint intent, while release clears sprint and requests a grounded slide burst. Attack, jump, dodge, gather, and craft are edge events and should be queued exactly once. Right-side drags update camera orbit on the GL thread. All JNI calls touching native state are issued through `GLSurfaceView.queueEvent`; no UI-thread call should mutate gameplay directly.
+
+Gyro aiming is capability-gated. Android checks for `Sensor.TYPE_GYROSCOPE` at runtime. When present, the button toggles `GYRO: ON` and streams sensor rates through the GL queue with a sensitivity multiplier. When absent, the button text becomes `GYRO: UNSUPPORTED`, its alpha is reduced, and `isEnabled` is false. The unsupported path is a deliberate product state, not an exception or a silent no-op.
 
 ## Testing strategy
 

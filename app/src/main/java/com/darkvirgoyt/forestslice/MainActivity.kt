@@ -30,12 +30,14 @@ object NativeGameBridge {
     external fun resize(width: Int, height: Int)
     external fun render(deltaSeconds: Float)
     external fun setMove(x: Float, y: Float)
+    external fun setSprintHeld(held: Boolean)
     external fun orbitCamera(deltaYaw: Float, deltaPitch: Float)
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun attack()
     external fun jump()
     external fun dodge()
+    external fun slide()
     external fun gather()
     external fun craft()
 }
@@ -161,11 +163,26 @@ class MainActivity : Activity(), SensorEventListener {
             gravity = Gravity.BOTTOM or Gravity.END
             setPadding(0, 0, 24, 24)
         }
+        val sprintSlide = actionButton("SPRINT / SLIDE") { }
+        sprintSlide.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> gameView.queueEvent { NativeGameBridge.setSprintHeld(true) }
+                MotionEvent.ACTION_UP -> {
+                    gameView.queueEvent {
+                        NativeGameBridge.setSprintHeld(false)
+                        NativeGameBridge.slide()
+                    }
+                }
+                MotionEvent.ACTION_CANCEL -> gameView.queueEvent { NativeGameBridge.setSprintHeld(false) }
+            }
+            true
+        }
         val attack = actionButton("ATTACK") { gameView.queueEvent { NativeGameBridge.attack() } }
         val jump = actionButton("JUMP") { gameView.queueEvent { NativeGameBridge.jump() } }
         val dodge = actionButton("DODGE") { gameView.queueEvent { NativeGameBridge.dodge() } }
         val gather = actionButton("GATHER") { gameView.queueEvent { NativeGameBridge.gather() } }
         val craft = actionButton("CRAFT") { gameView.queueEvent { NativeGameBridge.craft() } }
+        actions.addView(sprintSlide, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(attack, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(jump, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(dodge, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })

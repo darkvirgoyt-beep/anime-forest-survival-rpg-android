@@ -12,6 +12,8 @@ constexpr float kSprintStaminaPerSecond = 0.16f;
 constexpr float kStaminaRecoveryPerSecond = 0.13f;
 constexpr float kDodgeCost = 0.25f;
 constexpr float kDodgeDuration = 0.30f;
+constexpr float kSlideCost = 0.18f;
+constexpr float kSlideDuration = 0.38f;
 constexpr float kInvulnerabilityDuration = 0.42f;
 constexpr float kHitstunDuration = 0.18f;
 }
@@ -50,6 +52,13 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
         body.velocity = dodgeVelocity;
         body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount);
         state = dodgeSeconds > 0.0f ? LocomotionState::Dodge : LocomotionState::Idle;
+        return;
+    }
+    if (slideSeconds > 0.0f) {
+        slideSeconds = std::max(0.0f, slideSeconds - dt);
+        body.velocity = dodgeVelocity;
+        body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount);
+        state = slideSeconds > 0.0f ? LocomotionState::Slide : LocomotionState::Idle;
         return;
     }
 
@@ -93,6 +102,18 @@ bool ThirdPersonController::dodge() {
     dodgeVelocity = {direction * 0.90f, 0.0f};
     body.velocity = dodgeVelocity;
     state = LocomotionState::Dodge;
+    return true;
+}
+
+bool ThirdPersonController::slide() {
+    if (!isAlive() || !body.grounded || dodgeSeconds > 0.0f || slideSeconds > 0.0f || stamina < kSlideCost) return false;
+    stamina -= kSlideCost;
+    slideSeconds = kSlideDuration;
+    invulnerabilitySeconds = 0.12f;
+    const float direction = body.velocity.x >= 0.0f ? 1.0f : -1.0f;
+    dodgeVelocity = {direction * 0.72f, 0.0f};
+    body.velocity = dodgeVelocity;
+    state = LocomotionState::Slide;
     return true;
 }
 

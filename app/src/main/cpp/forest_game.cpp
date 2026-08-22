@@ -25,6 +25,7 @@ float gPlayerX = 0.0f;
 float gPlayerY = -0.08f;
 float gMoveX = 0.0f;
 float gMoveY = 0.0f;
+bool gSprintHeld = false;
 float gGyroX = 0.0f;
 float gGyroY = 0.0f;
 bool gGyroEnabled = false;
@@ -183,7 +184,7 @@ void drawAnimal(float x, float y, float tint) {
 void simulatePhysicsStep() {
     gTime += kPhysicsStep;
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
-    const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, false};
+    const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
     gCombat.tick(kPhysicsStep);
     const forest::combat::CombatEvent combatEvent = gCombat.consumeEvent();
@@ -285,6 +286,11 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_setMove(JNIEnv*, jobject, jflo
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_setSprintHeld(JNIEnv*, jobject, jboolean held) {
+    gSprintHeld = held == JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_orbitCamera(JNIEnv*, jobject, jfloat deltaYaw, jfloat deltaPitch) {
     gController.camera.orbit(static_cast<float>(deltaYaw), static_cast<float>(deltaPitch));
 }
@@ -317,6 +323,11 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_jump(JNIEnv*, jobject) {
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_forestslice_NativeGameBridge_dodge(JNIEnv*, jobject) {
     if (gCombat.requestDodge() && gController.dodge()) gDodgePulse = 8;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darkvirgoyt_forestslice_NativeGameBridge_slide(JNIEnv*, jobject) {
+    if (gCombat.requestDodge() && gController.slide()) gDodgePulse = 6;
 }
 
 extern "C" JNIEXPORT void JNICALL

@@ -11,6 +11,7 @@ enum class LocomotionState {
     Jump,
     Fall,
     Dodge,
+    Slide,
     Attack,
     Hitstun,
     Dead
@@ -52,12 +53,14 @@ public:
               const physics::StaticObstacle* obstacles, int obstacleCount);
     bool jump();
     bool dodge();
+    bool slide();
     bool takeDamage(float amount, const physics::Vec2& knockback);
     bool isInvulnerable() const { return invulnerabilitySeconds > 0.0f; }
     bool isAlive() const { return health > 0.0f; }
 
 private:
     float dodgeSeconds = 0.0f;
+    float slideSeconds = 0.0f;
     physics::Vec2 dodgeVelocity{};
 };
 
