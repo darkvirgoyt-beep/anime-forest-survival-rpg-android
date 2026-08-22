@@ -1,0 +1,22 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.6",
+  "Category": "Games",
+  "Description": "Forest Slice: original anime open-world survival RPG production foundation.",
+  "Modules": [
+    {
+      "Name": "ForestSlice",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "TargetPlatforms": ["Android"],
+  "AdditionalPluginDirectories": [],
+  "Plugins": [
+    { "Name": "EnhancedInput", "Enabled": true },
+    { "Name": "GameplayAbilities", "Enabled": true },
+    { "Name": "AIModule", "Enabled": true },
+    { "Name": "OnlineSubsystemUtils", "Enabled": true },
+    { "Name": "AndroidFileServer", "Enabled": true }
+  ]
+}

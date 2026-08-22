@@ -1,0 +1,164 @@
+#include "ForestSliceCharacter.h"
+
+#include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "InputActionValue.h"
+#include "Engine/LocalPlayer.h"
+
+AForestSliceCharacter::AForestSliceCharacter()
+{
+    PrimaryActorTick.bCanEverTick = true;
+
+    GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
+    bUseControllerRotationYaw = false;
+    GetCharacterMovement()->bOrientRotationToMovement = true;
+    GetCharacterMovement()->RotationRate = FRotator(0.0f, 620.0f, 0.0f);
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+    GetCharacterMovement()->MaxAcceleration = 2200.0f;
+    GetCharacterMovement()->BrakingDecelerationWalking = 1800.0f;
+    GetCharacterMovement()->JumpZVelocity = 620.0f;
+    GetCharacterMovement()->AirControl = 0.55f;
+    GetCharacterMovement()->MaxStepHeight = 45.0f;
+    GetCharacterMovement()->WalkableFloorAngle = 46.0f;
+
+    CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+    CameraBoom->SetupAttachment(RootComponent);
+    CameraBoom->TargetArmLength = 360.0f;
+    CameraBoom->SocketOffset = FVector(0.0f, 55.0f, 75.0f);
+    CameraBoom->bUsePawnControlRotation = true;
+    CameraBoom->bDoCollisionTest = true;
+    CameraBoom->ProbeSize = 12.0f;
+    CameraBoom->ProbeChannel = ECC_Camera;
+
+    FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+    FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+    FollowCamera->bUsePawnControlRotation = false;
+}
+
+void AForestSliceCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+    Stamina = MaxStamina;
+
+    if (const APlayerController* PlayerController = Cast<APlayerController>(GetController())) {
+        if (const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer()) {
+            if (UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>()) {
+                if (DefaultMappingContext) Subsystem->AddMappingContext(DefaultMappingContext, 0);
+            }
+        }
+    }
+}
+
+void AForestSliceCharacter::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    SlideCooldown = FMath::Max(0.0f, SlideCooldown - DeltaSeconds);
+    DodgeCooldown = FMath::Max(0.0f, DodgeCooldown - DeltaSeconds);
+
+    if (!bSprintHeld && SlideCooldown <= 0.0f) {
+        Stamina = FMath::Min(MaxStamina, Stamina + 16.0f * DeltaSeconds);
+    }
+    if (bSprintHeld && GetVelocity().SizeSquared2D() > 100.0f) {
+        Stamina = FMath::Max(0.0f, Stamina - 18.0f * DeltaSeconds);
+        if (Stamina <= 0.0f) bSprintHeld = false;
+    }
+}
+
+void AForestSliceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
+    if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
+        if (MoveAction) EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AForestSliceCharacter::Move);
+        if (LookAction) EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AForestSliceCharacter::Look);
+        if (SprintAction) {
+            EnhancedInput->BindAction(SprintAction, ETriggerEvent::Started, this, &AForestSliceCharacter::StartSprint);
+            EnhancedInput->BindAction(SprintAction, ETriggerEvent::Completed, this, &AForestSliceCharacter::StopSprint);
+            EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &AForestSliceCharacter::StopSprint);
+        }
+        if (SlideAction) EnhancedInput->BindAction(SlideAction, ETriggerEvent::Started, this, &AForestSliceCharacter::StartSlide);
+        if (DodgeAction) EnhancedInput->BindAction(DodgeAction, ETriggerEvent::Started, this, &AForestSliceCharacter::StartDodge);
+        if (LightAttackAction) EnhancedInput->BindAction(LightAttackAction, ETriggerEvent::Started, this, &AForestSliceCharacter::StartLightAttack);
+        if (JumpAction) EnhancedInput->BindAction(JumpAction, ETriggerEvent::Started, this, &AForestSliceCharacter::StartJump);
+    }
+}
+
+void AForestSliceCharacter::Move(const FInputActionValue& Value)
+{
+    const FVector2D MoveVector = Value.Get<FVector2D>();
+    if (!Controller || MoveVector.IsNearlyZero()) return;
+
+    const FRotator ControlRotation = Controller->GetControlRotation();
+    const FRotator YawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+    AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X), MoveVector.Y);
+    AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), MoveVector.X);
+}
+
+void AForestSliceCharacter::Look(const FInputActionValue& Value)
+{
+    const FVector2D LookVector = Value.Get<FVector2D>();
+    AddControllerYawInput(LookVector.X);
+    AddControllerPitchInput(LookVector.Y);
+}
+
+void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)
+{
+    bSprintHeld = Stamina > 0.0f;
+    GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SprintSpeed : WalkSpeed;
+}
+
+void AForestSliceCharacter::StopSprint(const FInputActionValue& Value)
+{
+    bSprintHeld = false;
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void AForestSliceCharacter::StartSlide(const FInputActionValue& Value)
+{
+    if (!GetCharacterMovement()->IsMovingOnGround() || SlideCooldown > 0.0f || Stamina < 18.0f) return;
+    Stamina -= 18.0f;
+    SlideCooldown = 0.65f;
+    LaunchCharacter(GetActorForwardVector() * SlideImpulse + FVector(0.0f, 0.0f, 35.0f), true, false);
+}
+
+void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
+{
+    if (DodgeCooldown > 0.0f || Stamina < 25.0f) return;
+    Stamina -= 25.0f;
+    DodgeCooldown = 0.85f;
+    LaunchCharacter(GetActorForwardVector() * DodgeImpulse, true, false);
+    // Gameplay Ability System will own the authoritative invulnerability tag in the next slice.
+}
+
+void AForestSliceCharacter::StartLightAttack(const FInputActionValue& Value)
+{
+    // The production ability component will consume this request and resolve damage on the server.
+    // Keeping the input endpoint here allows touch, gamepad, and gyro aim to share one action path.
+}
+
+void AForestSliceCharacter::StartJump(const FInputActionValue& Value)
+{
+    Jump();
+}
+
+void AForestSliceCharacter::SetGyroEnabled(bool bEnabled)
+{
+    bGyroEnabled = bDeviceHasGyroscope && bEnabled;
+}
+
+void AForestSliceCharacter::ApplyGyroInput(float RotationX, float RotationY, float Sensitivity)
+{
+    if (!bGyroEnabled || !bDeviceHasGyroscope) return;
+    const float Scale = FMath::Clamp(Sensitivity, 0.05f, 4.0f);
+    AddControllerYawInput(RotationY * Scale);
+    AddControllerPitchInput(-RotationX * Scale);
+}
+
+float AForestSliceCharacter::GetStaminaNormalized() const
+{
+    return MaxStamina > 0.0f ? Stamina / MaxStamina : 0.0f;
+}
