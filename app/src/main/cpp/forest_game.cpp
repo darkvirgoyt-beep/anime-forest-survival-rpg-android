@@ -481,16 +481,70 @@ void draw3DWeather(const Mat4& viewProjection) {
 void draw3DMapOverlay() {
     glDisable(GL_DEPTH_TEST);
     glUseProgram(gProgram);
-    drawQuad(-0.56f, 0.30f, 0.66f, 0.62f, 0.025f, 0.06f, 0.09f, 0.94f);
-    drawQuad(-0.56f, 0.30f, 0.58f, 0.54f, 0.11f, 0.19f, 0.18f, 0.96f);
-    drawQuad(-0.56f, 0.30f, 0.46f, 0.04f, 0.22f, 0.42f, 0.34f, 0.78f);
-    drawQuad(-0.56f, 0.30f, 0.04f, 0.46f, 0.20f, 0.34f, 0.29f, 0.70f);
-    drawCircle(-0.56f, 0.30f, 0.035f, 1.0f, 0.76f, 0.24f, 1.0f);
-    drawCircle(-0.56f, 0.30f, 0.014f, 0.10f, 0.12f, 0.15f, 1.0f);
-    drawCircle(-0.32f, 0.46f, 0.024f, 0.35f, 0.90f, 0.82f, 1.0f);
-    drawCircle(-0.76f, 0.12f, 0.020f, 0.88f, 0.37f, 0.23f, 1.0f);
-    drawTriangle(-0.56f, 0.63f, 0.08f, 0.12f, 0.91f, 0.68f, 0.24f, 0.96f);
+    constexpr float left = -0.86f;
+    constexpr float right = -0.26f;
+    constexpr float bottom = 0.02f;
+    constexpr float top = 0.68f;
+    const auto mapX = [](float xKm) { return left + (xKm / 100.0f) * (right - left); };
+    const auto mapY = [](float yKm) { return bottom + (yKm / 100.0f) * (top - bottom); };
+
+    drawQuad(-0.56f, 0.35f, 0.68f, 0.72f, 0.015f, 0.035f, 0.055f, 0.96f);
+    drawQuad(mapX(16.5f), 0.35f, (right - left) * 0.33f, top - bottom - 0.04f, 0.10f, 0.24f, 0.18f, 0.96f);
+    drawQuad(mapX(50.5f), 0.35f, (right - left) * 0.34f, top - bottom - 0.04f, 0.42f, 0.25f, 0.10f, 0.96f);
+    drawQuad(mapX(84.0f), 0.35f, (right - left) * 0.32f, top - bottom - 0.04f, 0.22f, 0.40f, 0.52f, 0.96f);
+
+    // Main road and river are deliberately thick in the harness so they remain
+    // readable on small phone screens while the Unreal map uses authored splines.
+    drawQuad(mapX(49.0f), mapY(50.0f), right - left - 0.06f, 0.014f, 0.86f, 0.66f, 0.25f, 0.92f);
+    drawQuad(mapX(31.0f), mapY(50.0f), 0.016f, top - bottom - 0.08f, 0.18f, 0.67f, 0.76f, 0.90f);
+
+    const float landmarks[][2] = {
+        {10.0f, 16.0f}, {14.0f, 40.0f}, {26.0f, 78.0f},
+        {40.0f, 48.0f}, {47.0f, 28.0f}, {55.0f, 69.0f},
+        {74.0f, 57.0f}, {84.0f, 59.0f}, {88.0f, 83.0f}
+    };
+    for (const auto& landmark : landmarks) {
+        drawCircle(mapX(landmark[0]), mapY(landmark[1]), 0.012f, 0.95f, 0.80f, 0.35f, 0.98f);
+    }
+    const float playerMapX = mapX(std::clamp((gPlayerX + 0.90f) / 1.80f * 100.0f, 0.0f, 100.0f));
+    const float playerMapY = mapY(std::clamp((gPlayerY + 0.55f) / 1.10f * 100.0f, 0.0f, 100.0f));
+    drawCircle(playerMapX, playerMapY, 0.030f, 1.0f, 0.76f, 0.24f, 1.0f);
+    drawCircle(playerMapX, playerMapY, 0.012f, 0.10f, 0.12f, 0.15f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+}
+
+float prototypeTerrainHeight(int chunkX, int chunkZ) {
+    const float x = static_cast<float>(chunkX);
+    const float z = static_cast<float>(chunkZ);
+    return 0.018f * std::sin(x * 1.7f + z * 0.8f) + 0.012f * std::cos(z * 1.2f - x * 0.4f);
+}
+
+void drawPrototypeTerrainChunks(const Mat4& viewProjection, float daylight) {
+    constexpr int chunkRadius = 2;
+    constexpr float chunkSize = 3.6f;
+    for (int chunkZ = -chunkRadius; chunkZ <= chunkRadius; ++chunkZ) {
+        for (int chunkX = -chunkRadius; chunkX <= chunkRadius; ++chunkX) {
+            const float worldX = static_cast<float>(chunkX) * chunkSize;
+            const float worldZ = static_cast<float>(chunkZ) * chunkSize;
+            const float terrainY = prototypeTerrainHeight(chunkX, chunkZ);
+            const bool riverBand = chunkX == 1;
+            const bool roadBand = chunkZ == 0 && chunkX != 1;
+            const float topR = riverBand ? 0.08f : roadBand ? 0.33f : 0.16f;
+            const float topG = riverBand ? 0.36f : roadBand ? 0.19f : 0.29f;
+            const float topB = riverBand ? 0.43f : roadBand ? 0.08f : 0.18f;
+            const float shimmer = 0.018f * std::sin(gTime * 1.6f + static_cast<float>(chunkX * 3 + chunkZ));
+            // Solid terrain body plus a separate thin topsoil surface makes the
+            // playable ground and its upper face explicit in the GLES slice.
+            draw3DBox(viewProjection, worldX, terrainY - 0.10f, worldZ,
+                      chunkSize - 0.06f, 0.20f, chunkSize - 0.06f,
+                      0.06f * daylight, 0.15f * daylight, 0.12f * daylight);
+            draw3DBox(viewProjection, worldX, terrainY + 0.012f + shimmer, worldZ,
+                      chunkSize - 0.10f, 0.028f, chunkSize - 0.10f,
+                      std::min(1.0f, topR * daylight + 0.018f),
+                      std::min(1.0f, topG * daylight + 0.018f),
+                      std::min(1.0f, topB * daylight + 0.018f));
+        }
+    }
 }
 
 void draw3DWorld() {
@@ -527,9 +581,8 @@ void draw3DWorld() {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    draw3DBox(viewProjection, 0.0f, -0.16f, 0.0f, 18.0f, 0.20f, 18.0f, 0.07f * daylight, 0.19f * daylight, 0.15f * daylight);
-    draw3DBox(viewProjection, 0.0f, 3.90f, 0.0f, 18.0f, 0.20f, 18.0f, 0.06f * daylight, 0.11f * daylight, 0.20f * daylight);
-    draw3DBox(viewProjection, -4.4f, -0.02f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
+    drawPrototypeTerrainChunks(viewProjection, daylight);
+    draw3DBox(viewProjection, -4.4f, 0.055f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
     draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
     draw3DBox(viewProjection, 4.4f, 0.0f, 0.7f, 4.2f, 0.08f, 7.0f, 0.40f, 0.62f, 0.72f);
     draw3DBox(viewProjection, 0.4f, -0.015f, 1.0f, 0.90f, 0.04f, 7.0f, 0.15f, 0.38f, 0.39f);

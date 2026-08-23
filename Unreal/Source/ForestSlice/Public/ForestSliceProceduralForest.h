@@ -8,6 +8,21 @@ class UHierarchicalInstancedStaticMeshComponent;
 class UStaticMesh;
 
 USTRUCT(BlueprintType)
+struct FForestSliceMapLandmark
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FName Id = NAME_None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FName Biome = NAME_None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FVector2D CoordinateKm = FVector2D::ZeroVector;
+};
+
+USTRUCT(BlueprintType)
 struct FForestSliceChunkRecord
 {
     GENERATED_BODY()
@@ -19,7 +34,13 @@ struct FForestSliceChunkRecord
     bool bGenerated = false;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    float PresentationAlpha = 0.0f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     TArray<FVector> ResourceLocations;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FTransform> GroundTransforms;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     TArray<FTransform> TreeTransforms;
@@ -48,7 +69,19 @@ public:
     UFUNCTION(BlueprintPure, Category = "World|Streaming")
     int32 GetLoadedChunkCount() const { return LoadedChunks.Num(); }
 
+    UFUNCTION(BlueprintPure, Category = "World|Streaming")
+    float GetChunkPresentationAlpha(FIntPoint Coordinate) const;
+
+    UFUNCTION(BlueprintPure, Category = "World|Map")
+    FName GetBiomeAtWorldLocation(FVector WorldLocation) const;
+
+    UFUNCTION(BlueprintPure, Category = "World|Map")
+    const TArray<FForestSliceMapLandmark>& GetMapLandmarks() const { return MapLandmarks; }
+
 protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "World")
+    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> GroundInstances;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "World")
     TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TreeInstances;
 
@@ -71,13 +104,25 @@ protected:
     int32 RocksPerChunk = 14;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Assets")
+    TObjectPtr<UStaticMesh> GroundMesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Assets")
     TObjectPtr<UStaticMesh> TreeMesh;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Assets")
     TObjectPtr<UStaticMesh> RockMesh;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Map")
+    TArray<FForestSliceMapLandmark> MapLandmarks;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Map")
+    float MapSizeKilometers = 100.0f;
+
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "World|Streaming")
     TMap<FIntPoint, FForestSliceChunkRecord> LoadedChunks;
+
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "World|Streaming")
+    float ChunkPresentationTime = 0.0f;
 
 private:
     FIntPoint LocationToChunk(FVector WorldLocation) const;
@@ -85,5 +130,6 @@ private:
     void UnloadChunk(FIntPoint Coordinate);
     void RemoveAllInstances();
     void RebuildInstances();
+    void InitializeMapLayout();
     int32 MakeChunkSeed(FIntPoint Coordinate) const;
 };

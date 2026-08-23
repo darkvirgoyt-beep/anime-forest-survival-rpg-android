@@ -118,6 +118,12 @@ jobs:
           grep -q '100000' app/src/main/cpp/rpg/progression.cpp
           grep -q 'kPlayerMaxHealthHp = 100' app/src/main/cpp/forest_game.cpp
           grep -q 'ProgressionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          grep -q 'leftZoneFraction' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'drawPrototypeTerrainChunks' app/src/main/cpp/forest_game.cpp
+          grep -q 'GroundInstances' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
+          grep -q 'GetChunkPresentationAlpha' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
+          grep -q 'InitializeMapLayout' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
+          grep -q 'GetBiomeAtWorldLocation' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
 
   native-tests:
     runs-on: ubuntu-latest

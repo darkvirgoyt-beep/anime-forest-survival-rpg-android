@@ -1650,68 +1650,104 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
 }
 
 private class JoystickView(context: Context, private val onMove: (Float, Float) -> Unit) : View(context) {
-    private var centerX = 0f
-    private var centerY = 0f
+    private var baseX = 0f
+    private var baseY = 0f
+    private var knobX = 0f
+    private var knobY = 0f
     private var radius = 1f
     private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private val density = context.resources.displayMetrics.density
-    private val deadZone = 0.12f
+    private val deadZone = 0.10f
+    private val leftZoneFraction = 0.46f
 
     private fun dp(value: Int): Int = (value * density).roundToInt()
 
     init {
         setWillNotDraw(false)
-        alpha = 0.9f
-        layoutParams = FrameLayout.LayoutParams(dp(230), dp(230), Gravity.BOTTOM or Gravity.START).apply {
-            leftMargin = dp(28)
-            bottomMargin = dp(24)
-        }
+        alpha = 0.94f
+        // A bottom movement zone allows the player to touch anywhere under the
+        // left thumb instead of forcing a fixed stick position.
+        layoutParams = FrameLayout.LayoutParams(-1, dp(290), Gravity.BOTTOM or Gravity.START)
         isClickable = true
     }
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
-        centerX = width / 2f
-        centerY = height / 2f
-        radius = width * 0.38f
+        resetStickOrigin()
+    }
+
+    private fun resetStickOrigin() {
+        baseX = width * 0.16f
+        baseY = height * 0.57f
+        knobX = baseX
+        knobY = baseY
+        radius = (width.coerceAtMost(dp(360)) * 0.115f).coerceAtLeast(dp(62).toFloat())
     }
 
     override fun onDraw(canvas: android.graphics.Canvas) {
         super.onDraw(canvas)
-        centerX = width / 2f
-        centerY = height / 2f
-        radius = width * 0.38f
+        if (width <= 0 || height <= 0) return
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        paint.color = Color.argb(65, 225, 244, 220)
-        canvas.drawCircle(centerX, centerY, width * 0.46f, paint)
-        paint.color = Color.argb(125, 239, 194, 112)
-        canvas.drawCircle(centerX, centerY, radius, paint)
-        paint.color = Color.argb(180, 255, 226, 164)
-        canvas.drawCircle(centerX, centerY, radius * 0.45f, paint)
+        paint.color = Color.argb(48, 220, 238, 226)
+        canvas.drawCircle(baseX, baseY, radius * 1.42f, paint)
+        paint.color = Color.argb(78, 225, 244, 220)
+        canvas.drawCircle(baseX, baseY, radius * 1.16f, paint)
+        paint.color = Color.argb(115, 239, 194, 112)
+        canvas.drawCircle(baseX, baseY, radius, paint)
+        paint.color = Color.argb(195, 255, 226, 164)
+        canvas.drawCircle(knobX, knobY, radius * 0.43f, paint)
+        paint.style = android.graphics.Paint.Style.STROKE
+        paint.strokeWidth = dp(2).toFloat()
+        paint.color = Color.argb(150, 255, 242, 194)
+        canvas.drawCircle(knobX, knobY, radius * 0.43f, paint)
+        paint.style = android.graphics.Paint.Style.FILL
     }
 
     private fun emitMove(event: MotionEvent, index: Int) {
-        val dx = event.getX(index) - centerX
-        val dy = event.getY(index) - centerY
+        val dx = event.getX(index) - baseX
+        val dy = event.getY(index) - baseY
         val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+        val clampedDistance = distance.coerceAtMost(radius)
         if (distance <= radius * deadZone) {
+            knobX = baseX
+            knobY = baseY
             onMove(0f, 0f)
+            invalidate()
             return
         }
-        val clampedDistance = distance.coerceAtMost(radius)
-        val normalizedDistance = ((clampedDistance / radius) - deadZone) / (1f - deadZone)
         val directionX = dx / distance
         val directionY = dy / distance
+        knobX = baseX + directionX * clampedDistance
+        knobY = baseY + directionY * clampedDistance
+        val normalizedDistance = ((clampedDistance / radius) - deadZone) / (1f - deadZone)
         onMove(
             (directionX * normalizedDistance).coerceIn(-1f, 1f),
             (directionY * normalizedDistance).coerceIn(-1f, 1f)
         )
+        invalidate()
+    }
+
+    private fun beginPointer(event: MotionEvent, index: Int): Boolean {
+        if (event.getX(index) > width * leftZoneFraction || event.getY(index) < height * 0.08f) return false
+        activePointerId = event.getPointerId(index)
+        baseX = event.getX(index)
+        baseY = event.getY(index)
+        emitMove(event, index)
+        invalidate()
+        return true
+    }
+
+    private fun releasePointer() {
+        activePointerId = MotionEvent.INVALID_POINTER_ID
+        onMove(0f, 0f)
+        resetStickOrigin()
+        invalidate()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                activePointerId = event.getPointerId(event.actionIndex)
-                emitMove(event, event.actionIndex)
+            MotionEvent.ACTION_DOWN -> return beginPointer(event, event.actionIndex)
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (activePointerId == MotionEvent.INVALID_POINTER_ID) beginPointer(event, event.actionIndex)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -1720,20 +1756,16 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
                 return true
             }
             MotionEvent.ACTION_POINTER_UP -> {
-                if (event.getPointerId(event.actionIndex) == activePointerId) {
-                    activePointerId = MotionEvent.INVALID_POINTER_ID
-                    onMove(0f, 0f)
-                }
+                if (event.getPointerId(event.actionIndex) == activePointerId) releasePointer()
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                activePointerId = MotionEvent.INVALID_POINTER_ID
-                onMove(0f, 0f)
+                releasePointer()
                 performClick()
                 return true
             }
         }
-        return true
+        return activePointerId != MotionEvent.INVALID_POINTER_ID
     }
 
     override fun performClick(): Boolean {
