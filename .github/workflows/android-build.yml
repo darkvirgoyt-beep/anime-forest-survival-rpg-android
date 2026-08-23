@@ -89,7 +89,7 @@ jobs:
           test -f assetpack_animation_sets/build.gradle.kts
           python3 tools/validate_asset_budget.py
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
-          grep -q 'OPTIONAL GOOGLE LINK' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'ACCOUNT LINK' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
