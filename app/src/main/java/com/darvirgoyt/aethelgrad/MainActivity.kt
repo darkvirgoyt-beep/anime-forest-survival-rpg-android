@@ -44,6 +44,7 @@ import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.VideoView
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -119,6 +120,8 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
+    private var cinematicEntryOverlay: View? = null
+    private var worldLoadingOverlay: View? = null
     private var resourcePreparationComplete = BuildConfig.PROTOTYPE_MODE
     private var pendingWorldEntry: (() -> Unit)? = null
     private var authenticationTransitionStarted = false
@@ -770,9 +773,185 @@ class MainActivity : Activity(), SensorEventListener {
     /** Developer-only guest mode skips account setup and opens the online world immediately. */
     private fun enterGuestOnlineWorld() {
         if (!requireOnline("ONLINE WORLD")) return
-        onboardingOverlay.visibility = View.GONE
-        gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
-        connectGuestToOnlineRoom()
+        enterWorldThroughCinematic {
+            onboardingOverlay.visibility = View.GONE
+            gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
+            connectGuestToOnlineRoom()
+        }
+    }
+
+    /** Plays the released First Ember story film before any world entry; players may always skip it. */
+    private fun enterWorldThroughCinematic(onWorldReady: () -> Unit) {
+        if (cinematicEntryOverlay != null || worldLoadingOverlay != null) return
+
+        val overlay = FrameLayout(this).apply {
+            alpha = 0f
+            setBackgroundColor(Color.rgb(3, 10, 13))
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.aethelgard_login_cinematic_background)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                alpha = 0.30f
+            }, FrameLayout.LayoutParams(-1, -1))
+            addView(View(this@MainActivity).apply {
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.argb(222, 3, 11, 14), Color.argb(175, 15, 9, 25), Color.argb(238, 3, 11, 14))
+                )
+            }, FrameLayout.LayoutParams(-1, -1))
+        }
+
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(235, 7, 24, 27), Color.argb(245, 5, 17, 20))
+            ).apply {
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(211, 164, 79))
+            }
+        }
+        val crest = TextView(this).apply {
+            text = "✦"
+            textSize = 24f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(234, 190, 96))
+            setShadowLayer(12f, 0f, 0f, Color.rgb(232, 184, 90))
+        }
+        val title = TextView(this).apply {
+            text = "THE FIRST EMBER"
+            textSize = 19f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.13f
+            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(244, 235, 208))
+        }
+        val note = TextView(this).apply {
+            text = "WISTERIA FOREST MEMORY  •  STORY PITCH"
+            textSize = 9f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.14f
+            setTextColor(Color.rgb(207, 166, 90))
+            setPadding(0, dp(2), 0, dp(10))
+        }
+        val videoFrame = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                setStroke(dp(1), Color.rgb(143, 111, 64))
+            }
+        }
+        val video = VideoView(this).apply {
+            setVideoURI(Uri.parse(getString(R.string.first_ember_story_video_url)))
+            setOnPreparedListener { player ->
+                player.isLooping = false
+                start()
+            }
+            setOnCompletionListener { finishCinematicEntry(overlay, onWorldReady) }
+        }
+        val videoStatus = TextView(this).apply {
+            text = "RECOVERING THE FIRST MEMORY…"
+            textSize = 9f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.11f
+            setTextColor(Color.rgb(230, 191, 107))
+            setPadding(0, dp(9), 0, dp(4))
+        }
+        video.setOnErrorListener { _, _, _ ->
+            videoStatus.text = "STORY FILM UNAVAILABLE  •  YOU MAY ENTER THE FOREST"
+            videoStatus.setTextColor(Color.rgb(255, 190, 140))
+            true
+        }
+        val skip = cinematicButton("SKIP TO WISTERIA FOREST  ›", true) {
+            video.stopPlayback()
+            finishCinematicEntry(overlay, onWorldReady)
+        }
+
+        videoFrame.addView(video, FrameLayout.LayoutParams(-1, -1))
+        panel.addView(crest, LinearLayout.LayoutParams(-1, dp(32)))
+        panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
+        panel.addView(note, LinearLayout.LayoutParams(-1, dp(30)))
+        panel.addView(videoFrame, LinearLayout.LayoutParams(dp(720), dp(405)))
+        panel.addView(videoStatus, LinearLayout.LayoutParams(-1, dp(30)))
+        panel.addView(skip, LinearLayout.LayoutParams(dp(310), dp(48)))
+        overlay.addView(panel, FrameLayout.LayoutParams(dp(790), -2, Gravity.CENTER))
+
+        cinematicEntryOverlay = overlay
+        rootContainer.addView(overlay)
+        overlay.animate().alpha(1f).setDuration(280L).start()
+    }
+
+    /** Dissolves the film into a short branded loading ritual before revealing the playable world. */
+    private fun finishCinematicEntry(cinematic: View, onWorldReady: () -> Unit) {
+        if (cinematicEntryOverlay !== cinematic) return
+        cinematicEntryOverlay = null
+        cinematic.animate().alpha(0f).setDuration(180L).withEndAction {
+            rootContainer.removeView(cinematic)
+            showWorldLoading(onWorldReady)
+        }.start()
+    }
+
+    private fun showWorldLoading(onWorldReady: () -> Unit) {
+        val overlay = FrameLayout(this).apply {
+            alpha = 0f
+            setBackgroundColor(Color.rgb(4, 18, 20))
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(38), dp(30), dp(38), dp(28))
+            background = GradientDrawable().apply {
+                setColor(Color.argb(220, 6, 27, 29))
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(225, 179, 84))
+            }
+        }
+        val ember = TextView(this).apply {
+            text = "✦"
+            textSize = 40f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(240, 195, 99))
+            setShadowLayer(20f, 0f, 0f, Color.rgb(232, 184, 90))
+            animate().rotationBy(360f).setDuration(1200L).withEndAction { rotation = 0f }.start()
+        }
+        val title = TextView(this).apply {
+            text = "LET THE ROOTS REMEMBER"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.10f
+            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(245, 238, 217))
+        }
+        val status = TextView(this).apply {
+            text = "CARRYING THE FIRST EMBER INTO WISTERIA FOREST…"
+            textSize = 9f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.10f
+            setTextColor(Color.rgb(197, 187, 158))
+            setPadding(0, dp(8), 0, dp(10))
+        }
+        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = true
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.rgb(232, 184, 90))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(46, 62, 58))
+        }
+        card.addView(ember, LinearLayout.LayoutParams(-1, dp(54)))
+        card.addView(title, LinearLayout.LayoutParams(-1, dp(36)))
+        card.addView(status, LinearLayout.LayoutParams(-1, dp(34)))
+        card.addView(progress, LinearLayout.LayoutParams(-1, dp(5)))
+        overlay.addView(card, FrameLayout.LayoutParams(dp(500), -2, Gravity.CENTER))
+
+        worldLoadingOverlay = overlay
+        rootContainer.addView(overlay)
+        overlay.animate().alpha(1f).setDuration(180L).withEndAction {
+            rootContainer.postDelayed({
+                onWorldReady()
+                overlay.animate().alpha(0f).setDuration(260L).withEndAction {
+                    rootContainer.removeView(overlay)
+                    if (worldLoadingOverlay === overlay) worldLoadingOverlay = null
+                }.start()
+            }, 1160L)
+        }.start()
     }
 
     private fun connectGuestToOnlineRoom() {
@@ -998,8 +1177,10 @@ class MainActivity : Activity(), SensorEventListener {
                                     return@runOnUiThread
                                 }
                                 activeCloudWorld = recoveredWorld
-                                rootContainer.removeView(overlay)
-                                characterSetupOverlay = null
+                                enterWorldThroughCinematic {
+                                    rootContainer.removeView(overlay)
+                                    characterSetupOverlay = null
+                                }
                             }
                         }
                     }
@@ -1034,8 +1215,10 @@ class MainActivity : Activity(), SensorEventListener {
                                 validation.setTextColor(Color.rgb(164, 231, 190))
                                 validation.text = "Cloud world protected. Entering Aethelgard…"
                                 rootContainer.postDelayed({
-                                    rootContainer.removeView(overlay)
-                                    characterSetupOverlay = null
+                                    enterWorldThroughCinematic {
+                                        rootContainer.removeView(overlay)
+                                        characterSetupOverlay = null
+                                    }
                                 }, 420L)
                             }
                         }

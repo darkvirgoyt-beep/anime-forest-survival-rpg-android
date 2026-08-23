@@ -15,4 +15,6 @@
     <string name="auth_guest_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/v1/auth/guest</string>
     <!-- Matching HTTPS endpoint for rotating in-memory refresh sessions. -->
     <string name="auth_refresh_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/v1/auth/refresh</string>
+    <!-- Public story film played before the player enters the world; Skip remains available if streaming fails. -->
+    <string name="first_ember_story_video_url" translatable="false">https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/releases/download/aethelgard-story-pitch-v0.2.2/aethelgard-five-minute-story-pitch.mp4</string>
 </resources>
