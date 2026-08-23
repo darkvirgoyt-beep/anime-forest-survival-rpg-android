@@ -32,7 +32,7 @@ int main() {
     assert(forest::rpg::parseCloudState(
         "{\"schemaVersion\":4,\"playerX\":0,\"playerY\":0,\"health\":1,\"stamina\":1,\"hunger\":1,\"wood\":0,\"fiber\":0,\"stone\":0,\"experience\":0,\"level\":0,\"experienceToNext\":991,\"totalExperience\":0,\"day\":1,\"worldTime\":0,\"gatheringActions\":0,\"questStage\":0,\"emberKitCrafted\":0,\"wardenDefeated\":0,\"emberlingTrust\":0,\"emberlingBonded\":0,\"emberlingStay\":0}",
         restored));
-    assert(restored.schemaVersion == 4);
+    assert(restored.schemaVersion == 5 && restored.sourceSchemaVersion == 4);
     assert(restored.discoveredSectors == kForestSector);
 
     std::cout << "exploration_progression_test: PASS\n";
