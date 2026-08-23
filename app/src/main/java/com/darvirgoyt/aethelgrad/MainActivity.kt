@@ -128,6 +128,14 @@ class MainActivity : Activity(), SensorEventListener {
     private var worldLoadingProgress: ProgressBar? = null
     private var worldLoadingStatus: TextView? = null
     private var worldLoadingSkip: Button? = null
+    private var worldLoadingLoreCard: View? = null
+    private var worldLoadingLoreKicker: TextView? = null
+    private var worldLoadingLoreText: TextView? = null
+    private var worldLoadingLoreIndex = 0
+    private val worldLoadingLoreHandler = Handler(Looper.getMainLooper())
+    private val worldLoadingLoreRotation = object : Runnable {
+        override fun run() = rotateWorldLoadingLore()
+    }
     private var playerSkippedLoadingPresentation = false
     private var worldEntryRevealed = false
     private var worldLoadingStartedAtMs = 0L
@@ -140,6 +148,13 @@ class MainActivity : Activity(), SensorEventListener {
         "texture" to WorldLoadingTask("WEAVING THE WAYFARER", 20),
         "content" to WorldLoadingTask("MOUNTING FOREST MEMORY", 32),
         "world" to WorldLoadingTask("RESTORING THE HORIZON", 20)
+    )
+    private val worldLoadingLore = listOf(
+        LoadingLore("FOREST LAW", "Gather what the forest has already released. Living roots remember every careless cut."),
+        LoadingLore("WARDEN PROTOCOL", "When the Warden lashes out, break the binding command—not the guardian beneath it."),
+        LoadingLore("EMBER CRAFT", "Branchwood, root-fiber, and mineral dust carry different kinds of memory into every Ember Kit."),
+        LoadingLore("TRAIL NOTE", "A gold-lit root path marks restoration. Violet light marks a memory that has not yet found its way home."),
+        LoadingLore("WAYFARER'S BREATH", "Dodge with intent. Saving breath before a Warden strike matters more than winning a race through the undergrowth.")
     )
     private var resourcePreparationComplete = false
     private var resourceTierChooserVisible = false
@@ -1004,11 +1019,35 @@ class MainActivity : Activity(), SensorEventListener {
             progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(232, 184, 90))
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(46, 62, 58))
         }
+        val loreCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(10), dp(15), dp(10))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.argb(150, 38, 31, 58), Color.argb(185, 9, 31, 33))
+            ).apply {
+                cornerRadius = dp(8).toFloat()
+                setStroke(dp(1), Color.rgb(112, 85, 137))
+            }
+        }
+        val loreKicker = TextView(this).apply {
+            textSize = 8f
+            letterSpacing = 0.15f
+            setTextColor(Color.rgb(223, 182, 96))
+        }
+        val loreText = TextView(this).apply {
+            textSize = 10f
+            setTextColor(Color.rgb(220, 224, 217))
+            setPadding(0, dp(4), 0, 0)
+        }
+        loreCard.addView(loreKicker, LinearLayout.LayoutParams(-1, dp(18)))
+        loreCard.addView(loreText, LinearLayout.LayoutParams(-1, -2))
         val skip = cinematicButton("CONTINUE WHILE PREPARING  ›", false) { skipLoadingPresentation() }
         card.addView(ember, LinearLayout.LayoutParams(-1, dp(54)))
         card.addView(title, LinearLayout.LayoutParams(-1, dp(36)))
         card.addView(status, LinearLayout.LayoutParams(-1, dp(34)))
         card.addView(progress, LinearLayout.LayoutParams(-1, dp(5)))
+        card.addView(loreCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
         card.addView(skip, LinearLayout.LayoutParams(dp(330), dp(42)).apply { topMargin = dp(18) })
         overlay.addView(card, FrameLayout.LayoutParams(dp(500), -2, Gravity.CENTER))
 
@@ -1017,11 +1056,52 @@ class MainActivity : Activity(), SensorEventListener {
         worldLoadingProgress = progress
         worldLoadingStatus = status
         worldLoadingSkip = skip
+        worldLoadingLoreCard = loreCard
+        worldLoadingLoreKicker = loreKicker
+        worldLoadingLoreText = loreText
         rootContainer.addView(overlay)
-        overlay.animate().alpha(1f).setDuration(180L).withEndAction { refreshWorldLoadingPresentation() }.start()
+        overlay.animate().alpha(1f).setDuration(180L).withEndAction {
+            refreshWorldLoadingPresentation()
+            startWorldLoadingLoreRotation()
+        }.start()
     }
 
     private data class WorldLoadingTask(val label: String, val weight: Int, var ready: Boolean = false)
+    private data class LoadingLore(val kicker: String, val text: String)
+
+    private fun startWorldLoadingLoreRotation() {
+        worldLoadingLoreHandler.removeCallbacks(worldLoadingLoreRotation)
+        worldLoadingLoreIndex = 0
+        showWorldLoadingLore(immediate = true)
+        worldLoadingLoreHandler.postDelayed(worldLoadingLoreRotation, 3_800L)
+    }
+
+    private fun rotateWorldLoadingLore() {
+        if (worldEntryRevealed || worldLoadingOverlay == null || worldLoadingLoreCard == null) return
+        worldLoadingLoreCard?.animate()?.alpha(0f)?.translationY(dp(8).toFloat())?.setDuration(170L)?.withEndAction {
+            worldLoadingLoreIndex = (worldLoadingLoreIndex + 1) % worldLoadingLore.size
+            showWorldLoadingLore(immediate = false)
+            worldLoadingLoreHandler.postDelayed(worldLoadingLoreRotation, 3_800L)
+        }?.start()
+    }
+
+    private fun showWorldLoadingLore(immediate: Boolean) {
+        val lore = worldLoadingLore.getOrNull(worldLoadingLoreIndex) ?: return
+        worldLoadingLoreKicker?.text = "✦  ${lore.kicker}"
+        worldLoadingLoreText?.text = lore.text
+        val card = worldLoadingLoreCard ?: return
+        if (immediate) {
+            card.alpha = 1f
+            card.translationY = 0f
+        } else {
+            card.translationY = -dp(8).toFloat()
+            card.animate().alpha(1f).translationY(0f).setDuration(220L).start()
+        }
+    }
+
+    private fun stopWorldLoadingLoreRotation() {
+        worldLoadingLoreHandler.removeCallbacks(worldLoadingLoreRotation)
+    }
 
     /** Records a real engine, texture, content, or world-state callback for the entry progress meter. */
     private fun markWorldLoadingTaskReady(id: String) {
@@ -1066,6 +1146,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (worldEntryRevealed) return
         playerSkippedLoadingPresentation = true
         audio.playEffect("ui", rate = 0.88f)
+        stopWorldLoadingLoreRotation()
         worldLoadingSkip?.isEnabled = false
         worldLoadingSkip?.text = "PREPARING IN BACKGROUND"
         worldLoadingCard?.animate()?.alpha(0.34f)?.scaleX(0.94f)?.scaleY(0.94f)?.setDuration(180L)?.start()
@@ -1090,6 +1171,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     /** Fades the completed loading state to ink, applies the world entry, then reveals Wisteria Forest. */
     private fun fadeLoadingIntoWorld(onWorldReady: () -> Unit) {
+        stopWorldLoadingLoreRotation()
         val overlay = worldLoadingOverlay
         val curtain = View(this).apply {
             alpha = 0f
@@ -1113,6 +1195,9 @@ class MainActivity : Activity(), SensorEventListener {
                     worldLoadingProgress = null
                     worldLoadingStatus = null
                     worldLoadingSkip = null
+                    worldLoadingLoreCard = null
+                    worldLoadingLoreKicker = null
+                    worldLoadingLoreText = null
                 }.start()
             }, 80L)
         }.start()
