@@ -29,7 +29,10 @@ public:
     void StartGooglePlaySignIn();
 
     UFUNCTION(BlueprintCallable, Category = "Account")
-    void HandleGooglePlayCredential(const FString& ProviderCredential);
+    void HandleGooglePlayCredential(const FString& BackendSessionToken);
+
+    UFUNCTION(BlueprintCallable, Category = "Account")
+    void HandleDedicatedServerAdmissionAccepted();
 
     UFUNCTION(BlueprintCallable, Category = "Account")
     void SignOut();
@@ -46,6 +49,7 @@ public:
 private:
     EForestSliceLoginState LoginState = EForestSliceLoginState::SignedOut;
     bool bGooglePlayAvailable = false;
+    FString PendingBackendSessionToken;
 
     void SetState(EForestSliceLoginState NewState, const FString& Message);
 };

@@ -20,10 +20,16 @@ These are production-shaped foundations, not claims that final art, full hit tra
 
 The `Content` folders are reserved for original or licensed assets. A production character requires a rigged skeletal mesh, locomotion and combat animation clips, materials, VFX, and platform-specific LODs. Do not place ripped assets from existing games in this repository.
 
+## Dedicated server targets
+
+`Source/ForestSliceServer.Target.cs` defines the headless authoritative server target and `Source/ForestSliceClient.Target.cs` defines a separate client target. Build and cook both from a source Unreal Engine 5.6+ installation. The server must own combat outcomes, inventory, crafting, creatures, survival, world mutations, and persistence writes; clients send validated intent and receive replicated state.
+
+The login boundary is deliberately staged: Android Play Games authentication produces a single-use server auth code, the online services backend verifies it and issues a game session, and the Unreal client presents that session to the dedicated-server admission service. `ForestSliceAccountSubsystem` does not mark a player authenticated from a raw client string or provider player ID.
+
 ## Packaging
 
 Use the Android platform settings in `Config/DefaultEngine.ini` as a starting point. The real shipping output should be an Android App Bundle with asset packs, not a single oversized APK. Test-distribution builds may use a local debug key; production builds require a protected signing key and store configuration.
 
 ## Honest status
 
-This directory is a compile-oriented source foundation and configuration seed. It cannot be packaged in this sandbox because the Unreal Engine editor/toolchain and production assets are not installed here. The existing GitHub Actions job continues to build the Kotlin/C++ prototype under `app/`; a later runner with Unreal installed must be added for the production branch.
+This directory is a compile-oriented source foundation and configuration seed. It cannot be packaged in this sandbox because the Unreal Engine editor/toolchain and production assets are not installed here. The existing GitHub Actions job continues to build the Kotlin/C++ prototype under `app/`; a later runner with Unreal installed must be added for the production branch. The backend service under `server/` is a real credential-verifying foundation, but it is not a public live service until it is deployed with production secrets, TLS, PostgreSQL, and a dedicated-server allocator.

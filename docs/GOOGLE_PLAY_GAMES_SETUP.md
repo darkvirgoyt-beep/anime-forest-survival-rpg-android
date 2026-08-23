@@ -13,11 +13,15 @@ In [Google Play Console](https://play.google.com/console/), create or open the g
 | Minimum Android version | API 26 |
 | Supported architectures | `arm64-v8a`, `x86_64` |
 
-Replace the placeholder in `app/src/main/res/values/strings.xml` with the numeric project ID from Play Console:
+Replace the placeholders in `app/src/main/res/values/strings.xml` with the Play Console project ID, the **web OAuth client ID created for the game server**, and the HTTPS session-exchange endpoint:
 
 ```xml
-<string name="game_services_project_id" translatable="false">REPLACE_WITH_PLAY_GAMES_PROJECT_ID</string>
+<string name="game_services_project_id" translatable="false">123456789012</string>
+<string name="play_games_server_client_id" translatable="false">123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com</string>
+<string name="auth_exchange_url" translatable="false">https://api.example.com/v1/auth/play-games/exchange</string>
 ```
+
+The Android app sends the single-use Play Games server auth code to `POST /v1/auth/play-games/exchange`. The backend exchanges and verifies it; the app does not receive or store the web OAuth client secret.
 
 Do not put OAuth client secrets, service-account keys, or backend administrator credentials in this repository or in the APK.
 
@@ -31,7 +35,7 @@ Before publishing, add the Google accounts used for testing as Play Games tester
 
 ## 4. Client behavior
 
-`ForestSliceApplication` initializes the Play Games SDK. `MainActivity` checks the asynchronous authentication state during launch and blocks online world entry until the state is `AUTHENTICATED`. The **GOOGLE PLAY SIGN-IN** button calls `GamesSignInClient.signIn()` when automatic authentication did not succeed.
+`ForestSliceApplication` initializes the Play Games SDK. `MainActivity` checks the asynchronous platform authentication state during launch, requests a single-use server auth code, sends it to the HTTPS backend, and blocks online world entry until the backend returns a verified game session. The **GOOGLE PLAY SIGN-IN** button calls `GamesSignInClient.signIn()` when automatic authentication did not succeed.
 
 The current client stores only a local authentication-state marker. A production online game must exchange a short-lived server-verifiable assertion with a backend over HTTPS. The backend—not the client—must own the mapping from the provider identity to the game account, cloud saves, entitlements, party membership, and permissions.
 

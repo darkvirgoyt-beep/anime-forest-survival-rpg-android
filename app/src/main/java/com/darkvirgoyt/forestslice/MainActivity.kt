@@ -173,6 +173,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
+        accountSession.shutdown()
         audio.release()
         super.onDestroy()
     }
