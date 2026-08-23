@@ -110,6 +110,9 @@ struct FForestSliceChunkRecord
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     TArray<FTransform> RockTransforms;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FTransform> DetailTransforms;
 };
 
 UCLASS(BlueprintType)
@@ -166,6 +169,9 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "World")
     TObjectPtr<UHierarchicalInstancedStaticMeshComponent> RockInstances;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "World")
+    TObjectPtr<UHierarchicalInstancedStaticMeshComponent> DetailInstances;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "World|Generation")
     int32 WorldSeed = 42817;
 
@@ -181,6 +187,9 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "World|Generation")
     int32 RocksPerChunk = 14;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "World|Generation")
+    int32 DetailsPerChunk = 96;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Assets")
     TObjectPtr<UStaticMesh> GroundMesh;
 
@@ -189,6 +198,9 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Assets")
     TObjectPtr<UStaticMesh> RockMesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Assets")
+    TObjectPtr<UStaticMesh> DetailMesh;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Map")
     TArray<FForestSliceMapLandmark> MapLandmarks;

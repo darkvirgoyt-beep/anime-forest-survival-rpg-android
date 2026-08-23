@@ -45,10 +45,10 @@ void resolveCollision(CharacterBody& body, const StaticObstacle& obstacle) {
     const float py = (obstacle.bounds.halfExtents.y + body.halfExtents.y) - std::abs(dy);
 
     if (px < py) {
-        body.position.x += dx < 0.0f ? px + kSkinWidth : -px - kSkinWidth;
+        body.position.x += dx < 0.0f ? px + body.collisionSkinWidth : -px - body.collisionSkinWidth;
         body.velocity.x = 0.0f;
     } else {
-        body.position.y += dy < 0.0f ? py + kSkinWidth : -py - kSkinWidth;
+        body.position.y += dy < 0.0f ? py + body.collisionSkinWidth : -py - body.collisionSkinWidth;
         // Obstacles are walls in the walkable X/Z plane; they do not provide
         // vertical support for a character that is airborne.
         body.velocity.y = 0.0f;
@@ -99,7 +99,7 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
     const float locomotionMultiplier = water.overlapping ? waterSpeedMultiplier : 1.0f;
     const float targetX = direction.x * maxSpeed * locomotionMultiplier;
     const float targetY = direction.y * maxSpeed * locomotionMultiplier;
-    const float controlScale = grounded ? 1.0f : 0.42f;
+    const float controlScale = grounded ? 1.0f : airControl;
     const float response = 1.0f - std::exp(-acceleration * controlScale * (water.overlapping ? 0.72f : 1.0f) * dt);
 
     // Exponential response reaches the requested speed smoothly and remains
@@ -134,7 +134,11 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
     }
 
     position += velocity * dt;
-    for (int i = 0; i < obstacleCount; ++i) resolveCollision(*this, obstacles[i]);
+    // Resolve several contacts in one fixed step so fast dodge/sprint motion
+    // cannot tunnel through adjacent obstacles on high-refresh devices.
+    for (int iteration = 0; iteration < 3; ++iteration) {
+        for (int i = 0; i < obstacleCount; ++i) resolveCollision(*this, obstacles[i]);
+    }
 
     if (position.x <= -0.90f || position.x >= 0.90f) velocity.x = 0.0f;
     if (position.y <= -0.50f || position.y >= 0.52f) velocity.y = 0.0f;

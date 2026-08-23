@@ -31,6 +31,8 @@ GLint g3DMvp = -1;
 GLint g3DLightLevel = -1;
 GLint g3DFogColor = -1;
 GLint g3DFogAmount = -1;
+GLint g3DTime = -1;
+GLint g3DQuality = -1;
 GLuint gBillboardProgram = 0;
 GLint gBillboardPosition = -1;
 GLint gBillboardUv = -1;
@@ -394,10 +396,14 @@ in float vHeightShade;
 uniform float uLightLevel;
 uniform vec3 uFogColor;
 uniform float uFogAmount;
+uniform float uTime;
+uniform float uQuality;
 out vec4 fragColor;
 void main() {
     float topLight = mix(0.78, 1.16, vHeightShade);
-    vec3 litColor = vColor.rgb * (uLightLevel * topLight + 0.12);
+    float microLight = 1.0 + (uQuality * 0.018) * sin(gl_FragCoord.x * 0.17 + gl_FragCoord.y * 0.11 + uTime * 0.35);
+    float rim = pow(clamp(1.0 - abs(vHeightShade * 2.0 - 1.0), 0.0, 1.0), 3.0) * (0.035 + uQuality * 0.012);
+    vec3 litColor = vColor.rgb * (uLightLevel * topLight * microLight + 0.12) + vec3(rim * 0.16, rim * 0.20, rim * 0.24);
     // Depth fog adds the soft atmospheric separation seen in stylized open worlds.
     float depthFog = clamp(pow(gl_FragCoord.z, 2.2) * uFogAmount, 0.0, 0.86);
     fragColor = vec4(mix(litColor, uFogColor, depthFog), vColor.a);
@@ -531,6 +537,8 @@ void create3DProgram() {
     g3DLightLevel = glGetUniformLocation(g3DProgram, "uLightLevel");
     g3DFogColor = glGetUniformLocation(g3DProgram, "uFogColor");
     g3DFogAmount = glGetUniformLocation(g3DProgram, "uFogAmount");
+    g3DTime = glGetUniformLocation(g3DProgram, "uTime");
+    g3DQuality = glGetUniformLocation(g3DProgram, "uQuality");
 }
 
 void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float width, float height, float depth,
@@ -556,6 +564,8 @@ void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float widt
     glUniform1f(g3DLightLevel, gSceneLightLevel);
     glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
     glUniform1f(g3DFogAmount, gSceneFogAmount);
+    glUniform1f(g3DTime, gTime);
+    glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, cube);
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -572,6 +582,8 @@ void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices
     glUniform1f(g3DLightLevel, gSceneLightLevel);
     glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
     glUniform1f(g3DFogAmount, gSceneFogAmount);
+    glUniform1f(g3DTime, gTime);
+    glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, vertices.data());
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(primitive, 0, static_cast<GLsizei>(vertices.size() / 3));
@@ -1026,6 +1038,49 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
     }
 }
 
+void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
+    if (gGraphicsQuality < 3) return;
+
+    // A denser premium pass adds small authored-looking landmarks without
+    // increasing the bootstrap APK. Real production meshes replace these
+    // procedural placeholders in the downloadable high-resource packs.
+    constexpr float canopy[][3] = {
+        {-6.4f, 1.46f, -2.4f}, {-4.9f, 1.22f, 2.9f}, {-2.7f, 1.10f, 3.7f},
+        {2.9f, 1.18f, 3.1f}, {5.8f, 1.36f, 1.7f}, {6.2f, 1.08f, -2.5f}
+    };
+    const int canopyCount = gGraphicsQuality >= 4 ? 6 : 4;
+    for (int i = 0; i < canopyCount; ++i) {
+        const float pulse = 0.97f + 0.035f * std::sin(gTime * 0.8f + static_cast<float>(i));
+        draw3DSphere(viewProjection, canopy[i][0], canopy[i][1] * pulse, canopy[i][2], 0.38f + 0.05f * (i % 2),
+                     0.05f * daylight, 0.25f * daylight, 0.18f * daylight, 0.72f);
+    }
+
+    const int fireflies = 8 + gGraphicsQuality * 5;
+    for (int i = 0; i < fireflies; ++i) {
+        const float seed = static_cast<float>(i) * 1.731f;
+        const float x = -6.5f + std::fmod(seed * 2.7f + gTime * 0.08f, 13.0f);
+        const float z = -2.8f + std::fmod(seed * 1.9f + gTime * 0.05f, 6.2f);
+        const float y = 0.34f + 0.22f * std::sin(gTime * 1.7f + seed);
+        draw3DGlowOrb(viewProjection, x, y, z, 0.026f, 0.82f, 1.0f, 0.30f, 0.48f + 0.22f * daylight);
+    }
+
+    // Animated water caustic bands and a warm campfire halo provide depth cues
+    // even when the device is using the GLES prototype renderer.
+    const auto& stream = gWaterVolumes[0];
+    const float streamX = stream.bounds.center.x * 4.3f;
+    const float streamZ = -stream.bounds.center.y * 4.0f;
+    for (int i = 0; i < 7; ++i) {
+        const float phase = gTime * 1.4f + static_cast<float>(i) * 0.82f;
+        const float waveX = streamX - 0.92f + static_cast<float>(i) * 0.30f;
+        const float waveZ = streamZ + std::sin(phase) * 0.58f;
+        draw3DBox(viewProjection, waveX, stream.surfaceY + 0.060f, waveZ,
+                  0.16f + 0.06f * std::sin(phase), 0.008f, 0.028f,
+                  0.42f, 0.92f, 1.0f, 0.34f + 0.08f * daylight);
+    }
+    const float firePulse = 0.72f + 0.18f * std::sin(gTime * 5.0f);
+    draw3DGlowOrb(viewProjection, 3.8f, 0.42f, -1.2f, 0.12f, 1.0f, 0.28f, 0.06f, firePulse);
+}
+
 void draw3DWeather(const Mat4& viewProjection) {
     const float intensity = rainIntensity();
     if (intensity <= 0.0f) return;
@@ -1169,6 +1224,8 @@ void draw3DWorld() {
     glUniform1f(g3DLightLevel, gSceneLightLevel);
     glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
     glUniform1f(g3DFogAmount, gSceneFogAmount);
+    glUniform1f(g3DTime, gTime);
+    glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     draw3DSkyOrb(viewProjection, px, pz, yaw, daylight);
@@ -1199,6 +1256,7 @@ void draw3DWorld() {
         draw3DGrassTuft(viewProjection, 4.0f, 1.1f, 0.86f, 0.56f, 0.78f, 0.80f);
     }
     draw3DVegetationDetails(viewProjection, daylight);
+    draw3DHighQualityDetails(viewProjection, daylight);
     draw3DBox(viewProjection, 3.8f, 0.10f, -1.2f, 1.2f, 0.20f, 0.8f, 0.78f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 3.8f, 0.28f, -1.2f, 0.75f, 0.18f, 0.52f, 0.92f, 0.65f, 0.22f);
     drawTeleportationTower(viewProjection);

@@ -43,12 +43,12 @@ AForestSliceCharacter::AForestSliceCharacter()
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 620.0f, 0.0f);
     GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-    GetCharacterMovement()->MaxAcceleration = 2200.0f;
-    GetCharacterMovement()->BrakingDecelerationWalking = 1800.0f;
+    GetCharacterMovement()->MaxAcceleration = GroundAcceleration;
+    GetCharacterMovement()->BrakingDecelerationWalking = GroundBraking;
     GetCharacterMovement()->JumpZVelocity = 620.0f;
-    GetCharacterMovement()->AirControl = 0.55f;
+    GetCharacterMovement()->AirControl = AirControl;
     GetCharacterMovement()->MaxStepHeight = 45.0f;
-    GetCharacterMovement()->WalkableFloorAngle = 46.0f;
+    GetCharacterMovement()->WalkableFloorAngle = WalkableSlopeDegrees;
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
@@ -59,9 +59,9 @@ AForestSliceCharacter::AForestSliceCharacter()
     CameraBoom->ProbeSize = 14.0f;
     CameraBoom->ProbeChannel = ECC_Camera;
     CameraBoom->bEnableCameraLag = true;
-    CameraBoom->CameraLagSpeed = 14.0f;
+    CameraBoom->CameraLagSpeed = CameraLagSpeed;
     CameraBoom->bEnableCameraRotationLag = true;
-    CameraBoom->CameraRotationLagSpeed = 16.0f;
+    CameraBoom->CameraRotationLagSpeed = CameraRotationLagSpeed;
 
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -109,13 +109,16 @@ void AForestSliceCharacter::Tick(float DeltaSeconds)
         if (bInWater) {
             GetCharacterMovement()->SetMovementMode(MOVE_Swimming);
             GetCharacterMovement()->MaxWalkSpeed = SwimSpeed;
+            GetCharacterMovement()->MaxAcceleration = WaterAcceleration;
         } else {
             GetCharacterMovement()->SetMovementMode(MOVE_Walking);
             GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SprintSpeed : WalkSpeed;
+            GetCharacterMovement()->MaxAcceleration = GroundAcceleration;
         }
     }
     if (bInWater) {
         GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SwimSpeed * 1.10f : SwimSpeed;
+        GetCharacterMovement()->MaxAcceleration = WaterAcceleration;
         GetCharacterMovement()->BrakingDecelerationSwimming = WaterDrag * 100.0f;
     }
 

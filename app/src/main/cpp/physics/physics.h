@@ -60,13 +60,15 @@ struct CharacterBody {
     Vec2 halfExtents{0.045f, 0.08f};
     float verticalPosition = 0.0f;
     float verticalVelocity = 0.0f;
-    float acceleration = 7.2f;
+    float acceleration = 8.6f;
     float maxSpeed = 0.55f;
-    float friction = 8.5f;
-    float gravity = -2.35f;
+    float friction = 9.6f;
+    float gravity = -2.65f;
+    float airControl = 0.48f;
     float jumpVelocity = 1.08f;
     float waterSpeedMultiplier = 0.52f;
     float waterJumpMultiplier = 0.68f;
+    float collisionSkinWidth = 0.005f;
     bool grounded = true;
     WaterState water{};
 

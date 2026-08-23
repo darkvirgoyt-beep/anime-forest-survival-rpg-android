@@ -13,6 +13,8 @@ AForestSliceProceduralForest::AForestSliceProceduralForest()
     TreeInstances->SetupAttachment(RootComponent);
     RockInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("RockInstances"));
     RockInstances->SetupAttachment(RootComponent);
+    DetailInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("DetailInstances"));
+    DetailInstances->SetupAttachment(RootComponent);
 }
 
 void AForestSliceProceduralForest::BeginPlay()
@@ -21,6 +23,7 @@ void AForestSliceProceduralForest::BeginPlay()
     if (GroundMesh) GroundInstances->SetStaticMesh(GroundMesh);
     if (TreeMesh) TreeInstances->SetStaticMesh(TreeMesh);
     if (RockMesh) RockInstances->SetStaticMesh(RockMesh);
+    if (DetailMesh) DetailInstances->SetStaticMesh(DetailMesh);
     InitializeMapLayout();
     GenerateAroundLocation(GetActorLocation());
 }
@@ -118,6 +121,21 @@ void AForestSliceProceduralForest::GenerateChunk(FIntPoint Coordinate)
         Record.ResourceLocations.Add(Location);
     }
 
+    for (int32 Index = 0; Index < DetailsPerChunk; ++Index) {
+        const FVector Location = Origin + FVector(
+            Random.FRandRange(-ChunkSize * 0.50f, ChunkSize * 0.50f),
+            Random.FRandRange(-ChunkSize * 0.50f, ChunkSize * 0.50f),
+            2.0f
+        );
+        const float Scale = Random.FRandRange(0.42f, 0.95f);
+        const FTransform Transform(
+            FRotator(0.0f, Random.FRandRange(0.0f, 360.0f), 0.0f),
+            Location,
+            FVector(Scale)
+        );
+        Record.DetailTransforms.Add(Transform);
+    }
+
     LoadedChunks.Add(Coordinate, MoveTemp(Record));
     RebuildInstances();
 }
@@ -133,6 +151,7 @@ void AForestSliceProceduralForest::RemoveAllInstances()
     if (GroundInstances) GroundInstances->ClearInstances();
     if (TreeInstances) TreeInstances->ClearInstances();
     if (RockInstances) RockInstances->ClearInstances();
+    if (DetailInstances) DetailInstances->ClearInstances();
 }
 
 void AForestSliceProceduralForest::RebuildInstances()
@@ -165,6 +184,15 @@ void AForestSliceProceduralForest::RebuildInstances()
         }
         if (TreeInstances && TreeMesh) TreeInstances->AddInstances(AnimatedTrees, false, true, true);
         if (RockInstances && RockMesh) RockInstances->AddInstances(AnimatedRocks, false, true, true);
+
+        TArray<FTransform> AnimatedDetails;
+        AnimatedDetails.Reserve(Pair.Value.DetailTransforms.Num());
+        for (const FTransform& SourceTransform : Pair.Value.DetailTransforms) {
+            FTransform AnimatedTransform = SourceTransform;
+            AnimatedTransform.SetScale3D(SourceTransform.GetScale3D() * RevealScale);
+            AnimatedDetails.Add(AnimatedTransform);
+        }
+        if (DetailInstances && DetailMesh) DetailInstances->AddInstances(AnimatedDetails, false, true, true);
     }
 }
 

@@ -129,6 +129,12 @@ jobs:
           ! grep -q 'text = "AETHELGRAD  •  DAY 1  •  DAY"' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'teleportToTower' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'drawTeleportationTower' app/src/main/cpp/forest_game.cpp
+          grep -q 'draw3DHighQualityDetails' app/src/main/cpp/forest_game.cpp
+          grep -q 'uQuality' app/src/main/cpp/forest_game.cpp
+          grep -q 'collisionIterations' app/src/main/cpp/physics/physics.cpp || grep -q 'iteration < 3' app/src/main/cpp/physics/physics.cpp
+          grep -q 'airControl = 0.48f' app/src/main/cpp/physics/physics.h
+          grep -q 'highFidelityFeatures' app/src/main/assets/asset_manifest.json
+          test -f docs/HIGH_END_MOBILE_FIDELITY.md
           grep -q 'MaxCameraOrbitDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           grep -q 'MinCameraPitchDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           grep -q 'bDoCollisionTest' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
@@ -146,6 +152,10 @@ jobs:
           grep -q 'interactEmberling' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'Emberling Companion Milestone' docs/EMBERLING_COMPANION_MILESTONE.md
           grep -q 'GroundInstances' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
+          grep -q 'DetailInstances' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
+          grep -q 'DetailsPerChunk = 96' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
+          grep -q 'GroundAcceleration' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'CameraRotationLagSpeed' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           grep -q 'GetChunkPresentationAlpha' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
           grep -q 'InitializeMapLayout' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
           grep -q 'GetBiomeAtWorldLocation' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp

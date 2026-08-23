@@ -209,6 +209,18 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float SprintSpeed = 560.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Fidelity")
+    float GroundAcceleration = 2600.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Fidelity")
+    float GroundBraking = 2100.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Fidelity", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float AirControl = 0.65f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Fidelity", meta = (ClampMin = "0.0", ClampMax = "90.0"))
+    float WalkableSlopeDegrees = 50.0f;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float SlideImpulse = 850.0f;
 
@@ -224,8 +236,17 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Water")
     float WaterDrag = 2.8f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Water|Fidelity")
+    float WaterAcceleration = 1400.0f;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
-    float MaxCameraOrbitDegrees = 270.0f;
+    float MaxCameraOrbitDegrees = 360.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Fidelity")
+    float CameraLagSpeed = 18.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Fidelity")
+    float CameraRotationLagSpeed = 20.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     float MinCameraPitchDegrees = -18.0f;

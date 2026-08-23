@@ -18,6 +18,12 @@
       "shaderVariants": ["vulkan", "gles"],
       "pipelineCacheRequired": true,
       "runtimeFormat": "unreal-cooked-pak-v1"
+    },
+    "highFidelityFeatures": {
+      "nativeRenderer": ["quality-aware micro-lighting", "atmospheric fog", "water caustics", "firefly glow field"],
+      "worldDetail": ["dense foliage HISM", "biome-specific LODs", "streamed world sectors", "animated weather"],
+      "simulation": ["60Hz fixed-step movement", "three-pass contact resolution", "water buoyancy and drag", "secondary hair and cloth motion"],
+      "camera": "360-degree horizontal orbit with near-180-degree vertical travel"
     }
   },
   "resourceTiers": [
@@ -47,7 +53,7 @@
       "targetMiB": 6750,
       "targetLabel": "6.6 GB",
       "graphicsQuality": "high",
-      "description": "Complete world sectors, high-resolution characters and photos, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation.",
+      "description": "Complete world sectors, high-resolution characters, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation.",
       "packs": [
         "assetpack_graphics_base",
         "assetpack_forest",
