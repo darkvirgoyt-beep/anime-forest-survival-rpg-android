@@ -1,5 +1,5 @@
 {
-  "manifestVersion": 2,
+  "manifestVersion": 3,
   "catalogId": "aethelgard-production-catalog",
   "signature": {
     "algorithm": "ed25519",
@@ -11,6 +11,7 @@
     "full3dTargetMiB": 6750,
     "full3dTargetLabel": "6.6 GB",
     "requiredBeforeStart": true,
+    "selectionRequiredAfterBootstrap": true,
     "cameraProfile": "third-person-orbit-360-horizontal-180-vertical",
     "compiledGraphics": {
       "required": true,
@@ -19,12 +20,81 @@
       "runtimeFormat": "unreal-cooked-pak-v1"
     }
   },
+  "resourceTiers": [
+    {
+      "id": "low",
+      "label": "LOW RESOURCES",
+      "targetMiB": 4300,
+      "targetLabel": "4.2 GB",
+      "graphicsQuality": "low",
+      "description": "Complete world sectors, gameplay characters, low-resolution textures, GLES shaders, terrain LODs, animation, and core effects.",
+      "packs": [
+        "assetpack_graphics_base",
+        "assetpack_forest",
+        "assetpack_sand",
+        "assetpack_snow",
+        "assetpack_characters",
+        "assetpack_dungeons",
+        "assetpack_shaders_gles",
+        "assetpack_world_streaming",
+        "assetpack_terrain_lod",
+        "assetpack_animation_sets"
+      ]
+    },
+    {
+      "id": "high",
+      "label": "HIGH RESOURCES",
+      "targetMiB": 6750,
+      "targetLabel": "6.6 GB",
+      "graphicsQuality": "high",
+      "description": "Complete world sectors, high-resolution characters and photos, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation.",
+      "packs": [
+        "assetpack_graphics_base",
+        "assetpack_forest",
+        "assetpack_sand",
+        "assetpack_snow",
+        "assetpack_characters",
+        "assetpack_audio_hd",
+        "assetpack_cinematics",
+        "assetpack_hd_textures",
+        "assetpack_dungeons",
+        "assetpack_vfx",
+        "assetpack_voice",
+        "assetpack_shaders_vulkan",
+        "assetpack_shaders_gles",
+        "assetpack_pipeline_cache",
+        "assetpack_world_streaming",
+        "assetpack_foliage_lods",
+        "assetpack_terrain_lod",
+        "assetpack_animation_sets"
+      ]
+    }
+  ],
+  "referenceAssets": {
+    "sourceFolder": "My game components",
+    "characterPhotos": [
+      "1787473123870.png",
+      "1787475963776.png",
+      "1787476000911.png",
+      "1787476845599.png"
+    ],
+    "snowCreatureReference": "IMG-20260823-WA0004.jpg",
+    "uiReferences": [
+      "file_00000000a3988211ac5fdb67308d3525.png",
+      "Screenshot_20260823-115635_Aethelgard_ Wild Horizons – Crafting.png"
+    ],
+    "packMapping": {
+      "characterPhotos": "assetpack_characters",
+      "snowCreatureReference": ["assetpack_snow", "assetpack_characters"],
+      "uiReferences": "app-ui-reference-only"
+    }
+  },
   "packs": [
     {"name": "assetpack_graphics_base", "delivery": "on-demand", "targetMiB": 450, "contents": "compiled materials, base shaders, shared meshes and mobile render resources"},
     {"name": "assetpack_forest", "delivery": "fast-follow", "targetMiB": 350, "contents": "forest launch region, village, foliage, water, collision and navigation"},
     {"name": "assetpack_sand", "delivery": "on-demand", "targetMiB": 400, "contents": "sand biome terrain, settlements, rocks, foliage and weather"},
     {"name": "assetpack_snow", "delivery": "on-demand", "targetMiB": 400, "contents": "snow biome terrain, caves, ice materials and weather"},
-    {"name": "assetpack_characters", "delivery": "on-demand", "targetMiB": 500, "contents": "heroes, NPCs, animals, enemies, rigs and animation bindings"},
+    {"name": "assetpack_characters", "delivery": "on-demand", "targetMiB": 500, "contents": "heroes, NPCs, animals, enemies, rigs, animation bindings and character photos"},
     {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "contents": "music, ambience, combat sounds, wildlife and high-quality mixes"},
     {"name": "assetpack_cinematics", "delivery": "on-demand", "targetMiB": 450, "contents": "story scenes, sequences and camera animation data"},
     {"name": "assetpack_hd_textures", "delivery": "on-demand", "targetMiB": 500, "contents": "high-resolution PBR textures, virtual-texture pages and decals"},
@@ -34,7 +104,7 @@
     {"name": "assetpack_shaders_vulkan", "delivery": "on-demand", "targetMiB": 300, "contents": "compiled Vulkan shader libraries and pipeline-state resources"},
     {"name": "assetpack_shaders_gles", "delivery": "on-demand", "targetMiB": 250, "contents": "compiled OpenGL ES shader libraries and pipeline-state resources"},
     {"name": "assetpack_pipeline_cache", "delivery": "on-demand", "targetMiB": 100, "contents": "device-safe pipeline-cache seeds and shader warm-up data"},
-    {"name": "assetpack_world_streaming", "delivery": "on-demand", "targetMiB": 400, "contents": "world-partition descriptors, streamed sublevels and navigation data"},
+    {"name": "assetpack_world_streaming", "delivery": "on-demand", "targetMiB": 400, "contents": "world-partition descriptors, streamed sublevels and navigation data for all world sectors"},
     {"name": "assetpack_foliage_lods", "delivery": "on-demand", "targetMiB": 400, "contents": "foliage clusters, impostors and mobile LODs"},
     {"name": "assetpack_terrain_lod", "delivery": "on-demand", "targetMiB": 425, "contents": "terrain heightfields, landscape LODs and mobile shadow data"},
     {"name": "assetpack_animation_sets", "delivery": "on-demand", "targetMiB": 425, "contents": "locomotion, combat, traversal, emotes and montage sections"}

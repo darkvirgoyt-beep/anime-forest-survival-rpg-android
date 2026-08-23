@@ -46,7 +46,7 @@ class AssetPackCatalog(context: Context) {
     )
 
     companion object {
-        /** Content stays outside the base APK and is downloaded independently. */
+        /** High-resource content stays outside the base APK and is downloaded independently. */
         val productionPackNames: List<String>
             get() = ContentDownloadPlan.requiredPackNames
     }
@@ -55,15 +55,15 @@ class AssetPackCatalog(context: Context) {
     private val manager: AssetPackManager = AssetPackManagerFactory.getInstance(appContext)
     private var listener: AssetPackStateUpdateListener? = null
 
-    fun checkProductionPreflight(): Preflight {
-        val requiredBytes = ContentDownloadPlan.minimumFreeSpaceMiB.toLong() * 1024L * 1024L
+    fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH): Preflight {
+        val requiredBytes = (ContentDownloadPlan.totalMiBFor(tier) + 512).toLong() * 1024L * 1024L
         return try {
             val stats = StatFs(appContext.filesDir.absolutePath)
             val availableBytes = stats.availableBytes
             if (availableBytes < requiredBytes) {
                 Preflight(
                     ready = false,
-                    detail = "Not enough free storage: ${availableBytes / (1024L * 1024L)} MB available; ${ContentDownloadPlan.minimumFreeSpaceMiB} MB required.",
+                    detail = "Not enough free storage: ${availableBytes / (1024L * 1024L)} MB available; ${(requiredBytes / (1024L * 1024L))} MB required.",
                     availableBytes = availableBytes,
                     requiredBytes = requiredBytes
                 )
@@ -104,31 +104,35 @@ class AssetPackCatalog(context: Context) {
     }
 
     /**
-     * Starts the BGMI-style post-install download of all production content.
-     * The AAB keeps these packs outside the base install; Play handles
-     * resumable delivery, storage, and pack updates independently.
+     * Starts the BGMI-style post-install download for the selected resource tier.
+     * The AAB keeps these packs outside the base install; Play handles resumable
+     * delivery, storage, and pack updates independently.
      */
-    fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) {
-        if (productionContentReady()) {
+    fun requestProductionContent(
+        tier: ContentDownloadPlan.ResourceTier,
+        onProgress: (ProductionProgress) -> Unit
+    ) {
+        val requestedPackNames = ContentDownloadPlan.packNamesFor(tier)
+        val targetMiB = ContentDownloadPlan.totalMiBFor(tier)
+        if (productionContentReady(tier)) {
             onProgress(
                 ProductionProgress(
                     status = AssetPackStatus.COMPLETED,
                     percent = 100,
-                    bytesDownloaded = ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L,
-                    totalBytes = ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L
+                    bytesDownloaded = targetMiB.toLong() * 1024L * 1024L,
+                    totalBytes = targetMiB.toLong() * 1024L * 1024L
                 )
             )
             return
         }
-
-        val preflight = checkProductionPreflight()
+        val preflight = checkProductionPreflight(tier)
         if (!preflight.ready) {
             onProgress(
                 ProductionProgress(
                     status = AssetPackStatus.FAILED,
                     percent = 0,
                     bytesDownloaded = 0L,
-                    totalBytes = ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L,
+                    totalBytes = targetMiB.toLong() * 1024L * 1024L,
                     failedPack = preflight.detail,
                     errorCode = -2
                 )
@@ -145,17 +149,17 @@ class AssetPackCatalog(context: Context) {
                 totalBytes = state.totalBytesToDownload(),
                 errorCode = state.errorCode()
             )
-            emitProductionProgress(states, onProgress)
+            emitProductionProgress(requestedPackNames, targetMiB, states, onProgress)
         }
         listener = updateListener
         manager.registerListener(updateListener)
-        manager.fetch(productionPackNames).addOnFailureListener { error ->
+        manager.fetch(requestedPackNames).addOnFailureListener { error ->
             onProgress(
                 ProductionProgress(
                     status = AssetPackStatus.FAILED,
                     percent = 0,
                     bytesDownloaded = 0L,
-                    totalBytes = 0L,
+                    totalBytes = targetMiB.toLong() * 1024L * 1024L,
                     failedPack = error.message ?: "production-content",
                     errorCode = -1
                 )
@@ -163,24 +167,33 @@ class AssetPackCatalog(context: Context) {
         }
     }
 
-    private fun emitProductionProgress(states: Map<String, Progress>, onProgress: (ProductionProgress) -> Unit) {
+    /** Backward-compatible high-resource request for existing callers and tests. */
+    fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) =
+        requestProductionContent(ContentDownloadPlan.ResourceTier.HIGH, onProgress)
+
+    private fun emitProductionProgress(
+        requestedPackNames: List<String>,
+        targetMiB: Int,
+        states: Map<String, Progress>,
+        onProgress: (ProductionProgress) -> Unit
+    ) {
         val reportedTotalBytes = states.values.sumOf { it.totalBytes }
         val bytesDownloaded = states.values.sumOf { it.bytesDownloaded }
         val failed = states.values.firstOrNull { it.status == AssetPackStatus.FAILED }
         val waitingForWifi = states.values.any { it.status == AssetPackStatus.WAITING_FOR_WIFI }
         val confirmationRequired = states.values.any { it.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION }
         val canceled = states.values.any { it.status == AssetPackStatus.CANCELED }
-        val complete = productionPackNames.all { packName ->
+        val complete = requestedPackNames.all { packName ->
             states[packName]?.status == AssetPackStatus.COMPLETED || isReady(packName)
         }
-        // Play reports packs independently. Until every pack has reported its
-        // real total, use the production envelope as a stable denominator so
-        // discovering another pack cannot make the visible bar move backward.
-        val allTotalsKnown = productionPackNames.all { (states[it]?.totalBytes ?: 0L) > 0L }
+        // Play reports packs independently. Until every pack total is known, use
+        // the selected tier envelope as a stable denominator so discovering
+        // another pack cannot make the visible bar move backward.
+        val allTotalsKnown = requestedPackNames.all { (states[it]?.totalBytes ?: 0L) > 0L }
         val totalBytes = if (allTotalsKnown) {
             reportedTotalBytes
         } else {
-            maxOf(reportedTotalBytes, ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L)
+            maxOf(reportedTotalBytes, targetMiB.toLong() * 1024L * 1024L)
         }
         val percent = when {
             complete -> 100
@@ -208,7 +221,10 @@ class AssetPackCatalog(context: Context) {
 
     fun isReady(packName: String): Boolean = manager.getPackLocation(packName) != null
 
-    fun productionContentReady(): Boolean = productionPackNames.all(::isReady)
+    fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)
+
+    fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean =
+        ContentDownloadPlan.packNamesFor(tier).all(::isReady)
 
     fun assetPath(packName: String, relativePath: String): String? {
         val location = manager.getPackLocation(packName) ?: return null

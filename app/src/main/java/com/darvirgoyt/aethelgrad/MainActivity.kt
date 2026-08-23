@@ -92,6 +92,7 @@ class MainActivity : Activity(), SensorEventListener {
     private val gyroSensitivity = 1.0f
     private var selectedTargetFps = 60
     private var selectedGraphicsTier = 2
+    private var selectedResourceTier: ContentDownloadPlan.ResourceTier? = null
     private var supportedTargetFps = listOf(60)
     private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
     private lateinit var audio: GameAudio
@@ -101,6 +102,8 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
+    private var resourcePreparationComplete = BuildConfig.PROTOTYPE_MODE
+    private var pendingWorldEntry: (() -> Unit)? = null
     private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
     private lateinit var characterNameInput: EditText
@@ -182,6 +185,9 @@ class MainActivity : Activity(), SensorEventListener {
         selectedTargetFps = graphicsPreferences.getInt("target_fps", supportedTargetFps.maxOrNull() ?: 60)
             .takeIf { it in supportedTargetFps } ?: (supportedTargetFps.maxOrNull() ?: 60)
         selectedGraphicsTier = graphicsPreferences.getInt("graphics_tier", 2).coerceIn(0, 4)
+        selectedResourceTier = graphicsPreferences.getString("resource_tier", null)?.let { value ->
+            runCatching { ContentDownloadPlan.ResourceTier.valueOf(value) }.getOrNull()
+        }
         audio = GameAudio(this)
         assetDelivery = AssetDeliveryManager(this)
         audio.playMusic()
@@ -215,6 +221,14 @@ class MainActivity : Activity(), SensorEventListener {
             onboardingOverlay.visibility = View.VISIBLE
             accountSession.initialize(this, ::applyAccountSnapshot)
             accountSession.requestGuestSignIn()
+            when {
+                selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
+                    applyResourceTier(chosenTier)
+                    showAssetPatchOverlay()
+                }
+                assetPacks.productionContentReady(selectedResourceTier!!) -> resourcePreparationComplete = true
+                else -> showAssetPatchOverlay()
+            }
         }
     }
 
@@ -239,6 +253,12 @@ class MainActivity : Activity(), SensorEventListener {
         selectedGraphicsTier = value.coerceIn(0, 4)
         graphicsPreferences.edit().putInt("graphics_tier", selectedGraphicsTier).apply()
         if (::gameView.isInitialized) gameView.applyGraphicsTier(selectedGraphicsTier)
+    }
+
+    private fun applyResourceTier(tier: ContentDownloadPlan.ResourceTier) {
+        selectedResourceTier = tier
+        graphicsPreferences.edit().putString("resource_tier", tier.name).apply()
+        applyGraphicsTier(tier.graphicsTierIndex)
     }
 
     private fun graphicsTierName(value: Int): String = listOf("LOW", "MEDIUM", "HIGH", "ULTRA", "MAX")[value.coerceIn(0, 4)]
@@ -558,7 +578,11 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
-            if (BuildConfig.PROTOTYPE_MODE) enterGuestOnlineWorld() else showAssetPatchOverlay(::enterGuestOnlineWorld)
+            if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
+                enterGuestOnlineWorld()
+            } else {
+                pendingWorldEntry = ::enterGuestOnlineWorld
+            }
             return
         }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
@@ -570,7 +594,11 @@ class MainActivity : Activity(), SensorEventListener {
                     }
                 }
             }
-            if (BuildConfig.PROTOTYPE_MODE) continueToCharacterSetup() else showAssetPatchOverlay(continueToCharacterSetup)
+            if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
+                continueToCharacterSetup()
+            } else {
+                pendingWorldEntry = continueToCharacterSetup
+            }
             return
         }
         if (!::onboardingStatus.isInitialized) return
@@ -1340,8 +1368,25 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
+    private fun showResourceTierChooser(onChosen: (ContentDownloadPlan.ResourceTier) -> Unit) {
+        val tiers = ContentDownloadPlan.ResourceTier.values()
+        var chosenTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
+        val labels = tiers.map { tier ->
+            val title = if (tier == ContentDownloadPlan.ResourceTier.HIGH) "HIGH RESOURCES  •  ${tier.storageLabel}" else "LOW RESOURCES  •  ${tier.storageLabel}"
+            "$title\n${tier.description}"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("CHOOSE WORLD RESOURCE DOWNLOAD")
+            .setMessage("The APK is only the small game launcher. Choose which complete world package to download before entering Aethelgard. This controls texture quality, foliage density, compiled graphics, character photos, and storage use.")
+            .setSingleChoiceItems(labels, tiers.indexOf(chosenTier)) { _, which -> chosenTier = tiers[which] }
+            .setPositiveButton("DOWNLOAD SELECTED") { _, _ -> onChosen(chosenTier) }
+            .setCancelable(false)
+            .show()
+    }
+
     private fun showAssetPatchOverlay(onReady: () -> Unit = {}) {
         if (assetPatchOverlay != null) return
+        val resourceTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
         val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(4, 10, 16)) }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1356,13 +1401,13 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val title = TextView(this).apply {
-            text = "DOWNLOAD FULL 3D CONTENT  •  ${ContentDownloadPlan.totalGiBLabel}"
+            text = "DOWNLOAD ${resourceTier.name} 3D CONTENT  •  ${resourceTier.storageLabel}"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "Full resources are required before the game can start…"
+            text = "${resourceTier.name.lowercase().replaceFirstChar { it.uppercase() }} resources are required before the game can start…"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -1375,14 +1420,14 @@ class MainActivity : Activity(), SensorEventListener {
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 56, 61))
         }
         val details = TextView(this).apply {
-            text = "This download includes compiled shaders, pipeline caches, 3D graphics, world regions, characters, audio, VFX, and animations."
+            text = resourceTier.description
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(161, 190, 187))
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The APK is only the bootstrap. Download ${ContentDownloadPlan.totalGiBLabel} of compiled graphics and shaders, then the game will unlock. Production requires a signed Play Asset Delivery AAB."
+            text = "The APK is only the bootstrap. Download the selected ${resourceTier.storageLabel} package of compiled graphics, all world sectors, characters, photos, shaders, and gameplay resources. Production requires a signed Play Asset Delivery AAB."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -1404,7 +1449,12 @@ class MainActivity : Activity(), SensorEventListener {
             hudHandler.postDelayed({
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
+                resourcePreparationComplete = true
                 onReady()
+                pendingWorldEntry?.let { continuation ->
+                    pendingWorldEntry = null
+                    continuation()
+                }
             }, 450L)
         }
 
@@ -1430,16 +1480,16 @@ class MainActivity : Activity(), SensorEventListener {
                 showLocalPreparationFallback()
             } else {
                 var fallbackStarted = false
-                assetPacks.requestProductionContent { event ->
+                assetPacks.requestProductionContent(resourceTier) { event ->
                     if (event.failed) {
                         if (!fallbackStarted) {
                             fallbackStarted = true
                             status.text = "Full resources are required before start"
                             details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
                             note.text = if (event.errorCode == -2) {
-                                "Free storage, then press retry. Required headroom: ${ContentDownloadPlan.minimumFreeSpaceMiB} MB."
+                                "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
                             } else {
-                                "Install the Play Store/internal-test AAB to download the compiled ${ContentDownloadPlan.totalGiBLabel} resource packs. A direct APK cannot unlock the production world."
+                                "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs. A direct APK cannot unlock the production world."
                             }
                             note.setTextColor(Color.rgb(255, 180, 150))
                             progress.progress = 0
@@ -1451,11 +1501,11 @@ class MainActivity : Activity(), SensorEventListener {
                         when {
                             event.complete -> {
                                 status.text = "Compiled graphics and shaders ready"
-                                details.text = "${ContentDownloadPlan.totalGiBLabel} of compiled resources are mounted. Starting the game…"
+                                details.text = "${resourceTier.storageLabel} of ${resourceTier.name.lowercase()} compiled resources are mounted. Starting the game…"
                             }
                             event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
                                 status.text = "Waiting for Wi-Fi"
-                                details.text = "Connect to Wi-Fi to continue downloading ${ContentDownloadPlan.totalGiBLabel} of compiled resources."
+                                details.text = "Connect to Wi-Fi to continue downloading the selected ${resourceTier.storageLabel} package."
                             }
                             event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
                                 status.text = "Download confirmation required"
@@ -1469,7 +1519,7 @@ class MainActivity : Activity(), SensorEventListener {
                             }
                             else -> {
                                 status.text = "Downloading compiled graphics and shaders…"
-                                details.text = if (total > 0) "$downloaded MB / $total MB compiled resources downloaded from Play Asset Delivery." else "Preparing ${ContentDownloadPlan.totalGiBLabel} of compiled graphics, shaders, and game resources…"
+                                details.text = if (total > 0) "$downloaded MB / $total MB ${resourceTier.name.lowercase()} resources downloaded from Play Asset Delivery." else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, shaders, world sectors, and character resources…"
                             }
                         }
                         progress.progress = event.percent

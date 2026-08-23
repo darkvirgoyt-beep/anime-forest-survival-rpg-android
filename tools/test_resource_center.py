@@ -34,6 +34,18 @@ PACKS = (
     "assetpack_terrain_lod",
     "assetpack_animation_sets",
 )
+LOW_PACKS = (
+    "assetpack_graphics_base",
+    "assetpack_forest",
+    "assetpack_sand",
+    "assetpack_snow",
+    "assetpack_characters",
+    "assetpack_dungeons",
+    "assetpack_shaders_gles",
+    "assetpack_world_streaming",
+    "assetpack_terrain_lod",
+    "assetpack_animation_sets",
+)
 
 DOWNLOADING = "DOWNLOADING"
 COMPLETED = "COMPLETED"
@@ -98,9 +110,12 @@ def assert_source_contract(repo: Path) -> None:
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
-        ("resource-center title", "DOWNLOAD FULL 3D CONTENT", main),
+        ("resource-center title", "DOWNLOAD ${resourceTier.name} 3D CONTENT", main),
+        ("resource-tier chooser", "CHOOSE WORLD RESOURCE DOWNLOAD", main),
+        ("low-resource option", "LOW RESOURCES", main),
         ("compiled graphics copy", "compiled graphics and shaders", main),
-        ("production request", "requestProductionContent", catalog),
+        ("tier-aware production request", "requestProductionContent(resourceTier)", main),
+        ("tier pack selection", "packNamesFor(tier)", catalog),
         ("production readiness gate", "productionContentReady", catalog),
         ("Vulkan shader pack", "assetpack_shaders_vulkan", plan),
         ("OpenGL ES shader pack", "assetpack_shaders_gles", plan),
@@ -117,6 +132,13 @@ def assert_source_contract(repo: Path) -> None:
         raise AssertionError("missing source contract: " + ", ".join(missing))
     if manifest.get("contentDelivery", {}).get("full3dTargetMiB") != 6750:
         raise AssertionError("manifest target must remain 6750 MiB")
+    tiers = {item.get("id"): item for item in manifest.get("resourceTiers", [])}
+    if tiers.get("low", {}).get("targetMiB") != 4300 or tiers.get("high", {}).get("targetMiB") != 6750:
+        raise AssertionError("manifest must declare 4300 MiB low and 6750 MiB high tiers")
+    if set(tiers["low"].get("packs", [])) != set(LOW_PACKS):
+        raise AssertionError("low tier pack set is inconsistent")
+    if set(tiers["high"].get("packs", [])) != set(PACKS):
+        raise AssertionError("high tier pack set is inconsistent")
 
 
 def test_initial_state() -> None:
@@ -158,6 +180,13 @@ def test_failure_and_retry_state() -> None:
     assert result["status"] == DOWNLOADING
 
 
+def test_tier_pack_sets_are_distinct() -> None:
+    assert set(LOW_PACKS).issubset(PACKS)
+    assert len(LOW_PACKS) < len(PACKS)
+    assert "assetpack_shaders_vulkan" not in LOW_PACKS
+    assert "assetpack_hd_textures" not in LOW_PACKS
+
+
 def test_invalid_progress_is_rejected() -> None:
     model = ResourceCenterModel()
     try:
@@ -181,6 +210,7 @@ def run(repo: Path | None, unreal_project: Path | None) -> None:
         test_aggregate_progress_is_monotonic,
         test_complete_requires_every_pack,
         test_failure_and_retry_state,
+        test_tier_pack_sets_are_distinct,
         test_invalid_progress_is_rejected,
     )
     for test in tests:
