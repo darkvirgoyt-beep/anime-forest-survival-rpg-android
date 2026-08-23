@@ -61,6 +61,6 @@ This repository is now being developed in two explicit layers: a verified Androi
 
 ## Contribution
 
-Contributors can propose improvements through feature branches and pull requests. Please describe gameplay, Android, or build changes clearly in each contribution.
+Contributors can propose improvements through feature branches and pull requests. Please describe gameplay, Android, or build changes clearly in each contribution. Configure Git with the email linked to your GitHub account so contribution credit is attributed correctly.
 
 **Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android forest-survival RPG prototype.
