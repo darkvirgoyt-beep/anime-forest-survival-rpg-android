@@ -162,14 +162,6 @@ class MainActivity : Activity(), SensorEventListener {
         accountSession.initialize(this, ::applyAccountSnapshot)
     }
 
-    override fun onDestroy() {
-        hudHandler.removeCallbacks(hudUpdater)
-        hudHandler.removeCallbacks(cloudSaveUpdater)
-        if (::assetDelivery.isInitialized) assetDelivery.shutdown()
-        if (::audio.isInitialized) audio.release()
-        super.onDestroy()
-    }
-
     private fun detectSupportedTargetFps(): List<Int> {
         val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
         val maxRefreshRate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -276,7 +268,8 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(cloudSaveUpdater)
         accountSession.shutdown()
         if (::assetPacks.isInitialized) assetPacks.close()
-        audio.release()
+        if (::assetDelivery.isInitialized) assetDelivery.shutdown()
+        if (::audio.isInitialized) audio.release()
         super.onDestroy()
     }
 
@@ -920,7 +913,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(146, 168, 171))
             setPadding(0, dp(18), 0, 0)
         }
-        val retry = actionButton("RETRY ASSET PREPARATION")
+        val retry = actionButton("RETRY ASSET PREPARATION") { }
         retry.visibility = View.GONE
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
         panel.addView(status, LinearLayout.LayoutParams(-1, dp(46)))

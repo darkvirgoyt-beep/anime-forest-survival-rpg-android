@@ -5,7 +5,6 @@ import com.google.android.play.core.assetpacks.AssetPackManager
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.android.play.core.assetpacks.AssetPackState
 import com.google.android.play.core.assetpacks.AssetPackStateUpdateListener
-import com.google.android.play.core.assetpacks.AssetPackStatus
 
 /**
  * Runtime boundary for Play Asset Delivery.
@@ -53,7 +52,8 @@ class AssetPackCatalog(context: Context) {
         return "${location.assetsPath()}/$relativePath"
     }
 
-    fun isComplete(progress: Progress): Boolean = progress.status == AssetPackStatus.COMPLETED
+    // Play Asset Delivery represents COMPLETED with status code 4 in the 2.x API.
+    fun isComplete(progress: Progress): Boolean = progress.status == 4
 
     fun close() {
         listener?.let(manager::unregisterListener)
