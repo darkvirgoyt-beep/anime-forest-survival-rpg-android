@@ -134,12 +134,22 @@ class MainActivity : Activity(), SensorEventListener {
     private var worldLoadingLoreText: TextView? = null
     private var worldLoadingLoreIndex = 0
     private val worldLoadingLoreHandler = Handler(Looper.getMainLooper())
+    private val worldLoadingProgressHandler = Handler(Looper.getMainLooper())
     private val worldLoadingLoreRotation = object : Runnable {
         override fun run() = rotateWorldLoadingLore()
     }
     private var playerSkippedLoadingPresentation = false
     private var worldEntryRevealed = false
+    private var worldRevealScheduled = false
     private var worldLoadingStartedAtMs = 0L
+    private val minimumWorldLoadingDurationMs = 10_000L
+    private val worldLoadingProgressTicker = object : Runnable {
+        override fun run() {
+            if (worldLoadingOverlay == null || worldEntryRevealed) return
+            refreshWorldLoadingPresentation()
+            worldLoadingProgressHandler.postDelayed(this, 120L)
+        }
+    }
     private var pendingWorldReadyAction: (() -> Unit)? = null
     private var rendererReadyForWorld = false
     private var characterTextureReadyForWorld = false
@@ -526,6 +536,8 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
         hudHandler.removeCallbacks(coOpSaveUpdater)
+        stopWorldLoadingLoreRotation()
+        stopWorldLoadingProgressTicker()
         if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
         activeCoOpRoom = null
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
@@ -553,6 +565,10 @@ class MainActivity : Activity(), SensorEventListener {
         gameView.onResume()
         registerGyro()
         updateGyroButton()
+        if (worldLoadingOverlay != null && !worldEntryRevealed) {
+            worldLoadingProgressHandler.removeCallbacks(worldLoadingProgressTicker)
+            worldLoadingProgressHandler.post(worldLoadingProgressTicker)
+        }
         hudHandler.postDelayed(hudUpdater, 350L)
         hudHandler.postDelayed(cloudSaveUpdater, 45_000L)
         if (activeCoOpRoom != null) {
@@ -569,6 +585,8 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
         hudHandler.removeCallbacks(coOpSaveUpdater)
+        stopWorldLoadingLoreRotation()
+        stopWorldLoadingProgressTicker()
         if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
         accountSession.shutdown()
         if (::networkMonitor.isInitialized) networkMonitor.stop()
@@ -1046,6 +1064,8 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(overlay)
         overlay.animate().alpha(1f).setDuration(180L).withEndAction {
             refreshWorldLoadingPresentation()
+            worldLoadingProgressHandler.removeCallbacks(worldLoadingProgressTicker)
+            worldLoadingProgressHandler.post(worldLoadingProgressTicker)
             startWorldLoadingLoreRotation()
         }.start()
     }
@@ -1087,6 +1107,10 @@ class MainActivity : Activity(), SensorEventListener {
         worldLoadingLoreHandler.removeCallbacks(worldLoadingLoreRotation)
     }
 
+    private fun stopWorldLoadingProgressTicker() {
+        worldLoadingProgressHandler.removeCallbacks(worldLoadingProgressTicker)
+    }
+
     /** Records a real engine, texture, content, or world-state callback for the entry progress meter. */
     private fun markWorldLoadingTaskReady(id: String) {
         when (id) {
@@ -1102,8 +1126,10 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginWorldLoading(onWorldReady: () -> Unit) {
         pendingWorldReadyAction = onWorldReady
         worldEntryRevealed = false
+        worldRevealScheduled = false
         playerSkippedLoadingPresentation = false
         worldLoadingStartedAtMs = System.currentTimeMillis()
+        worldLoadingProgressHandler.removeCallbacks(worldLoadingProgressTicker)
         worldLoadingTasks["renderer"]?.ready = rendererReadyForWorld
         worldLoadingTasks["texture"]?.ready = characterTextureReadyForWorld
         worldLoadingTasks["content"]?.ready = resourcePreparationComplete
@@ -1114,15 +1140,23 @@ class MainActivity : Activity(), SensorEventListener {
         if (pendingWorldReadyAction == null || worldEntryRevealed) return
         val totalWeight = worldLoadingTasks.values.sumOf { it.weight }.coerceAtLeast(1)
         val readyWeight = worldLoadingTasks.values.filter { it.ready }.sumOf { it.weight }
-        val percent = (readyWeight * 100 / totalWeight).coerceIn(0, 100)
+        val actualReadinessPercent = (readyWeight * 100 / totalWeight).coerceIn(0, 100)
+        val elapsed = (System.currentTimeMillis() - worldLoadingStartedAtMs).coerceAtLeast(0L)
+        val timelinePercent = ((elapsed * 100L) / minimumWorldLoadingDurationMs).toInt().coerceIn(0, 100)
+        // Never show more progress than the real engine/content readiness. When
+        // preparation finishes early, the remaining time is a controlled final
+        // shader/world warm-up rather than an instant scene pop.
+        val percent = minOf(actualReadinessPercent, timelinePercent)
         val nextTask = worldLoadingTasks.values.firstOrNull { !it.ready }
+        val allReady = nextTask == null
         worldLoadingProgress?.progress = percent
         worldLoadingStatus?.text = when {
-            playerSkippedLoadingPresentation && nextTask != null -> "PREPARING IN BACKGROUND  •  $percent%"
-            nextTask != null -> "${nextTask.label}  •  $percent%"
-            else -> "PATH REMEMBERED  •  100%"
+            playerSkippedLoadingPresentation && !allReady -> "PREPARING IN BACKGROUND  •  $percent%"
+            !allReady -> "${nextTask.label}  •  $percent%"
+            timelinePercent < 100 -> "WARMING HIGH-END GRAPHICS  •  $percent%"
+            else -> "NECESSARY RESOURCES READY  •  100%"
         }
-        if (worldLoadingTasks.values.all { it.ready }) revealWorldWhenReady()
+        if (allReady && timelinePercent >= 100) revealWorldWhenReady()
     }
 
     /** Hides the large loading card without treating unfinished startup tasks as complete. */
@@ -1138,11 +1172,14 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun revealWorldWhenReady() {
-        if (worldEntryRevealed) return
+        if (worldEntryRevealed || worldRevealScheduled || !worldLoadingTasks.values.all { it.ready }) return
         val elapsed = System.currentTimeMillis() - worldLoadingStartedAtMs
-        val remainingMinimumPresentation = (420L - elapsed).coerceAtLeast(0L)
+        val remainingMinimumPresentation = (minimumWorldLoadingDurationMs - elapsed).coerceAtLeast(0L)
+        worldRevealScheduled = true
         rootContainer.postDelayed({
+            worldRevealScheduled = false
             if (worldEntryRevealed || !worldLoadingTasks.values.all { it.ready }) return@postDelayed
+            worldLoadingProgressHandler.removeCallbacks(worldLoadingProgressTicker)
             worldEntryRevealed = true
             val onWorldReady = pendingWorldReadyAction ?: return@postDelayed
             pendingWorldReadyAction = null
