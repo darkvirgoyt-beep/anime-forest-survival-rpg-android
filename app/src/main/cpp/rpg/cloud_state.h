@@ -43,6 +43,17 @@ struct CloudState {
     int campRevision = 0;
 };
 
+inline constexpr int kForestSectorMask = 1;
+inline constexpr int kKnownBiomeSectorMask = 15;
+
+inline int normalizeDiscoveredSectors(int sectors) {
+    // A save may contain stale future bits, a malformed negative value, or a
+    // sparse unlock (for example Sand without Forest). Keep only shipped biome
+    // bits and always retain Forest as the safe launch and recovery sector.
+    const int knownSectors = sectors > 0 ? (sectors & kKnownBiomeSectorMask) : 0;
+    return knownSectors | kForestSectorMask;
+}
+
 inline std::string serializeCloudState(const CloudState& state) {
     char buffer[1024]{};
     std::snprintf(buffer, sizeof(buffer),
@@ -51,7 +62,7 @@ inline std::string serializeCloudState(const CloudState& state) {
         state.experience, state.level, state.experienceToNext, state.totalExperience, state.day, state.worldTime,
         state.gatheringActions, state.questStage, state.emberKitCrafted ? 1 : 0, state.wardenDefeated ? 1 : 0,
         state.emberlingTrust, state.emberlingBonded ? 1 : 0, state.emberlingStay ? 1 : 0,
-        std::clamp(state.discoveredSectors, 1, 15), state.capturedMobIndex, state.capturedCompanionStay ? 1 : 0,
+        normalizeDiscoveredSectors(state.discoveredSectors), state.capturedMobIndex, state.capturedCompanionStay ? 1 : 0,
         state.campBuilt ? 1 : 0, state.campX, state.campY, state.campZ, state.campYaw, state.campScale,
         state.companionRevision, state.campRevision);
     return buffer;
@@ -144,7 +155,7 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
     parsed.emberlingStay = parsed.emberlingBonded && (parsed.emberlingStay || emberlingStay != 0);
     parsed.capturedCompanionStay = parsed.capturedMobIndex >= 0 && (parsed.capturedCompanionStay || capturedCompanionStay != 0);
     parsed.campBuilt = parsed.campBuilt || campBuilt != 0;
-    parsed.discoveredSectors = std::clamp(discoveredSectors, 1, 15);
+    parsed.discoveredSectors = normalizeDiscoveredSectors(discoveredSectors);
     parsed.health = std::clamp(parsed.health, 0.0f, 1.0f);
     parsed.stamina = std::clamp(parsed.stamina, 0.0f, 1.0f);
     parsed.hunger = std::clamp(parsed.hunger, 0.0f, 1.0f);
