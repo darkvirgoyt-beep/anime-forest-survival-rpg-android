@@ -2637,7 +2637,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The online client starts the expansion automatically: compiled graphics, world sectors, shaders, VFX, audio, and gameplay resources are delivered by Play Asset Delivery and resume after restart. Gameplay remains locked until the selected production pack is ready. For direct APK testing, place the matching OBB in Android/obb/${packageName} or install the signed Play AAB."
+            text = "Play installations download compiled graphics, world sectors, shaders, VFX, audio, and gameplay resources through Play Asset Delivery. Free direct APK and bundletool installs use the bundled mobile-safe renderer immediately; no Play Console account is required for local testing."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2689,7 +2689,17 @@ class MainActivity : Activity(), SensorEventListener {
             var confirmationInFlight = false
             assetPacks.requestProductionContent(resourceTier) { event ->
                 if (event.failed) {
-                    if (!failureShown) {
+                    if (assetPacks.canUseBundledFreeFallback()) {
+                        if (!failureShown) {
+                            failureShown = true
+                            status.text = "FREE LOCAL GRAPHICS MODE READY"
+                            details.text = "Play Asset Delivery is unavailable for this installation. Aethelgard will continue with the bundled mobile-safe renderer."
+                            note.text = "No Google Play Console account is required for this free test mode. Install the matching local APK and continue; Play-delivered high-end packs require a Play-installed AAB."
+                            note.setTextColor(Color.rgb(174, 220, 190))
+                            progress.progress = 100
+                            finishPreparation()
+                        }
+                    } else if (!failureShown) {
                         failureShown = true
                         status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
                         details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
