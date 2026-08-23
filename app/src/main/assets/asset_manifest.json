@@ -6,13 +6,14 @@
     "value": "PRODUCTION_REPLACE_WITH_SERVER_SIGNATURE"
   },
   "contentDelivery": {
-    "mode": "play-asset-delivery",
+    "mode": "private-https-archive",
     "bootstrapInstallMiB": 358,
     "full3dTargetMiB": 6750,
     "full3dTargetLabel": "6.6 GB",
     "requiredBeforeStart": true,
-    "selectionRequiredAfterBootstrap": true,
+    "selectionRequiredAfterBootstrap": false,
     "automaticExpansion": false,
+    "distribution": "private-four-player-backend",
     "resumeAfterRestart": true,
     "cameraProfile": "third-person-orbit-360-horizontal-180-vertical",
     "compiledGraphics": {
@@ -49,32 +50,12 @@
   },
   "resourceTiers": [
     {
-      "id": "low",
-      "label": "LOW RESOURCES",
-      "targetMiB": 4300,
-      "targetLabel": "4.2 GB",
-      "graphicsQuality": "low",
-      "description": "Complete low-resource world sectors, gameplay characters, textures, GLES shaders, terrain LODs, animation, audio, VFX, and core effects before gameplay.",
-      "packs": [
-        "assetpack_graphics_base",
-        "assetpack_forest",
-        "assetpack_sand",
-        "assetpack_snow",
-        "assetpack_characters",
-        "assetpack_dungeons",
-        "assetpack_shaders_gles",
-        "assetpack_world_streaming",
-        "assetpack_terrain_lod",
-        "assetpack_animation_sets"
-      ]
-    },
-    {
       "id": "high",
-      "label": "HIGH RESOURCES",
+      "label": "HIGH-END RESOURCES",
       "targetMiB": 6750,
       "targetLabel": "6.6 GB",
       "graphicsQuality": "high",
-      "description": "Complete high-resource world sectors, high-resolution characters, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation before gameplay.",
+      "description": "Complete high-end four-player world sectors, high-resolution characters, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation before online gameplay.",
       "packs": [
         "assetpack_graphics_base",
         "assetpack_forest",

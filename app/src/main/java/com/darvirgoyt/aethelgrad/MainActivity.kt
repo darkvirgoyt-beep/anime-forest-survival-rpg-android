@@ -109,8 +109,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var joystickSensitivity = 1.0f
     private var selectedTargetFps = 60
     private var selectedGraphicsTier = 2
-    private var selectedResourceTier: ContentDownloadPlan.ResourceTier? = null
-    private var resourceTierChooserVisible = false
+    private var selectedResourceTier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH
     private var supportedTargetFps = listOf(60)
     private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
     private val controlPreferences by lazy { getSharedPreferences("aethelgard_controls", MODE_PRIVATE) }
@@ -169,7 +168,6 @@ class MainActivity : Activity(), SensorEventListener {
         LoadingLore("WAYFARER'S BREATH", "Dodge with intent. Saving breath before a Warden strike matters more than winning a race through the undergrowth.")
     )
     private var resourcePreparationComplete = false
-    private var resourceTierChooserVisible = false
     private var pendingWorldEntry: (() -> Unit)? = null
     private lateinit var standaloneExpansionFile: StandaloneExpansionFile
     private var authenticationTransitionStarted = false
@@ -294,9 +292,6 @@ class MainActivity : Activity(), SensorEventListener {
         gyroSensitivity = controlPreferences.getFloat("gyro_sensitivity", 1.0f).coerceIn(0.25f, 2.5f)
         lookSensitivity = controlPreferences.getFloat("look_sensitivity", 1.0f).coerceIn(0.25f, 2.5f)
         joystickSensitivity = controlPreferences.getFloat("joystick_sensitivity", 1.0f).coerceIn(0.50f, 1.50f)
-        selectedResourceTier = graphicsPreferences.getString("resource_tier", null)?.let { value ->
-            runCatching { ContentDownloadPlan.ResourceTier.valueOf(value) }.getOrNull()
-        }
         audio = GameAudio(this)
         audio.playMusic()
 
@@ -336,7 +331,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (resourcePreparationComplete) return
         resourcePreparationComplete = true
         markWorldLoadingTaskReady("content")
-        val readyTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
+        val readyTier = selectedResourceTier
         applyGraphicsTier(readyTier.graphicsTierIndex)
         if (::gameView.isInitialized) {
             gameView.queueEvent { NativeGameBridge.setContentTierReady(true, readyTier.graphicsTierIndex) }
@@ -373,18 +368,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun beginAutomaticContentPreparation() {
         if (resourcePreparationComplete) return
-        if (selectedResourceTier == null) {
-            if (!resourceTierChooserVisible) {
-                resourceTierChooserVisible = true
-                showResourceTierChooser { chosenTier ->
-                    resourceTierChooserVisible = false
-                    applyResourceTier(chosenTier)
-                    beginAutomaticContentPreparation()
-                }
-            }
-            return
-        }
-        val tier = selectedResourceTier ?: return
+        val tier = selectedResourceTier
         if (assetPacks.productionContentReady(tier)) {
             markProductionContentReady()
             continuePendingWorldEntry()
@@ -568,15 +552,6 @@ class MainActivity : Activity(), SensorEventListener {
         if (::gameView.isInitialized) gameView.applyGraphicsTier(selectedGraphicsTier)
     }
 
-    private fun applyResourceTier(tier: ContentDownloadPlan.ResourceTier) {
-        selectedResourceTier = tier
-        graphicsPreferences.edit().putString("resource_tier", tier.name).apply()
-        applyGraphicsTier(tier.graphicsTierIndex)
-        if (::gameView.isInitialized) {
-            gameView.queueEvent { NativeGameBridge.setContentTierReady(false, tier.graphicsTierIndex) }
-        }
-    }
-
     private fun graphicsTierName(value: Int): String = listOf("LOW", "MEDIUM", "HIGH", "ULTRA", "MAX")[value.coerceIn(0, 4)]
 
     private fun registerGyro() {
@@ -713,7 +688,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun requestDiscoveredSectorContent(discoveredMask: Int) {
         if (!resourcePreparationComplete || !networkOnline) return
-        val tier = selectedResourceTier ?: return
+        val tier = selectedResourceTier
         ContentDownloadPlan.WorldSector.values().forEach { sector ->
             if (discoveredMask and sector.bit == 0) return@forEach
             if (assetPacks.sectorContentReady(tier, sector)) return@forEach
@@ -2321,194 +2296,9 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
-    private fun showResourceTierChooser(onChosen: (ContentDownloadPlan.ResourceTier) -> Unit) {
-        val tiers = ContentDownloadPlan.ResourceTier.values()
-        var chosenTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-
-        val backdrop = FrameLayout(this).apply {
-            setBackgroundColor(Color.argb(205, 2, 8, 13))
-            setPadding(dp(12), dp(6), dp(12), dp(6))
-        }
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(10), dp(20), dp(10))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(17, 31, 39), Color.rgb(6, 14, 21))
-            ).apply {
-                cornerRadius = dp(18).toFloat()
-                setStroke(dp(1), Color.rgb(161, 120, 58))
-            }
-        }
-        val eyebrow = TextView(this).apply {
-            text = "AETHELGARD  /  ONLINE CONTENT"
-            textSize = 10f
-            letterSpacing = 0.16f
-            setTextColor(Color.rgb(209, 171, 94))
-            gravity = Gravity.CENTER
-        }
-        val title = TextView(this).apply {
-            text = "SELECT GRAPHICS QUALITY"
-            textSize = 25f
-            letterSpacing = 0.06f
-            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(244, 239, 223))
-            gravity = Gravity.CENTER
-            setPadding(0, dp(4), 0, 0)
-        }
-        val subtitle = TextView(this).apply {
-            text = "Choose your visual detail and download size before entering the online world."
-            textSize = 12f
-            setTextColor(Color.rgb(173, 196, 196))
-            gravity = Gravity.CENTER
-            setPadding(0, dp(4), 0, dp(14))
-        }
-        val cards = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-        val cardViews = mutableMapOf<ContentDownloadPlan.ResourceTier, LinearLayout>()
-        val selectedLabels = mutableMapOf<ContentDownloadPlan.ResourceTier, TextView>()
-        lateinit var continueButton: Button
-
-        fun cardBackground(tier: ContentDownloadPlan.ResourceTier, selected: Boolean) = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            if (selected) intArrayOf(Color.rgb(61, 49, 28), Color.rgb(29, 34, 35)) else intArrayOf(Color.rgb(20, 37, 44), Color.rgb(10, 20, 27))
-        ).apply {
-            cornerRadius = dp(14).toFloat()
-            setStroke(dp(if (selected) 2 else 1), if (selected) Color.rgb(246, 204, 119) else Color.rgb(72, 96, 98))
-        }
-
-        fun addQualityCard(tier: ContentDownloadPlan.ResourceTier) {
-            val envelope = ContentDownloadPlan.qualityEnvelopeFor(tier)
-            val isHigh = tier == ContentDownloadPlan.ResourceTier.HIGH
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(10), dp(8), dp(10), dp(8))
-                isClickable = true
-                isFocusable = true
-            }
-            val nameRow = LinearLayout(this).apply {
-                gravity = Gravity.CENTER_VERTICAL
-            }
-            val name = TextView(this).apply {
-                text = if (isHigh) "HIGH GRAPHICS" else "LOW GRAPHICS"
-                textSize = 16f
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-                setTextColor(if (isHigh) Color.rgb(255, 220, 150) else Color.rgb(182, 226, 211))
-            }
-            val size = TextView(this).apply {
-                text = ContentDownloadPlan.totalGiBLabelFor(tier)
-                textSize = 15f
-                gravity = Gravity.END
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(244, 239, 223))
-            }
-            nameRow.addView(name, LinearLayout.LayoutParams(0, dp(24), 1f))
-            nameRow.addView(size, LinearLayout.LayoutParams(dp(68), dp(24)))
-            card.addView(nameRow)
-
-            val descriptor = TextView(this).apply {
-                text = if (isHigh) "FULL DETAIL  •  BEST VISUAL QUALITY" else "DATA-SAVER  •  LIGHTER DOWNLOAD"
-                textSize = 9f
-                letterSpacing = 0.10f
-                setTextColor(if (isHigh) Color.rgb(237, 188, 107) else Color.rgb(139, 207, 184))
-                setPadding(0, 0, 0, dp(4))
-            }
-            card.addView(descriptor)
-
-            val details = TextView(this).apply {
-                text = if (isHigh) {
-                    "High-resolution textures\nDense foliage and richer lighting\nFull effects, shaders, audio and cinematics"
-                } else {
-                    "Lower-resolution textures\nSimpler foliage and lighter effects\nSmaller content pack for less storage"
-                }
-                textSize = 11f
-                setTextColor(Color.rgb(210, 221, 218))
-                setLineSpacing(0f, 1.15f)
-            }
-            card.addView(details, LinearLayout.LayoutParams(-1, dp(52)))
-
-            val technical = TextView(this).apply {
-                text = "${envelope.foliageDensity}% foliage  •  ${envelope.effectScalePercent}% effects\n${envelope.shadowQuality}  •  ${envelope.waterQuality}"
-                textSize = 9f
-                setTextColor(Color.rgb(147, 170, 172))
-                setPadding(0, dp(4), 0, 0)
-            }
-            card.addView(technical, LinearLayout.LayoutParams(-1, dp(34)))
-
-            val selected = TextView(this).apply {
-                text = "SELECTED"
-                textSize = 9f
-                letterSpacing = 0.13f
-                gravity = Gravity.CENTER
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(27, 24, 17))
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(8).toFloat()
-                    setColor(Color.rgb(239, 193, 104))
-                }
-            }
-            selectedLabels[tier] = selected
-            card.addView(selected, LinearLayout.LayoutParams(-1, dp(20)).apply { topMargin = dp(4) })
-            cardViews[tier] = card
-            card.setOnClickListener {
-                chosenTier = tier
-                cardViews.forEach { (candidate, candidateView) ->
-                    val active = candidate == chosenTier
-                    candidateView.background = cardBackground(candidate, active)
-                    selectedLabels[candidate]?.visibility = if (active) View.VISIBLE else View.INVISIBLE
-                }
-                continueButton.text = "CONTINUE WITH ${chosenTier.name}  •  ${ContentDownloadPlan.totalGiBLabelFor(chosenTier)}"
-            }
-            cards.addView(card, LinearLayout.LayoutParams(0, dp(150), 1f).apply {
-                if (!isHigh) rightMargin = dp(8) else leftMargin = dp(8)
-            })
-        }
-
-        tiers.forEach(::addQualityCard)
-        val footer = TextView(this).apply {
-            text = "LOW = less detail, less storage  •  HIGH = richer detail, larger download"
-            textSize = 10f
-            setTextColor(Color.rgb(148, 177, 178))
-            gravity = Gravity.CENTER
-            setPadding(0, dp(6), 0, dp(4))
-        }
-        continueButton = cinematicButton("CONTINUE WITH ${chosenTier.name}  •  ${ContentDownloadPlan.totalGiBLabelFor(chosenTier)}", true) {
-            dialog.dismiss()
-            onChosen(chosenTier)
-        }
-        continueButton.textSize = 11f
-        panel.addView(eyebrow, LinearLayout.LayoutParams(-1, dp(18)))
-        panel.addView(title, LinearLayout.LayoutParams(-1, dp(38)))
-        panel.addView(subtitle, LinearLayout.LayoutParams(-1, dp(36)))
-        panel.addView(cards, LinearLayout.LayoutParams(-1, dp(158)))
-        panel.addView(footer, LinearLayout.LayoutParams(-1, dp(24)))
-        panel.addView(continueButton, LinearLayout.LayoutParams(-1, dp(42)))
-        backdrop.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
-        dialog.setContentView(backdrop)
-        dialog.setCancelable(false)
-        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
-        dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        dialog.window?.attributes = dialog.window?.attributes?.apply { dimAmount = 0.40f }
-        dialog.show()
-        val display = resources.displayMetrics
-        dialog.window?.setLayout(
-            (display.widthPixels * 0.92f).roundToInt(),
-            (display.heightPixels * 0.90f).roundToInt()
-        )
-        cardViews.forEach { (tier, card) ->
-            val active = tier == chosenTier
-            card.background = cardBackground(tier, active)
-            selectedLabels[tier]?.visibility = if (active) View.VISIBLE else View.INVISIBLE
-        }
-    }
-
     private fun showAssetPatchOverlay(onReady: () -> Unit = {}) {
         if (assetPatchOverlay != null) return
-        val resourceTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
+        val resourceTier = selectedResourceTier
         val overlay = FrameLayout(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
@@ -2613,17 +2403,18 @@ class MainActivity : Activity(), SensorEventListener {
             var failureShown = false
             var confirmationInFlight = false
             assetPacks.requestProductionContent(resourceTier) { event ->
+                runOnUiThread {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
                         status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
-                        details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
+                        details.text = event.failedPack ?: "Private high-end content service could not start for this installation."
                         note.text = when (event.errorCode) {
                             -2 -> "The requested pack is not in this installed release. Install the matching AAB or local-testing APK set, then retry."
                             -10 -> "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.startupMiBFor(resourceTier) + 512)} MB."
-                            -13, -15, -100 -> "This installation is not recognized for Play Asset Delivery. Install the matching AAB from Play internal testing, or install a bundletool --local-testing APK set, uninstalling the old APK first."
-                            -6 -> "Play could not reach the asset service. Check Wi-Fi, Google Play Store/Play Services, then retry."
-                            else -> "Install the matching AAB from Play internal testing, or use a bundletool --local-testing APK set. The selected ${resourceTier.storageLabel} packs are required before gameplay."
+                            -13, -15, -100 -> "Private high-end content is not available for this APK version. Check the HTTPS content service and retry."
+                            -6 -> "The private content service could not be reached. Check Wi-Fi or mobile data, then retry."
+                            else -> "The complete ${resourceTier.storageLabel} high-end archive is required before gameplay. Check the private HTTPS service and retry."
                         }
                         note.setTextColor(Color.rgb(255, 188, 142))
                         progress.progress = 0
@@ -2672,6 +2463,7 @@ class MainActivity : Activity(), SensorEventListener {
                     progress.progress = event.percent
                     if (event.complete) finishPreparation()
                 }
+            }
             }
         }
         retry.setOnClickListener {

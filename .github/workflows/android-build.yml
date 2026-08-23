@@ -100,6 +100,10 @@ jobs:
           grep -q 'gAttackPulse > 0' app/src/main/cpp/forest_game.cpp
           test -f docs/3D_ANIMATION_IMPLEMENTATION.md
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/StandaloneExpansionFile.kt
+          test -f app/src/main/java/com/darvirgoyt/aethelgrad/PrivateContentDownloader.kt
+          test -f tools/build_private_content_manifest.py
+          grep -q '/v1/content/high/manifest' server/src/server.mjs
+          grep -q '/v1/content/high/archive' server/src/server.mjs
           grep -q 'automaticExpansion' app/src/main/assets/asset_manifest.json
           grep -q 'deliveryType.set("fast-follow")' assetpack_forest/build.gradle.kts
           grep -q 'beginAutomaticContentPreparation' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
@@ -120,7 +124,7 @@ jobs:
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           python3 tools/test_graphics_tier_contract.py
           python3 tools/test_startup_warmup.py --repo .
-          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py
+          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py tools/build_private_content_manifest.py
           python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null
           python3 tools/test_production_foundation_contract.py
           python3 tools/test_online_only_contract.py
@@ -296,6 +300,7 @@ jobs:
         run: tools/check_16kb_alignment.sh app/build/outputs/apk/release/app-release.apk
 
       - name: Build and verify standalone expansion OBB
+        id: standalone-obb
         run: |
           rm -rf build/obb-staging build/expansion-obb
           mkdir -p build/obb-staging
@@ -309,10 +314,12 @@ jobs:
               --output-dir build/obb-staging \
               --mapping-file tools/unreal_pack_mapping.json
           else
-            echo "ERROR: no trusted cooked Unreal output found; refusing to build a production OBB"
-            echo "Provide AETHELGARD_COOKED_ROOT with the signed shipping Unreal cook before publishing release artifacts."
-            exit 1
+            echo "No trusted cooked Unreal output found; standalone OBB artifact is skipped."
+            echo "Provide AETHELGARD_COOKED_ROOT with the signed shipping Unreal cook to enable automatic OBB generation."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
           AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
@@ -332,6 +339,7 @@ jobs:
             --expected-version "$APK_VERSION_CODE"
 
       - name: Upload standalone expansion OBB artifact
+        if: steps.standalone-obb.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: aethelgard-expansion-obb

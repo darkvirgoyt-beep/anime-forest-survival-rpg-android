@@ -9,6 +9,10 @@ REQUIRED = (
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "requestGoogleSignIn", "Google production login"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "SIGN IN WITH GOOGLE", "visible Google login control"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "requestProductionContent", "production content request"),
+    ("app/src/main/java/com/darvirgoyt/aethelgrad/PrivateContentDownloader.kt", "archiveSha256", "private archive verification"),
+    ("server/src/server.mjs", "/v1/content/high/manifest", "private high-end manifest route"),
+    ("server/src/server.mjs", "/v1/content/high/archive", "private high-end archive route"),
+    ("server/.env.example", "PRIVATE_CONTENT_ARCHIVE_PATH", "private archive server configuration"),
     ("app/build.gradle.kts", "release {", "release build contract"),
     (".github/workflows/android-build.yml", "gradle bundleRelease assembleRelease", "release CI build"),
     ("tools/build_expansion_obb.py", "production-v1", "production content version"),
@@ -38,6 +42,8 @@ FORBIDDEN = (
     (".github/workflows/android-build.yml", "assemblePrototype", "prototype CI build"),
     (".github/workflows/android-build.yml", "aethelgard-prototype-apk", "prototype CI artifact"),
     ("tools/build_expansion_obb.py", "prototype-v1", "prototype content version"),
+    ("app/src/main/assets/asset_manifest.json", "LOW RESOURCES", "low-end player resource tier"),
+    ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "SELECT GRAPHICS QUALITY", "player-facing resource tier selector"),
 )
 
 

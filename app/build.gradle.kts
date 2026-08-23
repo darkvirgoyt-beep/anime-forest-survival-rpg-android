@@ -49,7 +49,7 @@ android {
 
     buildTypes {
         debug {
-            // Debug builds use the same production online guest session boundary.
+            // Debug builds use the same production online authentication boundary.
         }
         release {
             isDebuggable = false

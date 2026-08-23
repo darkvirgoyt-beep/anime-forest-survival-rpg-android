@@ -54,6 +54,12 @@ class AssetPackCatalog(context: Context) {
 
     private val appContext = context.applicationContext
     private val manager: AssetPackManager = AssetPackManagerFactory.getInstance(appContext)
+    private val standaloneExpansionFile = StandaloneExpansionFile(appContext)
+    private val privateContentDownloader = PrivateContentDownloader(
+        appContext,
+        appContext.getString(R.string.private_content_manifest_url),
+        appContext.getString(R.string.private_content_archive_url)
+    )
     private var listener: AssetPackStateUpdateListener? = null
 
     fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH): Preflight {
@@ -109,7 +115,30 @@ class AssetPackCatalog(context: Context) {
         tier: ContentDownloadPlan.ResourceTier,
         onProgress: (ProductionProgress) -> Unit
     ) {
-        // packNamesFor(tier) remains the full installed-footprint estimate; startup uses only the launch slice.
+        if (standaloneExpansionFile.inspect().ready) {
+            val totalBytes = standaloneExpansionFile.inspect().bytes
+            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, totalBytes, totalBytes))
+            return
+        }
+        if (privateContentDownloader.configured) {
+            privateContentDownloader.downloadHighEndContent { progress ->
+                onProgress(
+                    ProductionProgress(
+                        status = when (progress.status) {
+                            PrivateContentDownloader.Status.COMPLETED -> AssetPackStatus.COMPLETED
+                            PrivateContentDownloader.Status.FAILED -> AssetPackStatus.FAILED
+                            PrivateContentDownloader.Status.DOWNLOADING -> AssetPackStatus.DOWNLOADING
+                        },
+                        percent = progress.percent,
+                        bytesDownloaded = progress.bytesDownloaded,
+                        totalBytes = progress.totalBytes,
+                        failedPack = progress.detail,
+                        errorCode = if (progress.status == PrivateContentDownloader.Status.FAILED) -20 else 0
+                    )
+                )
+            }
+            return
+        }
         val requestedPackNames = ContentDownloadPlan.startupPackNamesFor(tier)
         requestPackSet(requestedPackNames, ContentDownloadPlan.startupMiBFor(tier), onProgress)
     }
@@ -265,7 +294,7 @@ class AssetPackCatalog(context: Context) {
     fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)
 
     fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean =
-        ContentDownloadPlan.startupPackNamesFor(tier).all(::isReady)
+        standaloneExpansionFile.inspect().ready || ContentDownloadPlan.startupPackNamesFor(tier).all(::isReady)
 
     fun sectorContentReady(tier: ContentDownloadPlan.ResourceTier, sector: ContentDownloadPlan.WorldSector): Boolean =
         ContentDownloadPlan.packNamesForSector(tier, sector).all(::isReady)
@@ -280,5 +309,6 @@ class AssetPackCatalog(context: Context) {
     fun close() {
         listener?.let(manager::unregisterListener)
         listener = null
+        privateContentDownloader.close()
     }
 }

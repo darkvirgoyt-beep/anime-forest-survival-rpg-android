@@ -3,9 +3,9 @@ package com.darvirgoyt.aethelgrad
 /**
  * Production download envelope for the real cooked 3D Aethelgard experience.
  *
- * The selected Low or High tier is downloaded and mounted completely before
- * world entry. This prevents missing meshes, shaders, world sectors, audio, or
- * VFX from appearing after the player starts.
+ * The private four-player build downloads and mounts the complete high-end
+ * package before world entry. Device profiling can tune runtime settings later,
+ * but it is not a separate player-facing content tier.
  */
 object ContentDownloadPlan {
     data class QualityEnvelope(
@@ -18,16 +18,6 @@ object ContentDownloadPlan {
         val requiresDownloadedContent: Boolean
     )
 
-    private val lowQualityEnvelope = QualityEnvelope(
-        id = "mobile-balanced",
-        textureLabel = "balanced PBR",
-        foliageDensity = 55,
-        effectScalePercent = 70,
-        shadowQuality = "dynamic contact shadows",
-        waterQuality = "animated river surface",
-        requiresDownloadedContent = true
-    )
-
     private val highQualityEnvelope = QualityEnvelope(
         id = "cinematic-high",
         textureLabel = "high-resolution PBR",
@@ -38,25 +28,17 @@ object ContentDownloadPlan {
         requiresDownloadedContent = true
     )
 
-    fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope = when (tier) {
-        ResourceTier.LOW -> lowQualityEnvelope
-        ResourceTier.HIGH -> highQualityEnvelope
-    }
+    fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope = highQualityEnvelope
 
     enum class ResourceTier(
         val storageLabel: String,
         val graphicsTierIndex: Int,
         val description: String
     ) {
-        LOW(
-            storageLabel = "4.2 GB",
-            graphicsTierIndex = 0,
-            description = "Launch forest first, then download biome sectors, low-resolution textures, GLES shaders, terrain LODs, animation, and core effects as they are discovered."
-        ),
         HIGH(
             storageLabel = "6.6 GB",
             graphicsTierIndex = 4,
-            description = "Launch forest first, then stream high-resolution biomes, characters, HD textures, foliage, VFX, audio, cinematics, and animation as the world opens."
+            description = "Complete high-end world sectors, high-resolution characters, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation before gameplay."
         )
     }
 
@@ -77,7 +59,7 @@ object ContentDownloadPlan {
     val packs = listOf(
         Pack("assetpack_graphics_base", 450, "compiled materials, base shaders, shared meshes, mobile render resources"),
         Pack("assetpack_forest", 350, "forest launch region, village, foliage, water, collision, navigation"),
-        Pack("assetpack_characters", 500, "heroes, NPCs, animals, enemies, rigs, animation bindings, character photos"),
+        Pack("assetpack_characters", 500, "heroes, NPCs, animals, enemies, rigs, animation bindings"),
         Pack("assetpack_shaders_gles", 250, "compiled OpenGL ES shader libraries and pipeline state resources"),
         Pack("assetpack_world_streaming", 400, "world partition descriptors, streamed sublevels, nav data for all world sectors"),
         Pack("assetpack_terrain_lod", 425, "terrain heightfields, landscape LODs, virtual shadow maps"),
@@ -95,28 +77,11 @@ object ContentDownloadPlan {
         Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
     )
 
-    private val lowResourcePackNames = setOf(
-        "assetpack_graphics_base",
-        "assetpack_forest",
-        "assetpack_characters",
-        "assetpack_shaders_gles",
-        "assetpack_world_streaming",
-        "assetpack_terrain_lod",
-        "assetpack_animation_sets",
-        "assetpack_sand",
-        "assetpack_snow",
-        "assetpack_dungeons"
-    )
+    /** Every high-end pack is required before the first playable world entry. */
+    fun packsFor(tier: ResourceTier): List<Pack> = packs
 
-    fun packsFor(tier: ResourceTier): List<Pack> = when (tier) {
-        ResourceTier.LOW -> packs.filter { it.playPackName in lowResourcePackNames }
-        ResourceTier.HIGH -> packs
-    }
-
-    /** All packs in a tier, used for the full installed-footprint estimate. */
     fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
 
-    /** Every pack in the selected tier is required before the first playable world entry. */
     fun startupPacksFor(tier: ResourceTier): List<Pack> = packsFor(tier)
 
     fun startupPackNamesFor(tier: ResourceTier): List<String> = startupPacksFor(tier).map { it.playPackName }
@@ -135,8 +100,8 @@ object ContentDownloadPlan {
     fun totalGiBLabelFor(tier: ResourceTier): String = "%.1f GB".format(totalMiBFor(tier) / 1024.0)
 
     val totalMiB: Int = packs.sumOf { it.targetMiB }
-    val requiredMiB: Int = packs.filter { it.requiredBeforeStart }.sumOf { it.targetMiB }
-    // Reserve headroom for full-tier Play staging, filesystem metadata, and safe pack updates.
+    val requiredMiB: Int = packs.sumOf { it.targetMiB }
+    // Reserve headroom for full-tier HTTPS/Play staging, filesystem metadata, and safe pack updates.
     val minimumFreeSpaceMiB: Int = requiredMiB + 512
     val totalGiBLabel: String = "%.1f GB".format(requiredMiB / 1024.0)
     val summary: String = packs.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }

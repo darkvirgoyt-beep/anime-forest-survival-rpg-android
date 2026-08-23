@@ -8,21 +8,20 @@ The reference image `assets/aethelgard_high_end_visual_target.jpg` defines the i
 
 ![Aethelgard high-end visual target](../assets/aethelgard_high_end_visual_target.jpg)
 
-This is the canonical visual target for the real AAA production game. The current checkout contains the delivery contracts and development payloads needed to advance that target; the authored production result requires original or licensed Blender/Unreal meshes, rigging, animation, PBR textures, water materials, foliage clusters, VFX, lighting, collision, navigation, and device profiling.
+This is the canonical visual target for the real AAA production game. The current checkout contains the delivery contracts and runtime source foundation; the authored production result requires original or licensed Blender/Unreal meshes, rigging, animation, PBR textures, water materials, foliage clusters, VFX, lighting, collision, navigation, and device profiling.
 
 ## Download-to-quality contract
 
-| Download tier | Runtime profile | Effect after download | Intended device |
+| Required package | Runtime profile | Effect after download | Intended deployment |
 |---|---|---|---|
-| LOW RESOURCES | `mobile-balanced` / performance-oriented | Balanced PBR, reduced foliage and effects, animated water, compact shader path | Lower-memory or thermally constrained Android |
-| HIGH RESOURCES | `cinematic-high` / cinematic | High-resolution PBR, full foliage budget, stronger effects, layered water accents, compiled shader/pipeline resources, expanded world/character/audio content | Upper-midrange and high-end Android |
+| HIGH-END RESOURCES | `cinematic-high` | High-resolution PBR, full foliage budget, layered water, compiled shader and pipeline resources, all world/character/audio/VFX content, and four-player online gameplay data | Private Android APK plus HTTPS archive for the trusted four-player test group |
 
-The Android runtime now gates the native renderer on `setContentTierReady`. Before the selected pack set is mounted, the fallback scene is capped at a safe quality level. After Play Asset Delivery reports completion, the selected graphics tier is applied and the UI identifies the mounted quality envelope. This prevents a settings label from pretending that missing content is available.
+The Android runtime gates the native renderer on `setContentTierReady`. Before the high-end archive is mounted and verified, the world remains locked. After the private HTTPS downloader or matching OBB reports completion, the high-end graphics envelope is applied. This prevents a settings label from pretending that missing content is available.
 
 ## Production asset rules
 
-The checked-in pack directories are development payloads and must remain small. Real production builds should replace them with cooked Unreal `.pak` or equivalent runtime content, with the same stable pack names and validated manifests. No padding is generated to create the impression of a large game. A high-end release is complete only when the cooked payload contains the authored assets described by the manifest and the Android device profile can load them without thermal, memory, or frame-time failure.
+Real production builds must supply cooked Unreal `.pak`, `.ucas`, and `.utoc` runtime content, with stable pack names and verified manifests. No padding is generated to create the impression of a large game. A high-end release is complete only when the cooked payload contains the authored assets described by the manifest and the Android device profile can load them without thermal, memory, or frame-time failure.
 
 ## Quality gates
 
-The graphics-tier contract test verifies that the high tier contains more content than the low tier, includes HD textures, VFX, and pipeline cache packs, and that the Android/native readiness hooks exist. CI still validates asset budgets, resource-center behavior, native tests, online-service tests, Android alignment, APK/AAB output, and standalone OBB verification.
+The high-end contract test verifies the single complete package, including HD textures, VFX, pipeline cache, private HTTPS verification, and Android/native readiness hooks. CI validates asset budgets, resource-center behavior, native tests, online-service tests, Android alignment, APK/AAB output, and standalone OBB verification when a real cook is supplied.

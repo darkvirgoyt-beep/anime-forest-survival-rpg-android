@@ -18,7 +18,7 @@
 
 ## Included in v0.1
 
-The Android bootstrap contains only the production account shell, settings, loading scene, native renderer, save schema, and minimum runtime code required before Play Asset Delivery content is mounted. It does not ship a reference-image library or character-photo gallery. The final world meshes, materials, animation graphs, cooked shaders, LODs, audio, VFX, and world-sector data must arrive through the signed resource packs.
+The Android bootstrap contains only the production account shell, settings, loading scene, native renderer, save schema, and minimum runtime code required before the private high-end archive is mounted. It does not ship a reference-image library or character-photo gallery. The final world meshes, materials, animation graphs, cooked shaders, LODs, audio, VFX, and world-sector data must arrive through the verified HTTPS OBB.
 
 ## Planned original assets
 
@@ -35,7 +35,7 @@ The design references broad anime-fantasy and survival-RPG aesthetics only. Do n
 
 ## Realistic graphics and large-content delivery
 
-The production graphics and delivery plan is documented in [REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md](docs/REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md). The authoritative budget is [assets/asset_budget.json](assets/asset_budget.json), which targets 10,116 MiB of real authored content across eleven Android asset packs. The pack modules are linked from the app Gradle configuration and use install-time, fast-follow, and on-demand delivery modes.
+The production graphics and delivery plan is documented in [REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md](docs/REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md). The authoritative envelope is [assets/asset_budget.json](assets/asset_budget.json), while the private high-end archive currently targets 6,750 MiB across 18 payload groups. The payloads are generated from the shipping Unreal cook and served by the private HTTPS backend; Google Play Console is not required for this distribution path.
 
 The repository does not create dummy files or claim that empty asset directories are finished 10 GiB content. Populate each pack with original or properly licensed models, textures, animations, audio, cinematics, voice, VFX, and cooked Unreal chunks. A production release must fail or remain locked until those signed cooked packs are present. Run `python3 tools/validate_asset_budget.py` before release; it reports actual bytes and rejects over-budget packs without generating padding.
 

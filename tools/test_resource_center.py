@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Deterministic smoke tests for a Play Asset Delivery resource center.
+"""Deterministic smoke tests for the private high-end resource center.
 
-This script does not download gigabytes. It models the pack-state events that
-Google Play sends to the app and checks the UI-facing aggregate state, then
-optionally verifies that the Android source contains the expected integration.
+This script does not download gigabytes. It models the complete 18-pack state
+that the private HTTPS archive represents and checks the UI-facing aggregate
+state, then verifies the Android source integration.
 """
 from __future__ import annotations
 
@@ -34,19 +34,6 @@ PACKS = (
     "assetpack_terrain_lod",
     "assetpack_animation_sets",
 )
-LOW_PACKS = (
-    "assetpack_graphics_base",
-    "assetpack_forest",
-    "assetpack_sand",
-    "assetpack_snow",
-    "assetpack_characters",
-    "assetpack_dungeons",
-    "assetpack_shaders_gles",
-    "assetpack_world_streaming",
-    "assetpack_terrain_lod",
-    "assetpack_animation_sets",
-)
-
 DOWNLOADING = "DOWNLOADING"
 COMPLETED = "COMPLETED"
 FAILED = "FAILED"
@@ -111,11 +98,10 @@ def assert_source_contract(repo: Path) -> None:
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
         ("resource-center title", "PREPARE ${resourceTier.name} GRAPHICS", main),
-        ("resource-tier chooser", "SELECT GRAPHICS QUALITY", main),
-        ("low-resource option", "LOW GRAPHICS", main),
-        ("download content description", "resourceTier.description", main),
+        ("high-end content description", "resourceTier.description", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
-        ("tier pack selection", "packNamesFor(tier)", catalog),
+        ("tier pack selection", "startupPackNamesFor(tier)", catalog),
+        ("private downloader", "PrivateContentDownloader", catalog),
         ("production readiness gate", "productionContentReady", catalog),
         ("Vulkan shader pack", "assetpack_shaders_vulkan", plan),
         ("OpenGL ES shader pack", "assetpack_shaders_gles", plan),
@@ -133,12 +119,12 @@ def assert_source_contract(repo: Path) -> None:
     if manifest.get("contentDelivery", {}).get("full3dTargetMiB") != 6750:
         raise AssertionError("manifest target must remain 6750 MiB")
     tiers = {item.get("id"): item for item in manifest.get("resourceTiers", [])}
-    if tiers.get("low", {}).get("targetMiB") != 4300 or tiers.get("high", {}).get("targetMiB") != 6750:
-        raise AssertionError("manifest must declare 4300 MiB low and 6750 MiB high tiers")
-    if set(tiers["low"].get("packs", [])) != set(LOW_PACKS):
-        raise AssertionError("low tier pack set is inconsistent")
+    if set(tiers) != {"high"} or tiers["high"].get("targetMiB") != 6750:
+        raise AssertionError("manifest must declare only the 6750 MiB high-end tier")
     if set(tiers["high"].get("packs", [])) != set(PACKS):
-        raise AssertionError("high tier pack set is inconsistent")
+        raise AssertionError("high-end pack set is inconsistent")
+    if manifest.get("contentDelivery", {}).get("mode") != "private-https-archive":
+        raise AssertionError("manifest must use private HTTPS archive delivery")
 
 
 def test_initial_state() -> None:
@@ -180,11 +166,12 @@ def test_failure_and_retry_state() -> None:
     assert result["status"] == DOWNLOADING
 
 
-def test_tier_pack_sets_are_distinct() -> None:
-    assert set(LOW_PACKS).issubset(PACKS)
-    assert len(LOW_PACKS) < len(PACKS)
-    assert "assetpack_shaders_vulkan" not in LOW_PACKS
-    assert "assetpack_hd_textures" not in LOW_PACKS
+def test_high_end_pack_set_is_complete() -> None:
+    assert len(PACKS) == 18
+    assert len(set(PACKS)) == 18
+    assert "assetpack_shaders_vulkan" in PACKS
+    assert "assetpack_hd_textures" in PACKS
+    assert "assetpack_pipeline_cache" in PACKS
 
 
 def test_invalid_progress_is_rejected() -> None:
@@ -210,7 +197,7 @@ def run(repo: Path | None, unreal_project: Path | None) -> None:
         test_aggregate_progress_is_monotonic,
         test_complete_requires_every_pack,
         test_failure_and_retry_state,
-        test_tier_pack_sets_are_distinct,
+        test_high_end_pack_set_is_complete,
         test_invalid_progress_is_rejected,
     )
     for test in tests:

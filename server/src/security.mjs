@@ -23,6 +23,8 @@ export function loadRuntimeConfig(env = process.env) {
     googleIdTokenAudience: env.GOOGLE_ID_TOKEN_AUDIENCE,
     googlePlayGamesClientId: optionalConfigValue(env.GOOGLE_GAME_SERVER_CLIENT_ID),
     googlePlayGamesClientSecret: optionalConfigValue(env.GOOGLE_GAME_SERVER_CLIENT_SECRET),
+    privateContentManifestPath: optionalConfigValue(env.PRIVATE_CONTENT_MANIFEST_PATH),
+    privateContentArchivePath: optionalConfigValue(env.PRIVATE_CONTENT_ARCHIVE_PATH),
     sessionSecret: env.GAME_SESSION_JWT_SECRET,
     allowedOrigin: env.ALLOWED_ORIGIN,
     accessTtlSeconds: boundedPositiveInt(env.GAME_ACCESS_TOKEN_TTL_SECONDS, 900, 60, 3600),

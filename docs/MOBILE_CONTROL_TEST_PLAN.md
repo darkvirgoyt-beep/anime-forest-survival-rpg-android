@@ -2,7 +2,7 @@
 
 ## Test build
 
-Install the matching AETHELGARD AAB through Play internal testing, or install the complete bundletool local-testing APK set from a successful GitHub Actions run. The release client requires network access, mandatory Google sign-in, and the complete selected Low/High Play Asset Delivery tier before entering the world. A direct APK is limited to login/configuration smoke checks because it cannot fetch the production packs.
+Install the matching AETHELGARD AAB through Play internal testing, or install the complete bundletool local-testing APK set from a successful GitHub Actions run. The release client requires network access, mandatory Google sign-in, and the complete high-end HTTPS content archive before entering the world. A direct APK is limited to login/configuration smoke checks because it cannot fetch the production packs.
 
 ## Control acceptance matrix
 

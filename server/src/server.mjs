@@ -2,6 +2,7 @@ import express from "express";
 import pg from "pg";
 import { OAuth2Client } from "google-auth-library";
 import { pathToFileURL } from "node:url";
+import path from "node:path";
 import { randomBytes } from "node:crypto";
 import {
   createOpaqueToken,
@@ -42,6 +43,27 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
   });
 
   const requireSession = createSessionGuard({ pool, config });
+
+  app.get("/v1/content/high/manifest", (_req, res) => {
+    if (!config.privateContentManifestPath || !path.isAbsolute(config.privateContentManifestPath)) {
+      return res.status(503).json({ error: "private_content_not_configured" });
+    }
+    res.setHeader("Cache-Control", "no-store");
+    return res.type("application/json").sendFile(config.privateContentManifestPath, { dotfiles: "deny" }, (error) => {
+      if (error && !res.headersSent) res.status(error.statusCode || 500).json({ error: "private_content_manifest_unavailable" });
+    });
+  });
+
+  app.get("/v1/content/high/archive", (_req, res) => {
+    if (!config.privateContentArchivePath || !path.isAbsolute(config.privateContentArchivePath)) {
+      return res.status(503).json({ error: "private_content_not_configured" });
+    }
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Accept-Ranges", "bytes");
+    return res.sendFile(config.privateContentArchivePath, { dotfiles: "deny" }, (error) => {
+      if (error && !res.headersSent) res.status(error.statusCode || 500).json({ error: "private_content_archive_unavailable" });
+    });
+  });
 
   app.get("/healthz", async (_req, res) => {
     try {
