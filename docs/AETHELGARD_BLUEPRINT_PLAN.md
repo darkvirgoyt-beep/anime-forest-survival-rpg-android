@@ -9,23 +9,24 @@ BOOT
   ↓
 TITLE / LEGAL / VERSION CHECK
   ↓
-ACCOUNT GATE ───────────────→ GUEST / OFFLINE PROFILE
-  │                                  │
-  └→ GOOGLE PLAY BRIDGE              │
-          ↓                          │
-     BACKEND SESSION EXCHANGE        │
-          ↓                          │
-      AUTHENTICATED PROFILE          │
-          └──────────────┬───────────┘
-                         ↓
-                 SERVER DIRECTORY
-          region • status • capacity • ping
-                         ↓
-              SELECT / CREATE WORLD
-       invite-only co-op • privacy • seed
-                         ↓
-                CLOUD SAVE PREFLIGHT
-     load newest version • conflict policy
+ACCOUNT GATE ───────────────→ AUTHENTICATED PROFILE
+          │
+     GOOGLE PLAY BRIDGE
+          ↓
+     BACKEND SESSION EXCHANGE
+          ↓
+      SERVER DIRECTORY
+ region • status • capacity • live ping
+          ↓
+       CLOUD SAVE PREFLIGHT
+ authenticated account • newest revision • conflict policy
+          ↓
+       CO-OP SESSION GATE
+ invite-only party • version • capacity • reconnect
+          ↓
+       SELECT / CREATE WORLD
+              seed • privacy
+
                          ↓
                CHARACTER CREATION
      eyebrow • hair • outfit • name validation
@@ -48,9 +49,9 @@ ACCOUNT GATE ───────────────→ GUEST / OFFLINE PR
 | Screen or state | Player-facing responsibilities | Server/backend responsibility | Current foundation |
 |---|---|---|---|
 | Boot | Load version, legal text, local settings, asset-pack status | Version compatibility and maintenance status | Android activity and Unreal project descriptor |
-| Account | Guest/offline entry or Google Play sign-in | Exchange short-lived provider credential for backend session | `AccountSessionManager`, `UForestSliceAccountSubsystem` boundary |
+| Account | Mandatory Google Play sign-in and session status; no player-facing guest entry | Exchange short-lived provider credential for backend session | `AccountSessionManager`, `UForestSliceAccountSubsystem` boundary; current APK still exposes a temporary developer-only guest control that must be hidden for release |
 | Server directory | Show region, status, capacity, measured ping, selected row | Return signed directory and perform real health/ping checks | `ServerDirectory.kt`, `UForestSliceServerDirectorySubsystem` |
-| World lobby | Create private world, invite friends, join by code, set privacy | Allocate/destroy authoritative session and verify party permissions | Planned co-op session subsystem |
+| World lobby | Create private world, invite friends, join by code, set privacy; blocked until authenticated and cloud-save preflight succeeds | Allocate/destroy authoritative session and verify party permissions | `UForestSliceWorldSessionSubsystem` contract; dedicated service still required |
 | Cloud save | Show last saved version, conflict warning, retry state | Versioned save, checksum, conflict resolution, migration, backup | Planned cloud-save service boundary |
 | Character creation | Choose original style parameters and valid name | Validate name, reserve identity, replicate profile | `CharacterCreationState`, `UForestSliceCharacterProfileComponent` |
 | World bootstrap | Spawn at safe camp, load nearby chunk, display quest | Own seed, spawn, mutations, quest state, inventory | Procedural forest and gameplay component foundations |
@@ -65,7 +66,7 @@ The client owns presentation state, local input, camera feel, menu navigation, c
 
 ## First account/server/character milestone
 
-The milestone is complete when a player can launch the Android build, choose guest mode, see the server directory, select a region whose latency is visibly `—` until a real endpoint is configured, enter a character name, cycle original style indices for eyebrow/clothes/hair, and pass validation before the gameplay HUD is revealed. The Google Play button must clearly state that the provider bridge is not configured in the development APK; it must not fake an authenticated session.
+The online-only release milestone is complete when a player can launch the Android build, complete Google Play sign-in through the platform bridge, receive a backend session, see live server health and measured latency, pass cloud-save preflight, join or create an invite-only co-op session, enter a character name, cycle original style indices for eyebrow/clothes/hair, and pass validation before the gameplay HUD is revealed. The Google Play button must not fake an authenticated session. A clearly isolated developer build may use a guest control, but that control must be compiled out or hidden behind a developer flag in release.
 
 ## First world milestone
 
@@ -77,7 +78,7 @@ Co-op begins as invite-only four-player sessions on a dedicated authoritative se
 
 ## Cloud-save contract
 
-Every save has a `schemaVersion`, `worldId`, `playerId`, `revision`, `updatedAt`, `contentHash`, and separate player/world mutation sections. Uploads are idempotent. The server rejects stale revisions unless the conflict resolver can merge disjoint mutations; otherwise the player receives an explicit conflict screen with local and cloud timestamps. Save migration is tested before each release. Offline guest saves remain local and can later be linked only after explicit account consent.
+Every save has a `schemaVersion`, `worldId`, `playerId`, `revision`, `updatedAt`, `contentHash`, and separate player/world mutation sections. Uploads are idempotent. The server rejects stale revisions unless the conflict resolver can merge disjoint mutations; otherwise the player receives an explicit conflict screen with local and cloud timestamps. Save migration is tested before each release. Online-only release saves are account-bound and uploaded through the authenticated backend. A developer-only local profile may exist for test automation, but it must never appear as a release login option or silently merge into a production account.
 
 ## Taming and creature contract
 

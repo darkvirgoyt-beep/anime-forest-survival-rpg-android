@@ -198,25 +198,29 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, 6, 0, 12)
         }
         onboardingStatus = TextView(this).apply {
-            text = "Choose guest mode for offline development or connect the production Google Play bridge."
+            text = "ONLINE ONLY  •  Sign in with Google Play to continue to server selection and cloud world access."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setPadding(0, 4, 0, 10)
         }
         val accountRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        val guest = actionButton("GUEST / OFFLINE") {
-            val snapshot = accountSession.startGuest()
-            onboardingStatus.text = snapshot.message
-            onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
-        }
-        val google = actionButton("GOOGLE PLAY") {
+        val google = actionButton("GOOGLE PLAY SIGN-IN") {
             val snapshot = accountSession.requestGooglePlaySignIn()
             onboardingStatus.text = snapshot.message
             onboardingStatus.setTextColor(Color.rgb(255, 205, 145))
         }
-        accountRow.addView(guest, LinearLayout.LayoutParams(190, 46).apply { rightMargin = 10 })
-        accountRow.addView(google, LinearLayout.LayoutParams(190, 46))
+        if (BuildConfig.DEBUG) {
+            val guest = actionButton("DEV GUEST") {
+                val snapshot = accountSession.startGuest()
+                onboardingStatus.text = "DEV ONLY  •  ${snapshot.message}"
+                onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
+            }
+            accountRow.addView(guest, LinearLayout.LayoutParams(150, 46).apply { rightMargin = 10 })
+            accountRow.addView(google, LinearLayout.LayoutParams(230, 46))
+        } else {
+            accountRow.addView(google, LinearLayout.LayoutParams(390, 46))
+        }
 
         val serverTitle = TextView(this).apply {
             text = "SERVER / REGION"
@@ -264,8 +268,14 @@ class MainActivity : Activity(), SensorEventListener {
         val enter = actionButton("CREATE PROFILE / ENTER WORLD") {
             characterCreation.name = characterNameInput.text.toString()
             val error = characterCreation.validate()
-            if (accountSession.snapshot.state != SessionState.GUEST && accountSession.snapshot.state != SessionState.AUTHENTICATED) {
-                onboardingStatus.text = "Select GUEST / OFFLINE or configure the Google Play bridge first."
+            val authenticated = accountSession.snapshot.state == SessionState.AUTHENTICATED
+            val developerGuest = BuildConfig.DEBUG && accountSession.snapshot.state == SessionState.GUEST
+            val serverReady = selectedServer.status == "ONLINE" && selectedServer.pingMs != null
+            if (!authenticated && !developerGuest) {
+                onboardingStatus.text = "Google Play sign-in is required before entering the online world."
+                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            } else if (!serverReady && !developerGuest) {
+                onboardingStatus.text = "Server health/ping is not ready. Online world entry is blocked."
                 onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
             } else if (error != null) {
                 onboardingStatus.text = error
@@ -287,7 +297,10 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(characterNameInput, LinearLayout.LayoutParams(-1, 48).apply { bottomMargin = 8 })
         panel.addView(styleRow, LinearLayout.LayoutParams(-1, 44))
         panel.addView(enter, LinearLayout.LayoutParams(-1, 50).apply { topMargin = 14 })
-        overlay.addView(panel, FrameLayout.LayoutParams(820, -2, Gravity.CENTER))
+        overlay.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply {
+            leftMargin = 40
+            rightMargin = 40
+        })
         return overlay
     }
 

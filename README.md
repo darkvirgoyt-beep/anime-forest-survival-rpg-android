@@ -6,7 +6,9 @@
 
 ## Current milestone
 
-The current slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future local save wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
+The current slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future online session wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
+
+The intended player-facing product flow is now **online-only**: Google Play authentication, backend session exchange, server-region health/ping, cloud-save preflight, and co-op session validation must succeed before entering a production world. A developer-only guest path may exist in debug builds for automation, but it is hidden from release builds and is not a production account mode.
 
 The Aethelargd RPG layer now adds a deterministic progression loop: the **The First Ember** quest tracks three resource caches, an ember-kit craft, and a forest-warden defeat; gathering, combat hits, crafting, and the quest reward grant XP; level thresholds are surfaced in the live HUD; and the warden has a readable health bar, hit flash, defeat feedback, and quest completion state. The progression rules live in `app/src/main/cpp/rpg/progression.*` and are covered by a native regression test.
 
@@ -51,7 +53,7 @@ The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PL
 
 ## Roadmap
 
-The next production slices should add a proper 3D camera, original rigged anime characters, authored or legally licensed environment assets, animation clips, collision geometry, real inventory/crafting UI, enemy state machines, save/load, dynamic music states, voice/animal libraries, device performance profiles, and a signed release pipeline. Generated or imported assets must be original or carry a compatible license.
+The next production slices should add a proper 3D camera, original rigged anime characters, authored or legally licensed environment assets, animation clips, collision geometry, real inventory/crafting UI, enemy state machines, authenticated Google Play session exchange, live server health/ping, versioned cloud saves, dedicated co-op sessions, dynamic music states, voice/animal libraries, device performance profiles, and a signed release pipeline. Generated or imported assets must be original or carry a compatible license.
 
 ## Repository status
 
