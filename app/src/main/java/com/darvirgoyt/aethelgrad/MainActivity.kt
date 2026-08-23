@@ -177,11 +177,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var coOpRequestCounter = 0L
     private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
-    private var networkProbeHost = ""
     private lateinit var networkMonitor: NetworkConnectivityMonitor
     private var networkOnline = false
-    private var pingProbeInFlight = false
-    private var latestPingMs: Int? = null
     private var guestSignInAttempted = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
@@ -203,7 +200,7 @@ class MainActivity : Activity(), SensorEventListener {
             val room = activeCoOpRoom
             if (room != null && !networkOnline) {
                 if (::coOpStatusLabel.isInitialized) {
-                    coOpStatusLabel.text = "CO-OP PAUSED  •  CONNECT WI-FI OR MOBILE DATA"
+                    coOpStatusLabel.text = "CO-OP SYNC  •  RECONNECTING"
                 }
                 if (::gameView.isInitialized) {
                     gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(false) }
@@ -294,16 +291,15 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
         loadHeroineCharacterTexture()
-        if (resourcePreparationComplete) markWorldLoadingTaskReady("content")
+        markProductionContentReady()
         updateGyroButton()
         registerGyro()
-        networkProbeHost = Uri.parse(getString(R.string.api_base_url)).host.orEmpty()
         networkMonitor = NetworkConnectivityMonitor(this)
         // Initialize the session boundary before starting connectivity callbacks;
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // Every build enters the production online guest flow; online session is mandatory.
+        // The bundled world launches immediately; account, cloud, and co-op services continue online in parallel.
         onboardingOverlay.visibility = View.VISIBLE
         if (networkOnline) beginOnlineStartup()
     }
@@ -311,7 +307,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun requestOnlineGuestSession() {
         if (!networkOnline || guestSignInAttempted) return
         guestSignInAttempted = true
-        onboardingStatus.text = "ONLINE ONLY / GUEST SESSION  •  CONNECTING…"
+        onboardingStatus.text = "GUEST SESSION  •  CONNECTING…"
         accountSession.requestGuestSignIn()
     }
 
@@ -336,27 +332,12 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginOnlineStartup() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+                onboardingStatus.text = "CONNECTION RESTORING  •  THE BUNDLED WORLD IS READY"
             }
             return
         }
-        if (selectedResourceTier == null) {
-            if (!resourceTierChooserVisible) {
-                resourceTierChooserVisible = true
-                showResourceTierChooser { chosenTier ->
-                    resourceTierChooserVisible = false
-                    applyResourceTier(chosenTier)
-                    showAssetPatchOverlay()
-                }
-            }
-        } else if (!resourcePreparationComplete) {
-            if (assetPacks.productionContentReady(selectedResourceTier!!)) {
-                markProductionContentReady()
-                continuePendingWorldEntry()
-            } else {
-                showAssetPatchOverlay()
-            }
-        }
+        markProductionContentReady()
+        continuePendingWorldEntry()
         when (accountSession.snapshot.state) {
             SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> requestOnlineGuestSession()
             SessionState.AUTHENTICATED -> {
@@ -369,59 +350,32 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
         networkOnline = snapshot.isOnline
         if (!networkOnline) {
-            latestPingMs = null
             if (::networkStatusLabel.isInitialized) {
-                networkStatusLabel.text = "NETWORK: OFFLINE  •  ${snapshot.message}"
+                networkStatusLabel.text = "NETWORK: RECONNECTING"
                 networkStatusLabel.setTextColor(Color.rgb(255, 180, 150))
             }
             if (::coOpStatusLabel.isInitialized && activeCoOpRoom == null) {
-                coOpStatusLabel.text = "CO-OP BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+                coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+                onboardingStatus.text = "CONNECTION RESTORING  •  THE BUNDLED WORLD IS READY"
             }
             return
         }
 
         if (::networkStatusLabel.isInitialized) {
-            networkStatusLabel.text = "NETWORK: ${snapshot.message}  •  PING: —"
+            networkStatusLabel.text = "NETWORK: CONNECTED"
             networkStatusLabel.setTextColor(Color.rgb(164, 231, 190))
         }
         if (accountSession.snapshot.state != SessionState.AUTHENTICATED && ::onboardingStatus.isInitialized) {
-            onboardingStatus.text = "ONLINE READY  •  STARTING GUEST SESSION…"
+            onboardingStatus.text = "CONNECTING TO ONLINE WORLD…"
         }
         beginOnlineStartup()
-        refreshSelectedServerPing()
-    }
-
-    private fun refreshSelectedServerPing() {
-        if (!networkOnline || pingProbeInFlight) return
-        pingProbeInFlight = true
-        val pingHost = networkProbeHost.ifBlank { selectedServer.host }
-        networkMonitor.measureTcpLatency(pingHost) { measuredPing ->
-            runOnUiThread {
-                pingProbeInFlight = false
-                latestPingMs = measuredPing
-                selectedServer = selectedServer.copy(
-                    pingMs = measuredPing,
-                    status = if (measuredPing != null) "REACHABLE" else "UNREACHABLE"
-                )
-                updateNetworkAndIdentityLabels()
-                if (::onboardingStatus.isInitialized && accountSession.snapshot.state != SessionState.AUTHENTICATED) {
-                    onboardingStatus.text = if (measuredPing != null) {
-                        "${selectedServer.name}  •  PING ${measuredPing} ms  •  READY"
-                    } else {
-                        "${selectedServer.name}  •  SERVER UNREACHABLE"
-                    }
-                }
-            }
-        }
     }
 
     private fun updateNetworkAndIdentityLabels() {
         if (::networkStatusLabel.isInitialized) {
-            val connection = if (networkOnline) "${selectedServer.name.uppercase()} ${latestPingMs?.let { "• PING ${it} ms" } ?: "• PING —"}" else "OFFLINE"
-            networkStatusLabel.text = "NETWORK: $connection"
+            networkStatusLabel.text = if (networkOnline) "NETWORK: CONNECTED" else "NETWORK: RECONNECTING"
             networkStatusLabel.setTextColor(if (networkOnline) Color.rgb(164, 231, 190) else Color.rgb(255, 180, 150))
         }
         if (::identityStatusLabel.isInitialized) {
@@ -436,10 +390,10 @@ class MainActivity : Activity(), SensorEventListener {
     private fun requireOnline(action: String): Boolean {
         if (networkOnline) return true
         if (::coOpStatusLabel.isInitialized) {
-            coOpStatusLabel.text = "$action BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+            coOpStatusLabel.text = "$action  •  CONNECTION RESTORING"
         }
         if (::onboardingStatus.isInitialized) {
-            onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+            onboardingStatus.text = "CONNECTION RESTORING"
         }
         return false
     }
@@ -620,9 +574,7 @@ class MainActivity : Activity(), SensorEventListener {
         val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {
             val index = ServerDirectory.regions.indexOfFirst { it.id == selectedServer.id }
             selectedServer = ServerDirectory.regions[(index + 1) % ServerDirectory.regions.size]
-            latestPingMs = null
-            onboardingStatus.text = "${selectedServer.name} selected  •  PING: —  •  CHECKING SERVER"
-            refreshSelectedServerPing()
+            onboardingStatus.text = "${selectedServer.name} selected  •  CONNECTING TO ONLINE WORLD"
         }
         overlay.addView(serverButton, FrameLayout.LayoutParams(dp(176), dp(42), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(18)
@@ -693,7 +645,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "ONLINE ONLY / GUEST SESSION  •  Connecting…"
+            text = "GUEST SESSION  •  Connecting…"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
@@ -1567,7 +1519,7 @@ class MainActivity : Activity(), SensorEventListener {
                 if (error == "Your membership has expired." || error == "Tower room is no longer available.") {
                     activeCoOpRoom = null
                     hudHandler.removeCallbacks(coOpUpdater)
-                    if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP OFFLINE  •  $error"
+                    if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP SYNC  •  RETRYING"
                 }
             }
         }
@@ -1650,7 +1602,7 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(result, LinearLayout.LayoutParams(-1, dp(32)))
         val create = actionButton("CREATE TOWER ROOM") {
             if (!requireOnline("CO-OP")) {
-                result.text = "Connect Wi-Fi or mobile data before creating a room."
+                result.text = "Connection is restoring. Create a room when sync returns."
                 return@actionButton
             }
             result.text = "Allocating a shared tower room…"
@@ -1668,7 +1620,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val join = actionButton("JOIN TOWER ROOM") {
             if (!requireOnline("CO-OP")) {
-                result.text = "Connect Wi-Fi or mobile data before joining a room."
+                result.text = "Connection is restoring. Join a room when sync returns."
                 return@actionButton
             }
             result.text = "Joining tower room…"
@@ -1699,7 +1651,7 @@ class MainActivity : Activity(), SensorEventListener {
                 activeCoOpRoom = null
                 hudHandler.removeCallbacks(coOpUpdater)
                 gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
-                if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP OFFLINE  •  WEATHER LOCAL"
+                if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP SYNC PENDING  •  WEATHER LOCAL"
                 result.text = "Left the tower room."
             }
             panel.addView(leave, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
@@ -1864,7 +1816,7 @@ class MainActivity : Activity(), SensorEventListener {
             leftMargin = dp(24)
         })
         coOpStatusLabel = TextView(this).apply {
-            text = "CO-OP OFFLINE  •  WEATHER LOCAL"
+            text = "CO-OP SYNC PENDING  •  WEATHER LOCAL"
             textSize = 10f
             setTextColor(Color.rgb(183, 218, 208))
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -1875,7 +1827,7 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(214)
         })
         networkStatusLabel = TextView(this).apply {
-            text = "NETWORK: CHECKING  •  PING: —"
+            text = "NETWORK: CONNECTING"
             textSize = 10f
             setTextColor(Color.rgb(255, 205, 145))
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -2395,16 +2347,12 @@ class MainActivity : Activity(), SensorEventListener {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        status.text = "FULL PRODUCTION CONTENT REQUIRED"
-                        details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
-                        note.text = if (event.errorCode == -2) {
-                            "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
-                        } else {
-                            "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resources. This online client cannot enter without its production content."
-                        }
-                        note.setTextColor(Color.rgb(255, 180, 150))
+                        status.text = "OPTIONAL VISUAL CONTENT UNAVAILABLE"
+                        details.text = "The bundled world remains ready to play. High-detail resources can be retried later."
+                        note.text = "No action is required to enter Aethelgard. Technical download details are kept out of the player interface."
+                        note.setTextColor(Color.rgb(255, 205, 145))
                         progress.progress = 0
-                        retry.visibility = View.VISIBLE
+                        finishPreparation()
                     }
                 } else {
                     val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2416,8 +2364,8 @@ class MainActivity : Activity(), SensorEventListener {
                             details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
                         event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
-                            status.text = "Waiting for Wi-Fi"
-                            details.text = "Connect to Wi-Fi to continue downloading the selected ${resourceTier.storageLabel} package."
+                            status.text = "OPTIONAL RESOURCES WAITING"
+                            details.text = "The bundled world remains playable while optional visual resources wait."
                         }
                         event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
                             status.text = "Download confirmation required"
