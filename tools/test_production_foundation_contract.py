@@ -24,10 +24,18 @@ CHECKS = (
     ("Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h", "GatherPressed", "mobile gathering HUD input"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h", "ServerTriggerVirtualCollect", "authoritative gathering request"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h", "MaxCoopMembers = 4", "co-op member limit"),
+    ("Unreal/Source/ForestSlice/Public/ForestSliceCreatureCompanionComponent.h", "ServerCaptureCreature", "authoritative companion capture"),
+    ("Unreal/Source/ForestSlice/Private/ForestSliceCreatureCompanionComponent.cpp", "ValidateCaptureTarget", "companion capture validation"),
+    ("Unreal/Source/ForestSlice/Public/ForestSliceEncounterDirectorComponent.h", "FForestSliceEncounterBudget", "encounter budget contract"),
+    ("Unreal/Source/ForestSlice/Private/ForestSliceEncounterDirectorComponent.cpp", "RebuildBudget", "encounter budget implementation"),
     ("server/src/server.mjs", "room_full", "co-op room capacity response"),
     ("docs/MULTIPLAYER_WORKFLOW.md", "four-player", "co-op workflow documentation"),
     ("docs/HIGH_END_GRAPHICS_AND_CONTENT_TIERS.md", "Download-to-quality contract", "high-end content documentation"),
     ("tools/test_graphics_tier_contract.py", "GRAPHICS_TIER_CONTRACT_PASS", "graphics-tier validator"),
+    ("app/src/main/cpp/rpg/companion_system.h", "evaluateCapture", "companion capture rules"),
+    ("app/src/main/cpp/rpg/encounter_director.h", "encounterBudgetFor", "deterministic encounter budget"),
+    ("app/src/main/cpp/rpg/quality_profile.h", "qualityProfileFor", "runtime quality profiles"),
+    ("tests/rpg_systems_test.cpp", "companionAssistDamage", "native RPG domain test"),
 )
 
 

@@ -14,6 +14,9 @@
 #include "rpg/progression.h"
 #include "rpg/cloud_state.h"
 #include "rpg/emberling_companion.h"
+#include "rpg/companion_system.h"
+#include "rpg/quality_profile.h"
+#include "rpg/encounter_director.h"
 #include "mobs/mob_catalog.h"
 
 namespace {
@@ -1223,7 +1226,8 @@ void draw3DVegetationDetails(const Mat4& viewProjection, float daylight) {
         {5.30f, -0.62f, 0.15f, 0.08f}, {2.55f, 1.55f, 0.13f, 0.02f},
         {-1.75f, 1.25f, 0.14f, 0.12f}, {1.90f, 3.20f, 0.12f, 0.04f}
     };
-    const int visible = std::min(8, 3 + effectiveGraphicsQuality() * 2);
+    const auto& qualityProfile = forest::rpg::qualityProfileFor(gGraphicsQuality, gContentTierReady);
+    const int visible = std::min(8, qualityProfile.vegetationDetailCount);
     for (int i = 0; i < visible; ++i) {
         const float x = details[i][0];
         const float z = details[i][1];
@@ -1246,7 +1250,8 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
     const float depth = stream.bounds.halfExtents.y * 8.0f;
     draw3DBox(viewProjection, x, stream.surfaceY + 0.026f, z, width, 0.024f, depth,
               0.04f, 0.30f, 0.42f, 0.78f);
-    const int waves = std::min(7, 3 + effectiveGraphicsQuality());
+    const auto& qualityProfile = forest::rpg::qualityProfileFor(gGraphicsQuality, gContentTierReady);
+    const int waves = qualityProfile.premiumWaterAccents ? 7 : 3;
     for (int i = 0; i < waves; ++i) {
         const float waveX = x - width * 0.36f + static_cast<float>(i) * width * 0.12f;
         const float waveZ = z + std::sin(gTime * 2.4f + static_cast<float>(i)) * depth * 0.23f;
@@ -1302,7 +1307,8 @@ void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
 void draw3DWeather(const Mat4& viewProjection) {
     const float intensity = rainIntensity();
     if (intensity <= 0.0f) return;
-    const int drops = 20 + effectiveGraphicsQuality() * 8;
+    const auto& qualityProfile = forest::rpg::qualityProfileFor(gGraphicsQuality, gContentTierReady);
+    const int drops = qualityProfile.weatherParticleBudget;
     for (int i = 0; i < drops; ++i) {
         const float seed = static_cast<float>(i) * 0.371f;
         const float x = -8.0f + std::fmod(seed * 13.0f + gTime * 1.9f, 16.0f);
@@ -1977,12 +1983,15 @@ void simulatePhysicsStep() {
     if (combatEvent.attackStarted) {
         gAttackPulse = combatEvent.heavyAttack ? 16 : 6 + combatEvent.comboIndex * 2;
         gHitRegistered = false;
-        if (!gAuthoritativeOnline && gCapturedMobIndex >= 0 && !gCapturedCompanionStay) {
+        forest::rpg::CompanionState companionState;
+        companionState.captured = gCapturedMobIndex >= 0;
+        companionState.command = gCapturedCompanionStay ? forest::rpg::CompanionCommand::Stay : forest::rpg::CompanionCommand::Follow;
+        const float companionDamage = forest::rpg::companionAssistDamage(companionState, combatEvent.heavyAttack, gAuthoritativeOnline);
+        if (companionDamage > 0.0f) {
             const int target = nearestLivingMob();
             if (target >= 0) {
                 MobState& companionTarget = gMobs[target];
-                const float assistDamage = combatEvent.heavyAttack ? 10.0f : 5.0f;
-                companionTarget.health = std::max(0.0f, companionTarget.health - assistDamage);
+                companionTarget.health = std::max(0.0f, companionTarget.health - companionDamage);
                 companionTarget.hitFlash = 0.12f;
                 if (companionTarget.health <= 0.0f) companionTarget.defeatTimer = 1.5f;
             }
@@ -2455,7 +2464,6 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_craft(JNIEnv*, jobject) {
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_captureNearestCreature(JNIEnv*, jobject) {
-    if (gCapturedMobIndex >= 0) return;
     const int target = nearestLivingMob();
     if (target < 0) return;
     MobState& mob = gMobs[target];
@@ -2464,8 +2472,16 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_captureNearestCreature(JNIEnv*, 
     const float dy = mob.position.y - gPlayerY;
     const float distance = std::sqrt(dx * dx + dy * dy);
     if (!mobProfile.tameable) return;
-    if (distance > 0.38f || mob.health > static_cast<float>(mobProfile.maxHealth) * 0.38f || gFiber < mobProfile.tamingCost) return;
-    gFiber -= mobProfile.tamingCost;
+    forest::rpg::CompanionState companionState;
+    companionState.captured = gCapturedMobIndex >= 0;
+    forest::rpg::CompanionCaptureRules captureRules;
+    captureRules.fiberCost = mobProfile.tamingCost;
+    const forest::rpg::CaptureResult capture = forest::rpg::captureCompanion(
+        captureRules, companionState, target, distance,
+        mob.health / static_cast<float>(mobProfile.maxHealth), gFiber);
+    if (!capture.accepted) return;
+    gFiber = capture.remainingFiber;
+
     mob.captured = true;
     mob.health = static_cast<float>(mobProfile.maxHealth) * 0.75f;
     mob.position = {gPlayerX - 0.16f, gPlayerY + 0.13f};
@@ -2477,8 +2493,13 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_captureNearestCreature(JNIEnv*, 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleCompanionCommand(JNIEnv*, jobject) {
     if (gCapturedMobIndex >= 0) {
-        gCapturedCompanionStay = !gCapturedCompanionStay;
-        gQuestPulse = 90;
+        forest::rpg::CompanionState companionState;
+        companionState.captured = true;
+        companionState.command = gCapturedCompanionStay ? forest::rpg::CompanionCommand::Stay : forest::rpg::CompanionCommand::Follow;
+        if (forest::rpg::toggleCompanionCommand(companionState)) {
+            gCapturedCompanionStay = companionState.command == forest::rpg::CompanionCommand::Stay;
+            gQuestPulse = 90;
+        }
     } else {
         const forest::rpg::EmberlingInteraction outcome = forest::rpg::interactWithEmberling(
             gEmberling, gProgression.emberKitCrafted, gFiber, gPlayerX, gPlayerY);

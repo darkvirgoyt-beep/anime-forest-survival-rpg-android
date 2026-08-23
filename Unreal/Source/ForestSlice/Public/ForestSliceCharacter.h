@@ -7,6 +7,7 @@
 
 class UCameraComponent;
 class UForestSliceCombatComponent;
+class UForestSliceCreatureCompanionComponent;
 class UForestSliceCharacterProfileComponent;
 class UForestSliceHealthComponent;
 class UForestSliceGroundPlanningComponent;
@@ -103,6 +104,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Systems")
     UForestSliceInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
+    UFUNCTION(BlueprintPure, Category = "Companion")
+    UForestSliceCreatureCompanionComponent* GetCreatureCompanionComponent() const { return CreatureCompanionComponent; }
+
     UFUNCTION(BlueprintPure, Category = "Systems")
     UForestSliceHealthComponent* GetHealthComponent() const { return HealthComponent; }
 
@@ -160,6 +164,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceInventoryComponent> InventoryComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Companion")
+    TObjectPtr<UForestSliceCreatureCompanionComponent> CreatureCompanionComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceHealthComponent> HealthComponent;

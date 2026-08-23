@@ -161,6 +161,11 @@ jobs:
             tests/emberling_companion_test.cpp \
             -o emberling_companion_test
           ./emberling_companion_test
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/rpg_systems_test.cpp \
+            -o rpg_systems_test
+          ./rpg_systems_test
 
   online-service-tests:
     runs-on: ubuntu-latest

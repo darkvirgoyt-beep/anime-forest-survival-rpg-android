@@ -1,6 +1,7 @@
 #include "ForestSliceCharacter.h"
 #include "ForestSliceCharacterProfileComponent.h"
 #include "ForestSliceCombatComponent.h"
+#include "ForestSliceCreatureCompanionComponent.h"
 #include "ForestSlicePresentationComponent.h"
 #include "ForestSliceProgressionComponent.h"
 #include "ForestSliceHealthComponent.h"
@@ -35,6 +36,7 @@ AForestSliceCharacter::AForestSliceCharacter()
     InteractionComponent = CreateDefaultSubobject<UForestSliceInteractionComponent>(TEXT("InteractionComponent"));
     QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
     InventoryComponent = CreateDefaultSubobject<UForestSliceInventoryComponent>(TEXT("InventoryComponent"));
+    CreatureCompanionComponent = CreateDefaultSubobject<UForestSliceCreatureCompanionComponent>(TEXT("CreatureCompanionComponent"));
     HealthComponent = CreateDefaultSubobject<UForestSliceHealthComponent>(TEXT("HealthComponent"));
     ProgressionComponent = CreateDefaultSubobject<UForestSliceProgressionComponent>(TEXT("ProgressionComponent"));
     CharacterProfileComponent = CreateDefaultSubobject<UForestSliceCharacterProfileComponent>(TEXT("CharacterProfileComponent"));
