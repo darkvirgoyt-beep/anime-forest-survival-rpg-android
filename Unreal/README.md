@@ -30,6 +30,12 @@ The login boundary is deliberately staged: Android Play Games authentication pro
 
 Use the Android platform settings in `Config/DefaultEngine.ini` as a starting point. The real shipping output should be an Android App Bundle with asset packs, not a single oversized APK. Test-distribution builds may use a local debug key; production builds require a protected signing key and store configuration.
 
+## AAA upgrade contracts
+
+The production path now includes data-oriented contracts for the requested upgrade in `docs/AAA_WORLD_AND_GAMEPLAY_UPGRADE.md` and the Unreal module. `AForestSliceProceduralForest` exposes a 100 km world envelope, seven deterministic biome profiles, river segments, and nearest-river queries. `UForestSliceMobPresentationComponent` exposes targetable mob health, elite/boss styling, and enemy-base marker data. `UForestSliceMobileHUD` exposes focused-mob bindings for a world-space or target-frame health bar.
+
+`UForestSliceBuildingComponent` provides server-authoritative recipes and placement state for campfires, foundations, walls, roofs, storage, beds, workbenches, farms, kilns, forges, fences, gates, lamps, and waystones. `UForestSliceToolLoadoutComponent` provides replicated starter tools, tiers, harvesting power, equipment switching, durability, and repair hooks. These are Blueprint-ready contracts; authored Blender/Unreal meshes, materials, Niagara effects, nav data, and final UI widgets still need to be connected in content assets for the full AAA presentation.
+
 ## Honest status
 
 This directory is a compile-oriented source foundation and configuration seed. It cannot be packaged in this sandbox because the Unreal Engine editor/toolchain and production assets are not installed here. The existing GitHub Actions job continues to build the Kotlin/C++ prototype under `app/`; a later runner with Unreal installed must be added for the production branch. The backend service under `server/` is a real credential-verifying foundation, but it is not a public live service until it is deployed with production secrets, TLS, PostgreSQL, and a dedicated-server allocator.

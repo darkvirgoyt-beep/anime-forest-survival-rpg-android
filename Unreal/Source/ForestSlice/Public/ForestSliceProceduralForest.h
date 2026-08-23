@@ -7,6 +7,69 @@
 class UHierarchicalInstancedStaticMeshComponent;
 class UStaticMesh;
 
+UENUM(BlueprintType)
+enum class EForestSliceBiome : uint8
+{
+    VerdantCrown,
+    MistfenWetlands,
+    EmberfallHighlands,
+    SunscorchExpanse,
+    MoonstoneCoast,
+    FrostveilTundra,
+    AethelPeaks
+};
+
+USTRUCT(BlueprintType)
+struct FForestSliceBiomeProfile
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    EForestSliceBiome Biome = EForestSliceBiome::VerdantCrown;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FName Id = FName(TEXT("VerdantCrown"));
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FVector2D CenterKm = FVector2D::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float InfluenceRadiusKm = 25.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float TemperatureCelsius = 18.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float Moisture = 0.65f;
+};
+
+USTRUCT(BlueprintType)
+struct FForestSliceRiverSegment
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FName Id = NAME_None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FVector2D StartKm = FVector2D::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FVector2D EndKm = FVector2D::ZeroVector;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float WidthMeters = 18.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float DepthMeters = 1.5f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float FlowSpeedMetersPerSecond = 1.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    bool bNavigableBySwimming = false;
+};
+
 USTRUCT(BlueprintType)
 struct FForestSliceMapLandmark
 {
@@ -76,6 +139,21 @@ public:
     FName GetBiomeAtWorldLocation(FVector WorldLocation) const;
 
     UFUNCTION(BlueprintPure, Category = "World|Map")
+    FForestSliceBiomeProfile GetBiomeProfileAtWorldLocation(FVector WorldLocation) const;
+
+    UFUNCTION(BlueprintPure, Category = "World|Map")
+    const TArray<FForestSliceBiomeProfile>& GetBiomeProfiles() const { return BiomeProfiles; }
+
+    UFUNCTION(BlueprintPure, Category = "World|Water")
+    const TArray<FForestSliceRiverSegment>& GetRiverSegments() const { return RiverSegments; }
+
+    UFUNCTION(BlueprintPure, Category = "World|Water")
+    float GetNearestRiverDistanceMeters(FVector WorldLocation) const;
+
+    UFUNCTION(BlueprintPure, Category = "World|Map")
+    float GetWorldSizeCentimeters() const { return MapSizeKilometers * 100000.0f; }
+
+    UFUNCTION(BlueprintPure, Category = "World|Map")
     const TArray<FForestSliceMapLandmark>& GetMapLandmarks() const { return MapLandmarks; }
 
 protected:
@@ -116,6 +194,12 @@ protected:
     TArray<FForestSliceMapLandmark> MapLandmarks;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Map")
+    TArray<FForestSliceBiomeProfile> BiomeProfiles;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Water")
+    TArray<FForestSliceRiverSegment> RiverSegments;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "World|Map", meta = (ClampMin = "1.0", ClampMax = "200.0"))
     float MapSizeKilometers = 100.0f;
 
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "World|Streaming")
@@ -131,5 +215,6 @@ private:
     void RemoveAllInstances();
     void RebuildInstances();
     void InitializeMapLayout();
+    void InitializeBiomeAndRiverLayout();
     int32 MakeChunkSeed(FIntPoint Coordinate) const;
 };

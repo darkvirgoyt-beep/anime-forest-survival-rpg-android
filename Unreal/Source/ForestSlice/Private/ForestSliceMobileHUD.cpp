@@ -3,6 +3,7 @@
 #include "ForestSliceCharacter.h"
 #include "ForestSliceCombatComponent.h"
 #include "ForestSliceWeaponComponent.h"
+#include "ForestSliceMobPresentationComponent.h"
 
 void UForestSliceMobileHUD::SetControlledCharacter(AForestSliceCharacter* InCharacter)
 {
@@ -122,4 +123,44 @@ void UForestSliceMobileHUD::PushGyroSample(float RotationX, float RotationY, flo
 {
     if (!bGyroSupported || !bGyroEnabled || !ControlledCharacter.IsValid()) return;
     ControlledCharacter->ApplyGyroInput(RotationX, RotationY, Sensitivity);
+}
+
+void UForestSliceMobileHUD::SetFocusedMob(UForestSliceMobPresentationComponent* InMob)
+{
+    FocusedMob = InMob;
+}
+
+void UForestSliceMobileHUD::ClearFocusedMob()
+{
+    FocusedMob.Reset();
+}
+
+float UForestSliceMobileHUD::GetFocusedMobHealthRatio() const
+{
+    return FocusedMob.IsValid() ? FocusedMob->GetHealthRatio() : 0.0f;
+}
+
+FName UForestSliceMobileHUD::GetFocusedMobDisplayName() const
+{
+    return FocusedMob.IsValid() ? FocusedMob->GetDisplayName() : NAME_None;
+}
+
+int32 UForestSliceMobileHUD::GetFocusedMobLevel() const
+{
+    return FocusedMob.IsValid() ? FocusedMob->GetLevel() : 0;
+}
+
+bool UForestSliceMobileHUD::IsFocusedMobBoss() const
+{
+    return FocusedMob.IsValid() && FocusedMob->IsBoss();
+}
+
+bool UForestSliceMobileHUD::IsFocusedMobBaseAffiliated() const
+{
+    return FocusedMob.IsValid() && FocusedMob->IsBaseAffiliated();
+}
+
+FName UForestSliceMobileHUD::GetFocusedMobBaseId() const
+{
+    return FocusedMob.IsValid() ? FocusedMob->GetBaseId() : NAME_None;
 }

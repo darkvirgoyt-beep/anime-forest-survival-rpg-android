@@ -5,6 +5,7 @@
 #include "ForestSliceMobileHUD.generated.h"
 
 class AForestSliceCharacter;
+class UForestSliceMobPresentationComponent;
 enum class EForestSliceTool : uint8;
 
 UCLASS(Abstract, BlueprintType)
@@ -79,12 +80,39 @@ public:
     UFUNCTION(BlueprintPure, Category = "Mobile|Aim")
     bool IsGyroEnabled() const { return bGyroEnabled; }
 
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Mob HUD")
+    void SetFocusedMob(UForestSliceMobPresentationComponent* InMob);
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Mob HUD")
+    void ClearFocusedMob();
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Mob HUD")
+    float GetFocusedMobHealthRatio() const;
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Mob HUD")
+    FName GetFocusedMobDisplayName() const;
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Mob HUD")
+    int32 GetFocusedMobLevel() const;
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Mob HUD")
+    bool IsFocusedMobBoss() const;
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Mob HUD")
+    bool IsFocusedMobBaseAffiliated() const;
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Mob HUD")
+    FName GetFocusedMobBaseId() const;
+
     UFUNCTION(BlueprintImplementableEvent, Category = "Mobile|Aim")
     void RefreshGyroVisualState();
 
 protected:
     UPROPERTY(BlueprintReadOnly, Category = "Mobile|Binding")
     TWeakObjectPtr<AForestSliceCharacter> ControlledCharacter;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Mobile|Mob HUD")
+    TWeakObjectPtr<UForestSliceMobPresentationComponent> FocusedMob;
 
     UPROPERTY(BlueprintReadOnly, Category = "Mobile|Aim")
     bool bGyroSupported = false;

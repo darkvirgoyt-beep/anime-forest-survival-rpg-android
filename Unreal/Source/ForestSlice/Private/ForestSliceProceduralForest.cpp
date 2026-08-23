@@ -178,16 +178,12 @@ float AForestSliceProceduralForest::GetChunkPresentationAlpha(FIntPoint Coordina
 
 FName AForestSliceProceduralForest::GetBiomeAtWorldLocation(FVector WorldLocation) const
 {
-    const float XKm = WorldLocation.X / 1000.0f;
-    if (XKm < 0.0f || XKm > MapSizeKilometers) return FName(TEXT("Unknown"));
-    if (XKm < MapSizeKilometers * 0.34f) return FName(TEXT("Forest"));
-    if (XKm < MapSizeKilometers * 0.68f) return FName(TEXT("Sand"));
-    return FName(TEXT("Snow"));
+    return GetBiomeProfileAtWorldLocation(WorldLocation).Id;
 }
 
 void AForestSliceProceduralForest::InitializeMapLayout()
 {
-    if (MapLandmarks.Num() > 0) return;
+    if (MapLandmarks.Num() > 0 && BiomeProfiles.Num() > 0 && RiverSegments.Num() > 0) return;
     const auto AddLandmark = [this](const TCHAR* Id, const TCHAR* Biome, float XKm, float YKm) {
         FForestSliceMapLandmark Landmark;
         Landmark.Id = FName(Id);
@@ -195,15 +191,95 @@ void AForestSliceProceduralForest::InitializeMapLayout()
         Landmark.CoordinateKm = FVector2D(XKm, YKm);
         MapLandmarks.Add(Landmark);
     };
-    AddLandmark(TEXT("ForestCamp"), TEXT("Forest"), 10.0f, 16.0f);
-    AddLandmark(TEXT("FarmingVillage"), TEXT("Forest"), 14.0f, 40.0f);
-    AddLandmark(TEXT("MossCave"), TEXT("Forest"), 26.0f, 78.0f);
-    AddLandmark(TEXT("SandGate"), TEXT("Sand"), 40.0f, 48.0f);
-    AddLandmark(TEXT("SunKiln"), TEXT("Sand"), 47.0f, 28.0f);
-    AddLandmark(TEXT("Oasis"), TEXT("Sand"), 55.0f, 69.0f);
-    AddLandmark(TEXT("FrostGate"), TEXT("Snow"), 74.0f, 57.0f);
-    AddLandmark(TEXT("PredatorBasin"), TEXT("Snow"), 84.0f, 59.0f);
-    AddLandmark(TEXT("FrostclawArena"), TEXT("Snow"), 88.0f, 83.0f);
+    AddLandmark(TEXT("ForestCamp"), TEXT("VerdantCrown"), 10.0f, 16.0f);
+    AddLandmark(TEXT("FarmingVillage"), TEXT("VerdantCrown"), 14.0f, 40.0f);
+    AddLandmark(TEXT("MossCave"), TEXT("MistfenWetlands"), 26.0f, 78.0f);
+    AddLandmark(TEXT("SandGate"), TEXT("SunscorchExpanse"), 40.0f, 48.0f);
+    AddLandmark(TEXT("SunKiln"), TEXT("SunscorchExpanse"), 47.0f, 28.0f);
+    AddLandmark(TEXT("Oasis"), TEXT("SunscorchExpanse"), 55.0f, 69.0f);
+    AddLandmark(TEXT("FrostGate"), TEXT("FrostveilTundra"), 74.0f, 57.0f);
+    AddLandmark(TEXT("PredatorBasin"), TEXT("FrostveilTundra"), 84.0f, 59.0f);
+    AddLandmark(TEXT("FrostclawArena"), TEXT("AethelPeaks"), 88.0f, 83.0f);
+    InitializeBiomeAndRiverLayout();
+}
+
+void AForestSliceProceduralForest::InitializeBiomeAndRiverLayout()
+{
+    if (BiomeProfiles.Num() == 0) {
+        const auto AddBiome = [this](EForestSliceBiome Biome, const TCHAR* Id, FVector2D CenterKm, float RadiusKm, float Temperature, float Moisture) {
+            FForestSliceBiomeProfile Profile;
+            Profile.Biome = Biome;
+            Profile.Id = FName(Id);
+            Profile.CenterKm = CenterKm;
+            Profile.InfluenceRadiusKm = RadiusKm;
+            Profile.TemperatureCelsius = Temperature;
+            Profile.Moisture = Moisture;
+            BiomeProfiles.Add(Profile);
+        };
+        AddBiome(EForestSliceBiome::VerdantCrown, TEXT("VerdantCrown"), FVector2D(14.0f, 30.0f), 31.0f, 18.0f, 0.78f);
+        AddBiome(EForestSliceBiome::MistfenWetlands, TEXT("MistfenWetlands"), FVector2D(18.0f, 78.0f), 24.0f, 12.0f, 0.96f);
+        AddBiome(EForestSliceBiome::EmberfallHighlands, TEXT("EmberfallHighlands"), FVector2D(38.0f, 76.0f), 25.0f, 24.0f, 0.32f);
+        AddBiome(EForestSliceBiome::SunscorchExpanse, TEXT("SunscorchExpanse"), FVector2D(54.0f, 34.0f), 27.0f, 31.0f, 0.14f);
+        AddBiome(EForestSliceBiome::MoonstoneCoast, TEXT("MoonstoneCoast"), FVector2D(78.0f, 22.0f), 25.0f, 16.0f, 0.72f);
+        AddBiome(EForestSliceBiome::FrostveilTundra, TEXT("FrostveilTundra"), FVector2D(78.0f, 61.0f), 24.0f, -8.0f, 0.42f);
+        AddBiome(EForestSliceBiome::AethelPeaks, TEXT("AethelPeaks"), FVector2D(90.0f, 88.0f), 22.0f, -2.0f, 0.58f);
+    }
+
+    if (RiverSegments.Num() == 0) {
+        const auto AddRiver = [this](const TCHAR* Id, FVector2D StartKm, FVector2D EndKm, float Width, float Depth, float Flow, bool bSwimmable) {
+            FForestSliceRiverSegment River;
+            River.Id = FName(Id);
+            River.StartKm = StartKm;
+            River.EndKm = EndKm;
+            River.WidthMeters = Width;
+            River.DepthMeters = Depth;
+            River.FlowSpeedMetersPerSecond = Flow;
+            River.bNavigableBySwimming = bSwimmable;
+            RiverSegments.Add(River);
+        };
+        AddRiver(TEXT("ForestRiver"), FVector2D(8.0f, 5.0f), FVector2D(31.0f, 50.0f), 24.0f, 1.4f, 1.1f, false);
+        AddRiver(TEXT("FenBranch"), FVector2D(31.0f, 50.0f), FVector2D(18.0f, 94.0f), 18.0f, 1.0f, 0.7f, false);
+        AddRiver(TEXT("OasisRun"), FVector2D(31.0f, 50.0f), FVector2D(62.0f, 43.0f), 12.0f, 0.8f, 0.45f, false);
+        AddRiver(TEXT("SnowmeltFall"), FVector2D(62.0f, 43.0f), FVector2D(92.0f, 86.0f), 30.0f, 2.2f, 1.6f, true);
+    }
+}
+
+FForestSliceBiomeProfile AForestSliceProceduralForest::GetBiomeProfileAtWorldLocation(FVector WorldLocation) const
+{
+    FForestSliceBiomeProfile Unknown;
+    Unknown.Id = FName(TEXT("Unknown"));
+    if (WorldLocation.X < 0.0f || WorldLocation.Y < 0.0f || WorldLocation.X > MapSizeKilometers * 1000.0f || WorldLocation.Y > MapSizeKilometers * 1000.0f || BiomeProfiles.Num() == 0) {
+        return Unknown;
+    }
+
+    const FVector2D LocationKm(WorldLocation.X / 1000.0f, WorldLocation.Y / 1000.0f);
+    const FForestSliceBiomeProfile* BestProfile = nullptr;
+    float BestDistanceSquared = TNumericLimits<float>::Max();
+    for (const FForestSliceBiomeProfile& Profile : BiomeProfiles) {
+        const float DistanceSquared = FVector2D::DistSquared(LocationKm, Profile.CenterKm);
+        if (DistanceSquared < BestDistanceSquared) {
+            BestDistanceSquared = DistanceSquared;
+            BestProfile = &Profile;
+        }
+    }
+    return BestProfile ? *BestProfile : Unknown;
+}
+
+float AForestSliceProceduralForest::GetNearestRiverDistanceMeters(FVector WorldLocation) const
+{
+    if (RiverSegments.Num() == 0) return TNumericLimits<float>::Max();
+    const FVector2D PointKm(WorldLocation.X / 1000.0f, WorldLocation.Y / 1000.0f);
+    float BestDistanceSquared = TNumericLimits<float>::Max();
+    for (const FForestSliceRiverSegment& River : RiverSegments) {
+        const FVector2D Segment = River.EndKm - River.StartKm;
+        const float SegmentLengthSquared = Segment.SizeSquared();
+        const float T = SegmentLengthSquared > SMALL_NUMBER
+            ? FMath::Clamp(FVector2D::DotProduct(PointKm - River.StartKm, Segment) / SegmentLengthSquared, 0.0f, 1.0f)
+            : 0.0f;
+        const FVector2D ClosestPoint = River.StartKm + Segment * T;
+        BestDistanceSquared = FMath::Min(BestDistanceSquared, FVector2D::DistSquared(PointKm, ClosestPoint));
+    }
+    return FMath::Sqrt(BestDistanceSquared) * 1000.0f;
 }
 
 void AForestSliceProceduralForest::RegenerateWorld(int32 NewSeed)
