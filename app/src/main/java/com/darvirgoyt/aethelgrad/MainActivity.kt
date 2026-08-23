@@ -14,7 +14,6 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -47,7 +46,6 @@ import android.widget.SeekBar
 import android.widget.ScrollView
 import org.json.JSONObject
 import android.widget.TextView
-import android.widget.VideoView
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -112,6 +110,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var selectedTargetFps = 60
     private var selectedGraphicsTier = 2
     private var selectedResourceTier: ContentDownloadPlan.ResourceTier? = null
+    private var resourceTierChooserVisible = false
     private var supportedTargetFps = listOf(60)
     private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
     private val controlPreferences by lazy { getSharedPreferences("aethelgard_controls", MODE_PRIVATE) }
@@ -189,7 +188,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var coOpReconnectInFlight = false
     private var coOpReconnectAttempts = 0
     private var coOpNextReconnectAtMs = 0L
-    private var guestRoomConnectInFlight = false
+    private var roomConnectInFlight = false
     private var lastCoOpTowerRevision = 0
     private var coOpRequestCounter = 0L
     private var coOpMemberRevision = 0
@@ -203,7 +202,6 @@ class MainActivity : Activity(), SensorEventListener {
     private var serverLatencyProbeToken = 0L
     private lateinit var networkMonitor: NetworkConnectivityMonitor
     private var networkOnline = false
-    private var guestSignInAttempted = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
     private lateinit var identityStatusLabel: TextView
@@ -334,13 +332,6 @@ class MainActivity : Activity(), SensorEventListener {
         if (networkOnline) beginOnlineStartup()
     }
 
-    private fun requestOnlineGuestSession() {
-        if (!networkOnline || guestSignInAttempted) return
-        guestSignInAttempted = true
-        onboardingStatus.text = "GUEST SESSION  •  CONNECTING…"
-        accountSession.requestGuestSignIn()
-    }
-
     private fun markProductionContentReady() {
         if (resourcePreparationComplete) return
         resourcePreparationComplete = true
@@ -368,7 +359,11 @@ class MainActivity : Activity(), SensorEventListener {
         }
         beginAutomaticContentPreparation()
         when (accountSession.snapshot.state) {
-            SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> requestOnlineGuestSession()
+            SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> {
+                if (::onboardingStatus.isInitialized) {
+                    onboardingStatus.text = "SIGN IN WITH GOOGLE TO CONTINUE"
+                }
+            }
             SessionState.AUTHENTICATED -> {
                 if (!authenticationTransitionStarted) applyAccountSnapshot(accountSession.snapshot)
             }
@@ -379,15 +374,17 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginAutomaticContentPreparation() {
         if (resourcePreparationComplete) return
         if (selectedResourceTier == null) {
-            val highPreflight = assetPacks.checkProductionPreflight(ContentDownloadPlan.ResourceTier.HIGH)
-            val automaticTier = if (highPreflight.ready) {
-                ContentDownloadPlan.ResourceTier.HIGH
-            } else {
-                ContentDownloadPlan.ResourceTier.LOW
+            if (!resourceTierChooserVisible) {
+                resourceTierChooserVisible = true
+                showResourceTierChooser { chosenTier ->
+                    resourceTierChooserVisible = false
+                    applyResourceTier(chosenTier)
+                    beginAutomaticContentPreparation()
+                }
             }
-            applyResourceTier(automaticTier)
+            return
         }
-        val tier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.LOW
+        val tier = selectedResourceTier ?: return
         if (assetPacks.productionContentReady(tier)) {
             markProductionContentReady()
             continuePendingWorldEntry()
@@ -430,7 +427,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (::identityStatusLabel.isInitialized) {
             val accountId = accountSession.snapshot.accountId
             val username = currentPlayerProfile?.username?.takeIf { it.isNotBlank() }
-                ?: if (accountSession.snapshot.isGuest) "GUEST" else currentPlayerName
+                ?: currentPlayerName
             val safeId = accountId?.take(10)?.let { "$it…" } ?: "PENDING"
             identityStatusLabel.text = "PLAYER: $username  •  ID: $safeId"
         }
@@ -685,9 +682,6 @@ class MainActivity : Activity(), SensorEventListener {
         if (activeCoOpRoom != null) {
             hudHandler.postDelayed(coOpUpdater, 1_000L)
             hudHandler.postDelayed(coOpSaveUpdater, 30_000L)
-        } else if (accountSession.snapshot.state == SessionState.AUTHENTICATED && accountSession.snapshot.isGuest) {
-            gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
-            connectGuestToOnlineRoom()
         }
     }
 
@@ -841,14 +835,14 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "OPTIONAL GOOGLE LINK  •  Sign in with Google to protect your cloud world and continue online."
+            text = "REQUIRED ACCOUNT LINK  •  Sign in with Google to protect your cloud world and continue online."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "GUEST SESSION  •  Connecting…"
+            text = "SIGN IN REQUIRED  •  Connect your Google account to continue"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
@@ -915,62 +909,11 @@ class MainActivity : Activity(), SensorEventListener {
         return overlay
     }
 
-    private fun showArtReferenceDialog() {
-        val preview = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            adjustViewBounds = true
-            setBackgroundColor(Color.rgb(18, 24, 29))
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            setImageResource(R.drawable.reference_game_board)
-        }
-        val selector = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(8))
-        }
-        val references = listOf(
-            "BOARD" to R.drawable.reference_game_board,
-            "PLAYER" to R.drawable.reference_player_emotions,
-            "WORLD" to R.drawable.reference_environment_lighting,
-            "CREATURES" to R.drawable.reference_enemy_creatures,
-            "ASSETS" to R.drawable.reference_assets_weapons,
-            "UI" to R.drawable.reference_ui_gameplay
-        )
-        references.forEach { (label, resource) ->
-            selector.addView(cinematicButton(label, false) { preview.setImageResource(resource) }, LinearLayout.LayoutParams(0, dp(36), 1f).apply {
-                leftMargin = dp(2)
-                rightMargin = dp(2)
-            })
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(4), dp(12), 0)
-            addView(selector, LinearLayout.LayoutParams(-1, dp(46)))
-            addView(preview, LinearLayout.LayoutParams(-1, dp(420)))
-        }
-        AlertDialog.Builder(this)
-            .setTitle("ART REFERENCE LIBRARY")
-            .setMessage("Style targets for player, expressions, environments, creatures, assets, weapons, monument, UI, skin tones, and time-of-day lighting.")
-            .setView(content)
-            .setPositiveButton("CLOSE", null)
-            .show()
-    }
-
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
         if (!networkOnline) return
-        if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
-            setPlayerName("GUEST")
-            authenticationTransitionStarted = true
-            if (resourcePreparationComplete) {
-                enterGuestOnlineWorld()
-            } else {
-                pendingWorldEntry = ::enterGuestOnlineWorld
-            }
-            return
-        }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -1002,128 +945,11 @@ class MainActivity : Activity(), SensorEventListener {
         )
     }
 
-    /** Developer-only guest mode skips account setup and opens the online world immediately. */
-    private fun enterGuestOnlineWorld() {
-        if (!requireOnline("ONLINE WORLD")) return
-        worldStateReadyForWorld = true
-        markWorldLoadingTaskReady("world")
-        enterWorldThroughCinematic {
-            onboardingOverlay.visibility = View.GONE
-            gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
-            connectGuestToOnlineRoom()
-        }
-    }
-
-    /** Plays the released First Ember story film before any world entry; players may always skip it. */
+    /** Starts the real resource-backed warm-up; no pitch or reference video is part of production entry. */
     private fun enterWorldThroughCinematic(onWorldReady: () -> Unit) {
-        if (cinematicEntryOverlay != null || worldLoadingOverlay != null) return
+        if (worldLoadingOverlay != null) return
         audio.stopMusic()
-
-        val overlay = FrameLayout(this).apply {
-            alpha = 0f
-            setBackgroundColor(Color.rgb(3, 10, 13))
-            addView(ImageView(this@MainActivity).apply {
-                setImageResource(R.drawable.aethelgard_login_cinematic_background)
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                alpha = 0.30f
-            }, FrameLayout.LayoutParams(-1, -1))
-            addView(View(this@MainActivity).apply {
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.argb(222, 3, 11, 14), Color.argb(175, 15, 9, 25), Color.argb(238, 3, 11, 14))
-                )
-            }, FrameLayout.LayoutParams(-1, -1))
-        }
-
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(18), dp(14), dp(18), dp(14))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.argb(235, 7, 24, 27), Color.argb(245, 5, 17, 20))
-            ).apply {
-                cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), Color.rgb(211, 164, 79))
-            }
-        }
-        val crest = TextView(this).apply {
-            text = "✦"
-            textSize = 24f
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(234, 190, 96))
-            setShadowLayer(12f, 0f, 0f, Color.rgb(232, 184, 90))
-        }
-        val title = TextView(this).apply {
-            text = "THE FIRST EMBER"
-            textSize = 19f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.13f
-            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(244, 235, 208))
-        }
-        val note = TextView(this).apply {
-            text = "WISTERIA FOREST MEMORY  •  STORY PITCH"
-            textSize = 9f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.14f
-            setTextColor(Color.rgb(207, 166, 90))
-            setPadding(0, dp(2), 0, dp(10))
-        }
-        val videoFrame = FrameLayout(this).apply {
-            background = GradientDrawable().apply {
-                setColor(Color.BLACK)
-                setStroke(dp(1), Color.rgb(143, 111, 64))
-            }
-        }
-        val video = VideoView(this).apply {
-            setVideoURI(Uri.parse(getString(R.string.first_ember_story_video_url)))
-            setOnPreparedListener { player ->
-                player.isLooping = false
-                start()
-            }
-            setOnCompletionListener { finishCinematicEntry(overlay, onWorldReady) }
-        }
-        val videoStatus = TextView(this).apply {
-            text = "RECOVERING THE FIRST MEMORY…"
-            textSize = 9f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.11f
-            setTextColor(Color.rgb(230, 191, 107))
-            setPadding(0, dp(9), 0, dp(4))
-        }
-        video.setOnErrorListener { _, _, _ ->
-            videoStatus.text = "STORY FILM UNAVAILABLE  •  YOU MAY ENTER THE FOREST"
-            videoStatus.setTextColor(Color.rgb(255, 190, 140))
-            true
-        }
-        val skip = cinematicButton("SKIP TO WISTERIA FOREST  ›", true) {
-            video.stopPlayback()
-            finishCinematicEntry(overlay, onWorldReady)
-        }
-
-        videoFrame.addView(video, FrameLayout.LayoutParams(-1, -1))
-        panel.addView(crest, LinearLayout.LayoutParams(-1, dp(32)))
-        panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
-        panel.addView(note, LinearLayout.LayoutParams(-1, dp(30)))
-        panel.addView(videoFrame, LinearLayout.LayoutParams(dp(720), dp(405)))
-        panel.addView(videoStatus, LinearLayout.LayoutParams(-1, dp(30)))
-        panel.addView(skip, LinearLayout.LayoutParams(dp(310), dp(48)))
-        overlay.addView(panel, FrameLayout.LayoutParams(dp(790), -2, Gravity.CENTER))
-
-        cinematicEntryOverlay = overlay
-        rootContainer.addView(overlay)
-        overlay.animate().alpha(1f).setDuration(280L).start()
-    }
-
-    /** Dissolves the film into a short branded loading ritual before revealing the playable world. */
-    private fun finishCinematicEntry(cinematic: View, onWorldReady: () -> Unit) {
-        if (cinematicEntryOverlay !== cinematic) return
-        cinematicEntryOverlay = null
-        cinematic.animate().alpha(0f).setDuration(180L).withEndAction {
-            rootContainer.removeView(cinematic)
-            showWorldLoading(onWorldReady)
-        }.start()
+        showWorldLoading(onWorldReady)
     }
 
     private fun showWorldLoading(onWorldReady: () -> Unit) {
@@ -1377,12 +1203,12 @@ class MainActivity : Activity(), SensorEventListener {
         }.start()
     }
 
-    private fun connectGuestToOnlineRoom() {
+    private fun connectToOnlineRoom() {
         if (!requireOnline("CO-OP")) return
-        if (guestRoomConnectInFlight || activeCoOpRoom != null) return
-        guestRoomConnectInFlight = true
+        if (roomConnectInFlight || activeCoOpRoom != null) return
+        roomConnectInFlight = true
         accountSession.createCoOpRoom(selectedServer.id) { room, error ->
-            guestRoomConnectInFlight = false
+            roomConnectInFlight = false
             if (room != null) {
                 startCoOpRoom(room)
             } else if (::coOpStatusLabel.isInitialized) {
@@ -2251,7 +2077,7 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(214)
         })
         identityStatusLabel = TextView(this).apply {
-            text = "PLAYER: GUEST  •  ID: PENDING"
+            text = "PLAYER: PLAYER NAME  •  ID: PENDING"
             textSize = 10f
             setTextColor(Color.rgb(229, 211, 167))
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -2415,7 +2241,7 @@ class MainActivity : Activity(), SensorEventListener {
             runOnUiThread {
                 fun number(index: Int): Int = values.getOrNull(index)?.toIntOrNull() ?: 0
                 val companion = values.getOrNull(22)?.replace('_', ' ') ?: "EMBERLING WILD"
-                val account = accountSession.snapshot.accountId?.take(10)?.let { "Account $it…" } ?: "Online guest"
+                val account = accountSession.snapshot.accountId?.take(10)?.let { "Account $it…" } ?: "Online account"
                 val world = activeCloudWorld?.let { "${it.name}  •  Revision ${it.saveRevision}" } ?: "No cloud world active"
                 val panel = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
@@ -2481,7 +2307,6 @@ class MainActivity : Activity(), SensorEventListener {
                 activeCloudWorld = null
                 currentPlayerProfile = null
                 authenticationTransitionStarted = false
-                guestSignInAttempted = false
                 cloudRecoveryNotice = null
                 hudHandler.removeCallbacks(cloudSaveUpdater)
                 hudHandler.removeCallbacks(coOpUpdater)
@@ -2789,26 +2614,16 @@ class MainActivity : Activity(), SensorEventListener {
             var confirmationInFlight = false
             assetPacks.requestProductionContent(resourceTier) { event ->
                 if (event.failed) {
-                    if (assetPacks.canUseBundledFreeFallback()) {
-                        if (!failureShown) {
-                            failureShown = true
-                            status.text = "FREE LOCAL GRAPHICS MODE READY"
-                            details.text = "Play Asset Delivery is unavailable for this installation. Aethelgard will continue with the bundled mobile-safe renderer."
-                            note.text = "No Google Play Console account is required for this free test mode. Install the matching local APK and continue; Play-delivered high-end packs require a Play-installed AAB."
-                            note.setTextColor(Color.rgb(174, 220, 190))
-                            progress.progress = 100
-                            finishPreparation()
-                        }
-                    } else if (!failureShown) {
+                    if (!failureShown) {
                         failureShown = true
                         status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
                         details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
                         note.text = when (event.errorCode) {
-                            -2 -> "The requested pack is not in this installed release. Upload/install the matching AAB, then retry."
+                            -2 -> "The requested pack is not in this installed release. Install the matching AAB or local-testing APK set, then retry."
                             -10 -> "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.startupMiBFor(resourceTier) + 512)} MB."
-                            -13, -15, -100 -> "This installation is not recognized for Play Asset Delivery. A GitHub/direct APK cannot fetch on-demand packs. Install the matching AAB from Play internal testing, or install a bundletool --local-testing APK set, uninstalling the old APK first."
+                            -13, -15, -100 -> "This installation is not recognized for Play Asset Delivery. Install the matching AAB from Play internal testing, or install a bundletool --local-testing APK set, uninstalling the old APK first."
                             -6 -> "Play could not reach the asset service. Check Wi-Fi, Google Play Store/Play Services, then retry."
-                            else -> "Install the matching AAB from Play internal testing, or use a bundletool --local-testing APK set. Direct APK installation cannot fetch the selected ${resourceTier.storageLabel} resource packs."
+                            else -> "Install the matching AAB from Play internal testing, or use a bundletool --local-testing APK set. The selected ${resourceTier.storageLabel} packs are required before gameplay."
                         }
                         note.setTextColor(Color.rgb(255, 188, 142))
                         progress.progress = 0

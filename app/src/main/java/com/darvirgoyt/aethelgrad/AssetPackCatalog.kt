@@ -2,7 +2,6 @@ package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.content.Context
-import android.os.Build
 import android.os.StatFs
 import com.google.android.play.core.assetpacks.AssetPackManager
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
@@ -262,24 +261,6 @@ class AssetPackCatalog(context: Context) {
     }
 
     fun isReady(packName: String): Boolean = manager.getPackLocation(packName) != null
-
-    /**
-     * Direct APKs and adb/bundletool local installs are not owned by Google Play.
-     * They can still run the bundled mobile-safe renderer without blocking the player.
-     */
-    fun canUseBundledFreeFallback(): Boolean {
-        val installerPackage = try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                appContext.packageManager.getInstallSourceInfo(appContext.packageName).installingPackageName
-            } else {
-                @Suppress("DEPRECATION")
-                appContext.packageManager.getInstallerPackageName(appContext.packageName)
-            }
-        } catch (_: Exception) {
-            null
-        }
-        return installerPackage != "com.android.vending"
-    }
 
     fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)
 

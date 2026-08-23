@@ -309,8 +309,9 @@ jobs:
               --output-dir build/obb-staging \
               --mapping-file tools/unreal_pack_mapping.json
           else
-            echo "No trusted cooked Unreal output found; using checked-in prototype reference content"
-            cp -R app/src/main/assets/asset_packs build/obb-staging/asset_packs
+            echo "ERROR: no trusted cooked Unreal output found; refusing to build a production OBB"
+            echo "Provide AETHELGARD_COOKED_ROOT with the signed shipping Unreal cook before publishing release artifacts."
+            exit 1
           fi
           AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK_PATH="app/build/outputs/apk/release/app-release.apk"

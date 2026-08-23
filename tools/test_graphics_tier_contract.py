@@ -13,7 +13,8 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    manifest = json.loads((root / "app/src/main/assets/asset_manifest.json").read_text())
+    manifest_text = (root / "app/src/main/assets/asset_manifest.json").read_text()
+    manifest = json.loads(manifest_text)
     profiles = json.loads((root / "assets/graphics_profiles.json").read_text())["profiles"]
     content_plan = (root / "app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
     activity = (root / "app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt").read_text()
@@ -47,6 +48,10 @@ def main() -> None:
     require('foliageDensity = 55' in content_plan and 'effectScalePercent = 70' in content_plan, "low graphics must reduce foliage and effects")
     require('foliageDensity = 100' in content_plan and 'effectScalePercent = 140' in content_plan, "high graphics must retain richer foliage and effects")
     require("setContentTierReady" in activity, "Android must notify native rendering when downloaded content is ready")
+    require('"selectionRequiredAfterBootstrap": true' in manifest_text, "production must require an explicit resource-tier selection")
+    require('"automaticExpansion": false' in manifest_text, "production must not silently expand or bypass tier selection")
+    require("showResourceTierChooser" in activity and "resourceTierChooserVisible" in activity, "first launch must show the Low/High resource chooser")
+    require("startupPacksFor(tier: ResourceTier): List<Pack> = packsFor(tier)" in content_plan, "the selected tier must be complete before gameplay")
     require("effectiveGraphicsQuality" in native, "native rendering must gate quality by content readiness")
     require("gContentTierReady" in native, "native rendering must retain downloaded-tier readiness")
     require("const int quality = effectiveGraphicsQuality();" in native, "premium effects must use the effective downloaded quality")
@@ -59,6 +64,7 @@ def main() -> None:
     require("WAITING FOR WI-FI  •  GAME LOCKED" in activity, "Wi-Fi waiting state must keep gameplay locked")
     require("loadingAnimationHandler" in activity and "PREPARE ${resourceTier.name} GRAPHICS" in activity, "download screen must include an animated preparation state")
     require("OPTIONAL VISUAL CONTENT UNAVAILABLE" not in activity, "obsolete optional-content fallback must not unlock gameplay")
+    require("FREE LOCAL GRAPHICS MODE READY" not in activity, "local bundled graphics fallback must not unlock production gameplay")
     require("minimumWorldLoadingDurationMs = 10_000L" in activity, "startup loading must reserve a ten-second preparation window")
     require("worldLoadingProgressTicker" in activity and "timelinePercent" in activity, "startup progress must update continuously with a timeline")
     require("WARMING HIGH-END GRAPHICS" in activity and "NECESSARY RESOURCES READY" in activity, "startup must show explicit finalization and readiness states")

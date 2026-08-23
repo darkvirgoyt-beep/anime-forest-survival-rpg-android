@@ -11,8 +11,8 @@
     "full3dTargetMiB": 6750,
     "full3dTargetLabel": "6.6 GB",
     "requiredBeforeStart": true,
-    "selectionRequiredAfterBootstrap": false,
-    "automaticExpansion": true,
+    "selectionRequiredAfterBootstrap": true,
+    "automaticExpansion": false,
     "resumeAfterRestart": true,
     "cameraProfile": "third-person-orbit-360-horizontal-180-vertical",
     "compiledGraphics": {
@@ -54,7 +54,7 @@
       "targetMiB": 4300,
       "targetLabel": "4.2 GB",
       "graphicsQuality": "low",
-      "description": "Complete world sectors, gameplay characters, low-resolution textures, GLES shaders, terrain LODs, animation, and core effects.",
+      "description": "Complete low-resource world sectors, gameplay characters, textures, GLES shaders, terrain LODs, animation, audio, VFX, and core effects before gameplay.",
       "packs": [
         "assetpack_graphics_base",
         "assetpack_forest",
@@ -74,7 +74,7 @@
       "targetMiB": 6750,
       "targetLabel": "6.6 GB",
       "graphicsQuality": "high",
-      "description": "Complete world sectors, high-resolution characters, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation.",
+      "description": "Complete high-resource world sectors, high-resolution characters, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation before gameplay.",
       "packs": [
         "assetpack_graphics_base",
         "assetpack_forest",
@@ -97,29 +97,6 @@
       ]
     }
   ],
-  "referenceAssets": {
-    "sourceFolder": "My game components",
-    "characterPhotos": [
-      "1787473123870.png",
-      "1787475963776.png",
-      "1787476000911.png",
-      "1787476845599.png"
-    ],
-    "snowCreatureReference": "IMG-20260823-WA0004.jpg",
-    "uiReferences": [
-      "file_00000000a3988211ac5fdb67308d3525.png",
-      "Screenshot_20260823-115635_Aethelgard_ Wild Horizons \u2013 Crafting.png"
-    ],
-    "packMapping": {
-      "approvedArtDirection": "design-reference-only",
-      "characterPhotos": "assetpack_characters",
-      "snowCreatureReference": [
-        "assetpack_snow",
-        "assetpack_characters"
-      ],
-      "uiReferences": "app-ui-reference-only"
-    }
-  },
   "packs": [
     {
       "name": "assetpack_graphics_base",

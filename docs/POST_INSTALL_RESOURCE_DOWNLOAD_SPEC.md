@@ -29,9 +29,9 @@ The post-install flow uses the following user-visible states:
 
 ## Pack policy
 
-The current plan uses one install-time bootstrap pack and a set of production packs. `assetpack_forest` is fast-follow for the initial Forest region. Large optional or later-region packs are on-demand in the Gradle modules and should be requested by map progression in a later milestone. Packs marked `requiredBeforeStart` are the only packs included in the initial production gate.
+The production gate uses one small install-time bootstrap pack plus the complete selected Low or High resource tier. All packs in the selected tier—including world sectors, characters, textures, shaders, animation, terrain LODs, audio, VFX, cinematics, and voice where included—must report ready and expose valid Play Asset Delivery locations before the first world entry. Sector APIs remain available for future incremental updates, but they cannot be used to bypass the initial full-tier gate.
 
-The checked-in pack directories are intentionally small content stubs for the current client contract. They do not represent a finished multi-gigabyte Unreal world. The final AAB must replace them with real cooked Unreal `.pak` content, manifest metadata, and device-tested assets without padding files.
+The production AAB must contain real cooked Unreal `.pak`/`.ucas`/`.utoc` runtime content, signed manifest metadata, and device-tested assets without padding files. If those authored assets are not present, the build is not a finished production game and the runtime must remain locked rather than substituting procedural or reference content.
 
 ## Reliability rules
 

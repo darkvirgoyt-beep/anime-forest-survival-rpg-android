@@ -49,7 +49,7 @@ ACCOUNT GATE ───────────────→ AUTHENTICATED PROF
 | Screen or state | Player-facing responsibilities | Server/backend responsibility | Current foundation |
 |---|---|---|---|
 | Boot | Load version, legal text, local settings, asset-pack status | Version compatibility and maintenance status | Android activity and Unreal project descriptor |
-| Account | Mandatory Google Play sign-in and session status; no player-facing guest entry | Exchange short-lived provider credential for backend session | `AccountSessionManager`, `UForestSliceAccountSubsystem` boundary; current APK still exposes a temporary developer-only guest control that must be hidden for release |
+| Account | Mandatory Google Play sign-in and session status; no player-facing guest entry | Exchange short-lived provider credential for backend session | `AccountSessionManager`, `UForestSliceAccountSubsystem` boundary; the Android release exposes only the verified Google account flow |
 | Server directory | Show region, status, capacity, measured ping, selected row | Return signed directory and perform real health/ping checks | `ServerDirectory.kt`, `UForestSliceServerDirectorySubsystem` |
 | World lobby | Create private world, invite friends, join by code, set privacy; blocked until authenticated and cloud-save preflight succeeds | Allocate/destroy authoritative session and verify party permissions | `UForestSliceWorldSessionSubsystem` contract; dedicated service still required |
 | Cloud save | Show last saved version, conflict warning, retry state | Versioned save, checksum, conflict resolution, migration, backup | Planned cloud-save service boundary |
@@ -62,11 +62,11 @@ ACCOUNT GATE ───────────────→ AUTHENTICATED PROF
 
 ## Data ownership rules
 
-The client owns presentation state, local input, camera feel, menu navigation, cached read-only directory data, and offline guest preferences. The server owns damage, health, stamina outcomes, inventory mutation, crafting, building, creature bonding, AI, loot claims, missions, world mutations, sleep/time, and co-op permissions. The backend owns account exchange, cloud-save storage, conflict resolution, entitlements, telemetry, and service health. Provider secrets and Play signing credentials never ship in the APK.
+The client owns presentation state, local input, camera feel, menu navigation, and cached read-only directory data. The server owns damage, health, stamina outcomes, inventory mutation, crafting, building, creature bonding, AI, loot claims, missions, world mutations, sleep/time, and co-op permissions. The backend owns account exchange, cloud-save storage, conflict resolution, entitlements, telemetry, and service health. Provider secrets and Play signing credentials never ship in the APK.
 
 ## First account/server/character milestone
 
-The online-only release milestone is complete when a player can launch the Android build, complete Google Play sign-in through the platform bridge, receive a backend session, see live server health and measured latency, pass cloud-save preflight, join or create an invite-only co-op session, enter a character name, cycle original style indices for eyebrow/clothes/hair, and pass validation before the gameplay HUD is revealed. The Google Play button must not fake an authenticated session. A clearly isolated developer build may use a guest control, but that control must be compiled out or hidden behind a developer flag in release.
+The online-only release milestone is complete when a player can launch the Android build, complete Google Play sign-in through the platform bridge, receive a backend session, see live server health and measured latency, pass cloud-save preflight, join or create an invite-only co-op session, enter a character name, cycle original style indices for eyebrow/clothes/hair, and pass validation before the gameplay HUD is revealed. The Google Play button must not fake an authenticated session. A guest control is not part of the Android release path.
 
 ## First world milestone
 

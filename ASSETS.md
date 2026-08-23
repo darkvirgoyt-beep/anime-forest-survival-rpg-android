@@ -18,9 +18,7 @@
 
 ## Included in v0.1
 
-The current scene uses procedural OpenGL ES geometry and shader colors for the forest, sand, and snow panorama, layered mountains, clouds, paths, farm plots, village structures, market awnings, lanterns, snow crystals, rocks, resources, animals, moon/sun treatment, combat pulse, and the hero. These elements are code-generated and do not embed third-party artwork. The hero is an original cel-shaded anime-fantasy design rendered as layered flat-color polygons and circles: a deep-violet hair silhouette, warm skin planes, a plum tunic with hard shadow blocks, teal sash accents, ink-like outlines, and a short gold-edged sword. The newer visual pass adds depth layers, biome landmarks, lighting-aware lanterns, and richer silhouettes while keeping the prototype mobile-safe.
-
-The concept references are also bundled into `app/src/main/res/drawable-nodpi/` as `reference_*` resources. The onboarding screen exposes them through the **VIEW ART REFERENCES** library so the board, player expressions, environments and lighting, creatures, assets and weapons, and UI target can be reviewed on-device. These are reference images for the prototype and are not used as final runtime 3D models or textures.
+The Android bootstrap contains only the production account shell, settings, loading scene, native renderer, save schema, and minimum runtime code required before Play Asset Delivery content is mounted. It does not ship a reference-image library or character-photo gallery. The final world meshes, materials, animation graphs, cooked shaders, LODs, audio, VFX, and world-sector data must arrive through the signed resource packs.
 
 ## Planned original assets
 
@@ -39,7 +37,7 @@ The design references broad anime-fantasy and survival-RPG aesthetics only. Do n
 
 The production graphics and delivery plan is documented in [REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md](docs/REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md). The authoritative budget is [assets/asset_budget.json](assets/asset_budget.json), which targets 10,116 MiB of real authored content across eleven Android asset packs. The pack modules are linked from the app Gradle configuration and use install-time, fast-follow, and on-demand delivery modes.
 
-The repository does not create dummy files or claim that empty asset directories are finished 10 GiB content. Populate each pack with original or properly licensed models, textures, animations, audio, cinematics, voice, VFX, and cooked Unreal chunks. Run `python3 tools/validate_asset_budget.py` before release; it reports actual bytes and rejects over-budget packs without generating padding.
+The repository does not create dummy files or claim that empty asset directories are finished 10 GiB content. Populate each pack with original or properly licensed models, textures, animations, audio, cinematics, voice, VFX, and cooked Unreal chunks. A production release must fail or remain locked until those signed cooked packs are present. Run `python3 tools/validate_asset_budget.py` before release; it reports actual bytes and rejects over-budget packs without generating padding.
 
 The Unreal graphics baseline is in `Unreal/Config/DefaultEngine.ini`. It enables a mobile-realistic PBR/HDR baseline with controlled lights, shadows, atmosphere, virtual-texture support, and streaming while leaving desktop-only ray-traced features disabled for the Android profile. Final AAA presentation still requires authored assets, Unreal material and animation graphs, LODs, quality tiers, and device profiling.
 

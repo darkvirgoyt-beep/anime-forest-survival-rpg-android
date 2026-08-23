@@ -3,9 +3,9 @@ package com.darvirgoyt.aethelgrad
 /**
  * Production download envelope for the real cooked 3D Aethelgard experience.
  *
- * The launch slice is small enough to prepare before world entry. Larger region
- * and presentation packs are requested only after the matching sector is
- * discovered, so the installed footprint grows with exploration.
+ * The selected Low or High tier is downloaded and mounted completely before
+ * world entry. This prevents missing meshes, shaders, world sectors, audio, or
+ * VFX from appearing after the player starts.
  */
 object ContentDownloadPlan {
     data class QualityEnvelope(
@@ -82,17 +82,17 @@ object ContentDownloadPlan {
         Pack("assetpack_world_streaming", 400, "world partition descriptors, streamed sublevels, nav data for all world sectors"),
         Pack("assetpack_terrain_lod", 425, "terrain heightfields, landscape LODs, virtual shadow maps"),
         Pack("assetpack_animation_sets", 425, "locomotion, combat, traversal, emotes, montage sections"),
-        Pack("assetpack_sand", 400, "sand biome terrain, settlements, rocks, foliage, weather", requiredBeforeStart = false, sector = WorldSector.SAND),
-        Pack("assetpack_snow", 400, "snow biome terrain, caves, ice materials, weather", requiredBeforeStart = false, sector = WorldSector.SNOW),
-        Pack("assetpack_dungeons", 400, "dungeon cells, props, traps, encounter data, lighting data", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
-        Pack("assetpack_hd_textures", 500, "high-resolution PBR textures, virtual-texture pages, decals", requiredBeforeStart = false, sector = WorldSector.SAND),
-        Pack("assetpack_foliage_lods", 400, "foliage clusters, impostors, Nanite-disabled mobile LODs", requiredBeforeStart = false, sector = WorldSector.SAND),
-        Pack("assetpack_audio_hd", 450, "music, ambience, combat sounds, wildlife and high-quality mixes", requiredBeforeStart = false, sector = WorldSector.SNOW),
-        Pack("assetpack_vfx", 300, "Niagara systems, weather effects, impact effects", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
-        Pack("assetpack_cinematics", 450, "story scenes, pre-rendered sequences, camera animation data", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
-        Pack("assetpack_voice", 250, "dialogue, localization voice banks, subtitles metadata", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
-        Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
-        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", requiredBeforeStart = false, sector = WorldSector.DUNGEON)
+        Pack("assetpack_sand", 400, "sand biome terrain, settlements, rocks, foliage, weather", sector = WorldSector.SAND),
+        Pack("assetpack_snow", 400, "snow biome terrain, caves, ice materials, weather", sector = WorldSector.SNOW),
+        Pack("assetpack_dungeons", 400, "dungeon cells, props, traps, encounter data, lighting data", sector = WorldSector.DUNGEON),
+        Pack("assetpack_hd_textures", 500, "high-resolution PBR textures, virtual-texture pages, decals", sector = WorldSector.SAND),
+        Pack("assetpack_foliage_lods", 400, "foliage clusters, impostors, Nanite-disabled mobile LODs", sector = WorldSector.SAND),
+        Pack("assetpack_audio_hd", 450, "music, ambience, combat sounds, wildlife and high-quality mixes", sector = WorldSector.SNOW),
+        Pack("assetpack_vfx", 300, "Niagara systems, weather effects, impact effects", sector = WorldSector.DUNGEON),
+        Pack("assetpack_cinematics", 450, "story scenes, pre-rendered sequences, camera animation data", sector = WorldSector.DUNGEON),
+        Pack("assetpack_voice", 250, "dialogue, localization voice banks, subtitles metadata", sector = WorldSector.DUNGEON),
+        Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources", sector = WorldSector.DUNGEON),
+        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
     )
 
     private val lowResourcePackNames = setOf(
@@ -116,8 +116,8 @@ object ContentDownloadPlan {
     /** All packs in a tier, used for the full installed-footprint estimate. */
     fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
 
-    /** Only the compact launch slice required before the first playable world entry. */
-    fun startupPacksFor(tier: ResourceTier): List<Pack> = packsFor(tier).filter { it.requiredBeforeStart }
+    /** Every pack in the selected tier is required before the first playable world entry. */
+    fun startupPacksFor(tier: ResourceTier): List<Pack> = packsFor(tier)
 
     fun startupPackNamesFor(tier: ResourceTier): List<String> = startupPacksFor(tier).map { it.playPackName }
 
@@ -136,7 +136,7 @@ object ContentDownloadPlan {
 
     val totalMiB: Int = packs.sumOf { it.targetMiB }
     val requiredMiB: Int = packs.filter { it.requiredBeforeStart }.sumOf { it.targetMiB }
-    // Reserve headroom for Play staging, filesystem metadata, and safe pack updates.
+    // Reserve headroom for full-tier Play staging, filesystem metadata, and safe pack updates.
     val minimumFreeSpaceMiB: Int = requiredMiB + 512
     val totalGiBLabel: String = "%.1f GB".format(requiredMiB / 1024.0)
     val summary: String = packs.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }

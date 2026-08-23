@@ -1,7 +1,0 @@
-{
-  "packId": "aethelgard.medium",
-  "runtimeFormat": "aethelgard-cooked-v1",
-  "tier": "medium",
-  "content": ["procedural_fallback_materials", "balanced_weather_effects", "medium_lod_policy"],
-  "note": "Development payload only; production builds replace this with signed cooked 3D bundles."
-}

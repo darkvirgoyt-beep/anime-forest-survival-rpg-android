@@ -25,7 +25,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.KeyStore
 import java.security.MessageDigest
-import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -194,9 +193,7 @@ class AccountSessionManager {
     private var googleWebClientId: String = ""
     private var apiBaseUrl: String = ""
     private var authExchangeUrl: String = ""
-    private var guestAuthUrl: String = ""
     private var authRefreshUrl: String = ""
-    private var guestKey: String? = null
     private var accessSessionToken: String? = null
     private var refreshSessionToken: String? = null
     private var accessExpiresAtEpochMs: Long? = null
@@ -215,55 +212,16 @@ class AccountSessionManager {
         googleWebClientId = activity.getString(R.string.google_web_client_id)
         apiBaseUrl = activity.getString(R.string.api_base_url).trimEnd('/')
         authExchangeUrl = activity.getString(R.string.auth_exchange_url)
-        guestAuthUrl = activity.getString(R.string.auth_guest_url)
         authRefreshUrl = activity.getString(R.string.auth_refresh_url)
-        guestKey = activity.getSharedPreferences("aethelgard_guest_identity", Activity.MODE_PRIVATE)
-            .getString("guest_key", null)
         credentialManager = CredentialManager.create(activity)
 
-        if (!hasGuestConfiguration()) {
+        if (!hasGoogleConfiguration()) {
             publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS online game service is not configured."))
             return
         }
         if (!restorePersistedSession()) {
             publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Sign in to continue to Aethelgard online."))
         }
-    }
-
-    /** Starts an online guest session without opening an account picker or asking for Gmail. */
-    fun requestGuestSignIn(): SessionSnapshot {
-        if (!hasGuestConfiguration()) {
-            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS online game service is not configured."))
-        }
-        val key = guestKey ?: createGuestKey().also {
-            guestKey = it
-            activity?.getSharedPreferences("aethelgard_guest_identity", Activity.MODE_PRIVATE)
-                ?.edit()?.putString("guest_key", it)?.apply()
-        }
-        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Connecting to Aethelgard online…", isGuest = true))
-        networkExecutor.execute {
-            try {
-                val response = postJson(guestAuthUrl, JSONObject().put("guestKey", key).toString())
-                val bundle = if (response.isJson()) parseSessionBundle(response) else null
-                if (!response.isJson() || response.statusCode !in 200..299 || bundle == null) {
-                    val message = if (!response.isJson()) {
-                        "Online service returned an invalid response. Verify the game backend deployment and try again."
-                    } else {
-                        "Online guest service is unavailable. Check your connection and try again."
-                    }
-                    publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = message, isGuest = true))
-                    return@execute
-                }
-                accessSessionToken = bundle.accessToken
-                refreshSessionToken = bundle.refreshToken
-                accessExpiresAtEpochMs = bundle.expiresAt
-                persistSession(bundle.accountId, bundle.refreshToken, true)
-                publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, bundle.accountId, "Guest session ready. Entering Aethelgard online…", bundle.expiresAt, true))
-            } catch (_: Exception) {
-                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Online guest service is unreachable. Check your connection and try again.", isGuest = true))
-            }
-        }
-        return snapshot
     }
 
     fun requestGoogleSignIn(): SessionSnapshot {
@@ -1005,19 +963,12 @@ class AccountSessionManager {
         networkExecutor.shutdownNow()
     }
 
-    private fun hasGuestConfiguration(): Boolean =
-        !guestAuthUrl.startsWith("REPLACE_") &&
-            !authRefreshUrl.startsWith("REPLACE_") &&
-            guestAuthUrl.startsWith("https://") &&
-            authRefreshUrl.startsWith("https://")
-
     private fun hasGoogleConfiguration(): Boolean =
-        hasGuestConfiguration() &&
-            !googleWebClientId.startsWith("REPLACE_") &&
+        !googleWebClientId.startsWith("REPLACE_") &&
             !authExchangeUrl.startsWith("REPLACE_") &&
-            authExchangeUrl.startsWith("https://")
-
-    private fun createGuestKey(): String = Base64.encodeToString(ByteArray(32).also { SecureRandom().nextBytes(it) }, Base64.NO_WRAP or Base64.NO_PADDING or Base64.URL_SAFE)
+            !authRefreshUrl.startsWith("REPLACE_") &&
+            authExchangeUrl.startsWith("https://") &&
+            authRefreshUrl.startsWith("https://")
 
     private fun parseSessionBundle(response: HttpResponse): SessionBundle? {
         val root = JSONObject(response.body)
@@ -1110,8 +1061,14 @@ class AccountSessionManager {
             val accountId = root.optString("accountId").takeIf { it.isNotBlank() } ?: return false
             val refreshToken = root.optString("refreshToken").takeIf { it.isNotBlank() } ?: return false
             val isGuest = root.optBoolean("isGuest", false)
+            if (isGuest) {
+                // Guest sessions were a development entry path. Do not let an
+                // old encrypted guest session bypass the production login.
+                clearPersistedSession()
+                return false
+            }
             refreshSessionToken = refreshToken
-            publish(SessionSnapshot(SessionState.SIGNING_IN, accountId, "Restoring your secure game session…", isGuest = isGuest))
+            publish(SessionSnapshot(SessionState.SIGNING_IN, accountId, "Restoring your secure game session…"))
             refreshSession()
             true
         } catch (_: Exception) {

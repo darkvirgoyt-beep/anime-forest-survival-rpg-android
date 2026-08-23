@@ -18,7 +18,7 @@ The supplied content envelope is the planning target for a full production versi
 
 The production version should use a small bootstrap package containing the account shell, renderer, settings, a minimal loading scene, and the first required gameplay data. Each biome should be addressable as an independently versioned content pack with its own manifest, dependency list, compression profile, and device-quality variants. Characters, animals, animation/VFX, audio, cinematics, and localization should be split into optional packs where possible so a player does not download content for regions they have not reached.
 
-The Android prototype should continue to bundle only lightweight procedural art and a small set of reference images for review. The concept images under `docs/art_reference/` and the `reference_*` resources in `app/src/main/res/drawable-nodpi/` are design references and an on-device art library, not production 3D assets. Before a production migration, each concept should be converted into original optimized meshes, atlases, animation clips, and compressed runtime textures.
+The production Android package must not ship reference images or procedural stand-ins as the final world. It contains only the bootstrap shell, loading scene, renderer, and account/session code; original optimized meshes, atlases, animation clips, compressed runtime textures, cooked shaders, and world data arrive through signed Play Asset Delivery packs. A release remains locked until the selected resource tier is mounted and validated.
 
 ## Scope and originality
 

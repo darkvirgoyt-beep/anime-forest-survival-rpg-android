@@ -1,8 +1,0 @@
-{
-  "format": "aethelgard-creature-reference-v1",
-  "sourceFolder": "My game components",
-  "entries": [
-    {"id": "ice_creature_boss", "file": "ice_creature_boss.jpg", "role": "snow-boss-reference", "resourceTier": "low-and-high"}
-  ],
-  "note": "This image is a visual reference. The production Unreal creature mesh, rig, materials, animation, collision, and AI must be cooked into the snow and character packs separately."
-}

@@ -1,6 +1,6 @@
 # Google Sign-In Device Troubleshooting
 
-The optional `SIGN IN WITH GOOGLE` link uses Android Credential Manager and the explicit Google button flow. AETHELGRAD enters an online guest session automatically; Google linking protects the account and cloud world. A visible cancellation can be a genuine user dismissal, but Android documents that unexpected cancellations can also reflect a relying-party configuration problem. The app now shows a safe action message rather than exposing token data or raw account information.
+The required `SIGN IN WITH GOOGLE` control uses Android Credential Manager and the explicit Google button flow. AETHELGRAD does not create an automatic guest session; a verified Google account is required to protect the cloud world and continue online. A visible cancellation can be a genuine user dismissal, but Android documents that unexpected cancellations can also reflect a relying-party configuration problem. The app shows a safe action message rather than exposing token data or raw account information.
 
 | Player-facing diagnostic | Most likely next action |
 |---|---|
@@ -21,7 +21,7 @@ The current build workflow falls back to an Android debug certificate when prote
 
 ## Use the Correct GitHub Artifact
 
-Install only `forest-slice-release-apk` from the successful GitHub Actions run together with the `aethelgard-android-signing-certificate` artifact. The release package is `com.darvirgoyt.aethelgrad`, enters the online guest session automatically, and supports optional Google account linking. Register the SHA-1 from that certificate artifact against the same package in the Android OAuth client.
+Install the matching AETHELGARD AAB through Play internal testing, or use the workflow’s bundletool local-testing APK set when testing Play Asset Delivery. The release package is `com.darvirgoyt.aethelgrad`; it requires Google sign-in and the selected full resource tier before world entry. Register the SHA-1 from the `aethelgard-android-signing-certificate` artifact against the same package in the Android OAuth client. A direct APK is limited to installation and configuration smoke checks because it cannot fetch Play Asset Delivery packs.
 
 ## Mobile Control Direction
 
