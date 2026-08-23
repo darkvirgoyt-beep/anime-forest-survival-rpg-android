@@ -7,4 +7,6 @@
     <string name="ambience_volume">Ambience Volume</string>
     <string name="voice_volume">Voice Volume</string>
     <string name="gyro_unsupported">GYRO: UNSUPPORTED</string>
+    <!-- Replace with the numeric Game services project ID from Google Play Console. -->
+    <string name="game_services_project_id" translatable="false">REPLACE_WITH_PLAY_GAMES_PROJECT_ID</string>
 </resources>

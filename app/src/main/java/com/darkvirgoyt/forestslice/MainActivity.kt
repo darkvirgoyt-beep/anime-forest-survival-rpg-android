@@ -104,6 +104,7 @@ class MainActivity : Activity(), SensorEventListener {
         setContentView(root)
         updateGyroButton()
         registerGyro()
+        accountSession.initialize(this, ::applyAccountSnapshot)
     }
 
     private fun registerGyro() {
@@ -209,9 +210,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val accountRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
         val google = actionButton("GOOGLE PLAY SIGN-IN") {
-            val snapshot = accountSession.requestGooglePlaySignIn()
-            onboardingStatus.text = snapshot.message
-            onboardingStatus.setTextColor(Color.rgb(255, 205, 145))
+            accountSession.requestGooglePlaySignIn()
         }
         if (isDeveloperBuild) {
             val guest = actionButton("DEV GUEST") {
@@ -305,6 +304,19 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = 40
         })
         return overlay
+    }
+
+    private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
+        if (!::onboardingStatus.isInitialized) return
+        onboardingStatus.text = snapshot.message
+        onboardingStatus.setTextColor(
+            when (snapshot.state) {
+                SessionState.AUTHENTICATED, SessionState.GUEST -> Color.rgb(164, 231, 190)
+                SessionState.SIGNING_IN -> Color.rgb(255, 205, 145)
+                SessionState.ERROR -> Color.rgb(255, 180, 150)
+                SessionState.SIGNED_OUT -> Color.WHITE
+            }
+        )
     }
 
     private fun buildHud(): View {
