@@ -380,7 +380,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "ONLINE LOGIN  •  Checking your Google account…"
+            text = "ONLINE ONLY  •  Checking your Google account…"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
