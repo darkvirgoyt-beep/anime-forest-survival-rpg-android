@@ -75,4 +75,4 @@ The first playable milestone is documented in [`docs/FIRST_PLAYABLE_PROTOTYPE.md
 
 ## 3D digging and farming slice
 
-The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, and mobile HUD contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md). The Android GLES prototype remains the lightweight 2D control harness; the true 3D gameplay path is the Unreal project.
+The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, mobile HUD, and character progression contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md) and [`docs/PROGRESSION_AND_XP_SPEC.md`](docs/PROGRESSION_AND_XP_SPEC.md). The player has 100 maximum HP, starts at level 0, can reach level 100, and earns integer XP through grinding. The Android GLES prototype remains the lightweight 2D control harness; the true 3D gameplay path is the Unreal project.

@@ -2,6 +2,7 @@
 #include "ForestSliceCharacterProfileComponent.h"
 #include "ForestSliceCombatComponent.h"
 #include "ForestSlicePresentationComponent.h"
+#include "ForestSliceProgressionComponent.h"
 #include "ForestSliceHealthComponent.h"
 #include "ForestSliceGroundPlanningComponent.h"
 #include "ForestSliceInteractionComponent.h"
@@ -32,6 +33,7 @@ AForestSliceCharacter::AForestSliceCharacter()
     InteractionComponent = CreateDefaultSubobject<UForestSliceInteractionComponent>(TEXT("InteractionComponent"));
     QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
     HealthComponent = CreateDefaultSubobject<UForestSliceHealthComponent>(TEXT("HealthComponent"));
+    ProgressionComponent = CreateDefaultSubobject<UForestSliceProgressionComponent>(TEXT("ProgressionComponent"));
     CharacterProfileComponent = CreateDefaultSubobject<UForestSliceCharacterProfileComponent>(TEXT("CharacterProfileComponent"));
     PresentationComponent = CreateDefaultSubobject<UForestSlicePresentationComponent>(TEXT("PresentationComponent"));
     bUseControllerRotationYaw = false;
@@ -61,6 +63,21 @@ AForestSliceCharacter::AForestSliceCharacter()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+}
+
+int32 AForestSliceCharacter::AwardGrindingXP(int32 Amount)
+{
+    return ProgressionComponent ? ProgressionComponent->AwardGrindingXP(Amount) : 0;
+}
+
+int32 AForestSliceCharacter::GetCharacterLevel() const
+{
+    return ProgressionComponent ? ProgressionComponent->GetState().Level : 0;
+}
+
+int32 AForestSliceCharacter::GetLiveExperience() const
+{
+    return ProgressionComponent ? ProgressionComponent->GetState().Experience : 0;
 }
 
 void AForestSliceCharacter::BeginPlay()

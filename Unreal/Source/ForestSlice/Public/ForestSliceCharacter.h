@@ -13,6 +13,7 @@ class UForestSliceGroundPlanningComponent;
 class UForestSliceInteractionComponent;
 class UForestSliceQuickSlotComponent;
 class UForestSlicePresentationComponent;
+class UForestSliceProgressionComponent;
 class UForestSliceSurvivalComponent;
 class UForestSliceWeaponComponent;
 class UInputAction;
@@ -95,6 +96,18 @@ public:
     UForestSliceHealthComponent* GetHealthComponent() const { return HealthComponent; }
 
     UFUNCTION(BlueprintPure, Category = "Systems")
+    UForestSliceProgressionComponent* GetProgressionComponent() const { return ProgressionComponent; }
+
+    UFUNCTION(BlueprintCallable, Category = "Progression")
+    int32 AwardGrindingXP(int32 Amount);
+
+    UFUNCTION(BlueprintPure, Category = "Progression")
+    int32 GetCharacterLevel() const;
+
+    UFUNCTION(BlueprintPure, Category = "Progression")
+    int32 GetLiveExperience() const;
+
+    UFUNCTION(BlueprintPure, Category = "Systems")
     UForestSliceCharacterProfileComponent* GetCharacterProfileComponent() const { return CharacterProfileComponent; }
 
     UFUNCTION(BlueprintPure, Category = "Presentation")
@@ -136,6 +149,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceHealthComponent> HealthComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceProgressionComponent> ProgressionComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceCharacterProfileComponent> CharacterProfileComponent;

@@ -4,19 +4,71 @@
 
 namespace forest::rpg {
 
+int Progression::experienceRequirementForLevel(int targetLevel) {
+    const int safeLevel = std::clamp(targetLevel, 0, kMaxLevel);
+    if (safeLevel >= kMaxLevel) return 0;
+    const int nextLevel = safeLevel + 1;
+    // Exact integer curve. The final transition, 99 -> 100, is exactly 100000 XP.
+    return 10 * nextLevel * nextLevel;
+}
+
 void Progression::awardExperience(int amount) {
-    if (amount <= 0 || (questStage == QuestStage::Complete && wardenDefeated)) return;
-    experience += amount;
-    while (experience >= experienceToNext) {
+    if (amount <= 0) return;
+    totalExperience = std::max(0, totalExperience) + amount;
+    if (level >= kMaxLevel) {
+        level = kMaxLevel;
+        experience = 0;
+        experienceToNext = 0;
+        return;
+    }
+
+    experience = std::max(0, experience) + amount;
+    while (level < kMaxLevel) {
+        experienceToNext = experienceRequirementForLevel(level);
+        if (experience < experienceToNext) break;
         experience -= experienceToNext;
         ++level;
-        experienceToNext = 100 + (level - 1) * 35;
     }
+
+    if (level >= kMaxLevel) {
+        level = kMaxLevel;
+        experience = 0;
+        experienceToNext = 0;
+    } else {
+        experienceToNext = experienceRequirementForLevel(level);
+        experience = std::clamp(experience, 0, experienceToNext - 1);
+    }
+}
+
+void Progression::restoreState(int savedLevel, int savedExperience, int savedExperienceToNext, int savedTotalExperience) {
+    level = std::clamp(savedLevel, 0, kMaxLevel);
+    experience = std::max(0, savedExperience);
+    totalExperience = std::max(0, savedTotalExperience);
+    experienceToNext = experienceRequirementForLevel(level);
+
+    if (level >= kMaxLevel) {
+        level = kMaxLevel;
+        experience = 0;
+        experienceToNext = 0;
+        return;
+    }
+
+    // Ignore stale/rounded thresholds from old clients and use the canonical curve.
+    (void)savedExperienceToNext;
+    experience = std::clamp(experience, 0, experienceToNext - 1);
+}
+
+void Progression::restoreLegacyExperience(int legacyExperience) {
+    level = 0;
+    experience = 0;
+    experienceToNext = experienceRequirementForLevel(0);
+    totalExperience = 0;
+    awardExperience(std::max(0, legacyExperience));
 }
 
 void Progression::recordGather() {
     gatheringActions = std::min(gatheringActions + 1, 3);
-    awardExperience(12);
+    awardGrindingXP(12);
     if (questStage == QuestStage::GatherMaterials && gatheringActions >= 3) {
         questStage = QuestStage::CraftEmberKit;
     }

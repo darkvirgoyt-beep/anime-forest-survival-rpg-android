@@ -14,7 +14,10 @@ int main() {
     original.wood = 19;
     original.fiber = 7;
     original.stone = 12;
-    original.experience = 84;
+    original.experience = 840;
+    original.level = 8;
+    original.experienceToNext = 810;
+    original.totalExperience = 5040;
     original.day = 4;
     original.worldTime = 512.5f;
     original.gatheringActions = 3;
@@ -24,14 +27,26 @@ int main() {
 
     forest::rpg::CloudState restored{};
     assert(forest::rpg::parseCloudState(forest::rpg::serializeCloudState(original).c_str(), restored));
+    assert(restored.schemaVersion == 3);
     assert(std::abs(restored.playerX - original.playerX) < 0.001f);
     assert(restored.wood == original.wood);
     assert(restored.day == original.day);
+    assert(restored.level == original.level);
+    assert(restored.experience == original.experience);
+    assert(restored.experienceToNext == original.experienceToNext);
+    assert(restored.totalExperience == original.totalExperience);
     assert(restored.gatheringActions == 3 && restored.questStage == 3);
     assert(restored.emberKitCrafted && restored.wardenDefeated);
+
     assert(!forest::rpg::parseCloudState("{\"schemaVersion\":2}", restored));
+    assert(forest::rpg::parseCloudState("{\"schemaVersion\":2,\"playerX\":0,\"playerY\":0,\"health\":0.5,\"stamina\":0.5,\"hunger\":0.5,\"wood\":1,\"fiber\":2,\"stone\":3,\"experience\":84,\"day\":2,\"worldTime\":5,\"gatheringActions\":1,\"questStage\":1,\"emberKitCrafted\":0,\"wardenDefeated\":0}", restored));
+    assert(restored.schemaVersion == 2 && restored.experience == 84);
+    assert(restored.level == 0 && restored.experienceToNext == 10 && restored.totalExperience == 0);
+
     assert(forest::rpg::parseCloudState("{\"schemaVersion\":1,\"playerX\":0,\"playerY\":0,\"health\":9,\"stamina\":-2,\"hunger\":2,\"wood\":-4,\"fiber\":-3,\"stone\":-2,\"experience\":-1,\"day\":0,\"worldTime\":-5}", restored));
+    assert(restored.schemaVersion == 1);
     assert(restored.health == 1.0f && restored.stamina == 0.0f && restored.wood == 0 && restored.day == 1);
+    assert(restored.experience == 0 && restored.level == 0 && restored.experienceToNext == 10);
     assert(restored.questStage == 0 && !restored.emberKitCrafted && !restored.wardenDefeated);
     std::cout << "cloud_state_test: PASS\n";
 }

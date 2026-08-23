@@ -42,6 +42,8 @@ jobs:
           test -f Unreal/Source/ForestSlice/Private/ForestSliceQuickSlotComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceHealthComponent.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceHealthComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceProgressionComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceProgressionComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceServerDirectorySubsystem.h
@@ -101,6 +103,10 @@ jobs:
           grep -q 'TriggerVirtualPlanGround' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           grep -q 'TriggerVirtualCreateFarmContour' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           grep -q 'TriggerVirtualPlantSeed' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'AwardGrindingXP' Unreal/Source/ForestSlice/Public/ForestSliceProgressionComponent.h
+          grep -q '100000' app/src/main/cpp/rpg/progression.cpp
+          grep -q 'kPlayerMaxHealthHp = 100' app/src/main/cpp/forest_game.cpp
+          grep -q 'ProgressionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
 
   native-tests:
     runs-on: ubuntu-latest

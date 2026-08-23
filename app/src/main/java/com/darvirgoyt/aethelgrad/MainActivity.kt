@@ -934,13 +934,14 @@ class MainActivity : Activity(), SensorEventListener {
         val phase = values.getOrNull(13)?.ifBlank { "DAY" } ?: "DAY"
         val daysPlayed = values.getOrNull(14)?.toIntOrNull()?.coerceAtLeast(1) ?: 1
         val objective = values.getOrNull(15)?.ifBlank { "Explore the wilds" } ?: "Explore the wilds"
+        val xpLabel = if (level >= 100) "XP MAX" else "XP $xp/$next"
         val water = values.getOrNull(16)?.ifBlank { "DRY" } ?: "DRY"
         val locomotion = values.getOrNull(17)?.ifBlank { "IDLE" } ?: "IDLE"
         val weather = values.getOrNull(18)?.ifBlank { "CLEAR" } ?: "CLEAR"
         val viewMode = values.getOrNull(19)?.replace('_', ' ')?.ifBlank { "THIRD PERSON" } ?: "THIRD PERSON"
         val mapState = values.getOrNull(20)?.ifBlank { "MAP OFF" } ?: "MAP OFF"
         val towerState = values.getOrNull(21)?.replace('_', ' ')?.ifBlank { "TOWER READY" } ?: "TOWER READY"
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  HP $health  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  HP $health/100  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level/100  |  $xpLabel  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(
             when {
                 levelPulse -> Color.rgb(255, 236, 157)

@@ -54,6 +54,7 @@ forest::combat::CombatSystem gCombat{};
 forest::rpg::Progression gProgression{};
 bool gHitRegistered = false;
 constexpr float kForestWardenMaxHealth = 100.0f;
+constexpr int kPlayerMaxHealthHp = 100;
 float gEnemyHealth = kForestWardenMaxHealth;
 float gEnemyHitFlash = 0.0f;
 float gEnemyDefeatTimer = 0.0f;
@@ -1268,7 +1269,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
     state << gProgression.level << '|'
           << gProgression.experience << '|'
           << gProgression.experienceToNext << '|'
-          << static_cast<int>(std::round(gController.health * 100.0f)) << '|'
+          << std::clamp(static_cast<int>(std::round(gController.health * static_cast<float>(kPlayerMaxHealthHp))), 0, kPlayerMaxHealthHp) << '|'
           << static_cast<int>(std::round(gController.stamina * 100.0f)) << '|'
           << static_cast<int>(std::round(gHunger * 100.0f)) << '|'
           << gWood << '|'
@@ -1303,6 +1304,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobje
     state.fiber = gFiber;
     state.stone = gStone;
     state.experience = gProgression.experience;
+    state.level = gProgression.level;
+    state.experienceToNext = gProgression.experienceToNext;
+    state.totalExperience = gProgression.totalExperience;
     state.day = gDaysPlayed;
     state.worldTime = gTime;
     state.gatheringActions = gProgression.gatheringActions;
@@ -1331,7 +1335,11 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     gWood = state.wood;
     gFiber = state.fiber;
     gStone = state.stone;
-    gProgression.experience = state.experience;
+    if (state.schemaVersion >= 3) {
+        gProgression.restoreState(state.level, state.experience, state.experienceToNext, state.totalExperience);
+    } else {
+        gProgression.restoreLegacyExperience(state.experience);
+    }
     gProgression.gatheringActions = state.gatheringActions;
     gProgression.questStage = static_cast<forest::rpg::QuestStage>(std::clamp(state.questStage, 0, 3));
     gProgression.emberKitCrafted = state.emberKitCrafted;
