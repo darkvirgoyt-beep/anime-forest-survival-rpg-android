@@ -332,11 +332,22 @@ const forest::physics::StaticObstacle gObstacles[] = {
     {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
 };
 
-// A shallow stream in the mobile client demonstrates the same gameplay contract that
-// production water volumes will use: surface height, current, buoyancy, and drag.
-const forest::physics::WaterVolume gWaterVolumes[] = {
-    {{{0.04f, -0.36f}, {0.20f, 0.11f}}, -0.28f, {0.025f, 0.0f}, 0.78f, 3.2f}
+// The central valley stream carries both visual flow and gameplay force. Its current
+// is updated every physics step so players feel a steady downstream pull with a
+// gentle cross-current, rather than a static water slowdown.
+forest::physics::WaterVolume gWaterVolumes[] = {
+    {{{0.04f, -0.36f}, {0.20f, 0.11f}}, -0.28f, {0.020f, -0.120f}, 0.78f, 3.2f}
 };
+
+void updateCentralRiverFlow() {
+    auto& stream = gWaterVolumes[0];
+    const float surge = 0.86f + 0.14f * std::sin(gTime * 0.73f);
+    const float crossCurrent = 0.020f * std::sin(gTime * 0.51f)
+        + 0.010f * std::sin(gTime * 1.67f);
+    // Screen-space Y maps to the long visual Z channel. Negative Y therefore
+    // carries the player downstream through the central valley.
+    stream.current = {crossCurrent, -0.140f * surge};
+}
 
 const char* waterStateName() {
     if (gController.body.water.submerged) return "SWIMMING";
@@ -1248,15 +1259,40 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
     const float z = -stream.bounds.center.y * 4.0f;
     const float width = stream.bounds.halfExtents.x * 8.6f;
     const float depth = stream.bounds.halfExtents.y * 8.0f;
-    draw3DBox(viewProjection, x, stream.surfaceY + 0.026f, z, width, 0.024f, depth,
-              0.04f, 0.30f, 0.42f, 0.78f);
+    const float surfaceY = stream.surfaceY + 0.026f;
+    const float flowSpeed = std::sqrt(stream.current.x * stream.current.x + stream.current.y * stream.current.y);
+    const float flowPhase = gTime * (3.6f + flowSpeed * 12.0f);
+    draw3DBox(viewProjection, x, surfaceY, z, width, 0.024f, depth,
+              0.035f, 0.24f, 0.36f, 0.82f);
+    draw3DBox(viewProjection, x, surfaceY + 0.016f, z, width * 0.92f, 0.010f, depth * 0.98f,
+              0.10f, 0.42f, 0.55f, 0.38f);
     const auto& qualityProfile = forest::rpg::qualityProfileFor(gGraphicsQuality, gContentTierReady);
-    const int waves = qualityProfile.premiumWaterAccents ? 7 : 3;
-    for (int i = 0; i < waves; ++i) {
-        const float waveX = x - width * 0.36f + static_cast<float>(i) * width * 0.12f;
-        const float waveZ = z + std::sin(gTime * 2.4f + static_cast<float>(i)) * depth * 0.23f;
-        draw3DBox(viewProjection, waveX, stream.surfaceY + 0.045f, waveZ, width * 0.08f, 0.010f, 0.035f,
-                  0.30f, 0.82f, 0.88f, 0.72f);
+    const int flowStreaks = qualityProfile.premiumWaterAccents ? 12 : 6;
+    for (int i = 0; i < flowStreaks; ++i) {
+        const float lane = (static_cast<float>(i % 3) - 1.0f) * width * 0.23f;
+        const float streamOffset = std::fmod(flowPhase * 0.24f + static_cast<float>(i) * depth * 0.19f, depth) - depth * 0.5f;
+        const float waveX = x + lane + std::sin(flowPhase + static_cast<float>(i) * 1.73f) * width * 0.07f;
+        const float waveZ = z + streamOffset;
+        draw3DBox(viewProjection, waveX, surfaceY + 0.032f, waveZ, width * 0.19f, 0.009f, 0.075f,
+                  0.36f, 0.86f, 0.94f, 0.68f);
+    }
+    for (int edge = -1; edge <= 1; edge += 2) {
+        const float bankX = x + static_cast<float>(edge) * width * 0.46f;
+        for (int i = 0; i < 4; ++i) {
+            const float foamOffset = std::fmod(flowPhase * 0.20f + static_cast<float>(i) * depth * 0.29f, depth) - depth * 0.5f;
+            const float foamPulse = 0.62f + 0.22f * std::sin(flowPhase + static_cast<float>(i));
+            draw3DGlowOrb(viewProjection, bankX, surfaceY + 0.050f, z + foamOffset, 0.036f,
+                           0.72f, 0.94f, 1.0f, foamPulse);
+        }
+    }
+    if (gController.body.water.overlapping) {
+        const float playerX = gController.body.position.x * 4.3f;
+        const float playerZ = -gController.body.position.y * 4.0f;
+        const float ripple = 0.17f + 0.045f * std::sin(gTime * 7.0f);
+        draw3DBox(viewProjection, playerX, surfaceY + 0.041f, playerZ, ripple, 0.008f, 0.026f,
+                  0.44f, 0.92f, 1.0f, 0.56f);
+        draw3DBox(viewProjection, playerX, surfaceY + 0.043f, playerZ, 0.026f, 0.008f, ripple,
+                  0.44f, 0.92f, 1.0f, 0.56f);
     }
 }
 
@@ -1992,6 +2028,7 @@ void simulatePhysicsStep() {
     applySynchronizedWorldTime();
     gTime += kPhysicsStep;
     updateCalendar();
+    updateCentralRiverFlow();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
     // Android screen and world handedness are opposite on the horizontal axis in
     // this camera setup. Mirror both axes exactly once here so thumb movement
@@ -2195,11 +2232,16 @@ void drawWorld() {
     // surface highlights communicate depth and movement on the small mobile screen.
     const auto& stream = gWaterVolumes[0];
     drawQuad(stream.bounds.center.x, stream.bounds.center.y, stream.bounds.halfExtents.x * 2.0f,
-             stream.bounds.halfExtents.y * 2.0f, 0.06f, 0.34f, 0.47f, 0.82f);
-    for (int i = 0; i < 5; ++i) {
-        const float waveX = stream.bounds.center.x - 0.14f + static_cast<float>(i) * 0.07f;
-        const float waveY = stream.surfaceY + 0.008f * std::sin(gTime * 2.6f + static_cast<float>(i));
-        drawQuad(waveX, waveY, 0.045f, 0.006f, 0.34f, 0.84f, 0.90f, 0.58f);
+             stream.bounds.halfExtents.y * 2.0f, 0.04f, 0.27f, 0.42f, 0.86f);
+    const float fallbackFlow = gTime * 3.7f;
+    for (int i = 0; i < 8; ++i) {
+        const float flowOffset = std::fmod(fallbackFlow * 0.017f + static_cast<float>(i) * 0.055f,
+                                           stream.bounds.halfExtents.y * 2.0f) - stream.bounds.halfExtents.y;
+        const float waveX = stream.bounds.center.x
+            + (static_cast<float>(i % 3) - 1.0f) * stream.bounds.halfExtents.x * 0.52f
+            + std::sin(fallbackFlow + static_cast<float>(i) * 1.41f) * 0.010f;
+        const float waveY = stream.bounds.center.y + flowOffset;
+        drawQuad(waveX, waveY, 0.052f, 0.007f, 0.42f, 0.90f, 0.98f, 0.66f);
     }
     if (gController.body.water.overlapping) {
         const float ripple = 0.045f + 0.012f * std::sin(gTime * 7.0f);
