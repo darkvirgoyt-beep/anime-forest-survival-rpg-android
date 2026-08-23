@@ -16,7 +16,7 @@ The player character should remain an original cel-shaded anime-fantasy hero wit
 
 ## Lighting and time of day
 
-The lighting direction should support four repeating phases: **day**, **afternoon**, **evening**, and **night**. Day is bright and green, afternoon adds warm gold, evening shifts toward orange and violet, and night uses deep blue with controlled highlights. The Android HUD should always expose the current phase and the number of in-game days played so the time change is understandable during testing.
+The lighting direction should support four repeating phases: **day**, **afternoon**, **evening**, and **night**, with a 900-second (15-minute) total cycle: 360 seconds of day, 270 seconds of afternoon, 180 seconds of evening, and a deliberately short 90-second night. Day is bright and green, afternoon adds warm gold, evening shifts toward orange and violet, and night uses deep blue with controlled highlights, stars, and moonlight. Weather runs independently through clear, rain, and thunderstorm states. Rain adds scalable streaks and puddle ripples; thunderstorms add cooler ambient contrast, timed lightning flashes, and future positional thunder audio. Campfires and lanterns remain warm practical-light anchors so the short night stays readable rather than frustrating. The Android HUD should expose the current phase, day number, and weather state during testing.
 
 ## Interface direction
 
@@ -31,7 +31,7 @@ The UI should favor compact dark translucent panels, warm readable labels, clear
 | Forest | Farming plots, crops, homes, trees, paths, animals, and residents. |
 | Sand | Settlement buildings, awnings, cactus, warm palette, and residents. |
 | Snow | Ice peaks, snow particles, predator-only encounters, and 100 HP predator health display. |
-| Time of day | Four-phase repeating cycle with changing clear colors, scene tint, sun/moon treatment, and HUD phase/day labels. |
+| Time and weather | 900-second four-phase cycle with 90-second night, changing clear colors, scene tint, sun/moon treatment, stars, rain, lightning, campfire/lantern practical lights, and HUD phase/day/weather labels. |
 | Future production path | Authored or licensed 3D models, animation clips, environment assets, and a full mobile-optimized renderer. |
 
 ## Asset safety

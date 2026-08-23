@@ -97,8 +97,11 @@ const char* biomeName() {
     return "SAND";
 }
 
-constexpr float kDayCycleSeconds = 240.0f;
-constexpr float kTimePhaseSeconds = kDayCycleSeconds / 4.0f;
+constexpr float kDayCycleSeconds = 900.0f; // 15 minutes total
+constexpr float kDayPhaseSeconds = 360.0f; // 6 minutes
+constexpr float kAfternoonPhaseSeconds = 270.0f; // 4.5 minutes
+constexpr float kEveningPhaseSeconds = 180.0f; // 3 minutes
+constexpr float kNightPhaseSeconds = 90.0f; // 1.5 minutes: intentionally short
 
 enum class TimePhase {
     Day,
@@ -107,12 +110,73 @@ enum class TimePhase {
     Night
 };
 
+enum class WeatherState {
+    Clear,
+    Rain,
+    Thunderstorm
+};
+
+// Weather repeats independently of the 15-minute calendar so a storm can cross
+// phase boundaries without changing the player-facing day count.
+constexpr float kWeatherCycleSeconds = 480.0f;
+constexpr float kClearWeatherSeconds = 300.0f;
+constexpr float kRainWeatherSeconds = 390.0f;
+
+WeatherState currentWeather() {
+    const float weatherTime = std::fmod(std::max(0.0f, gTime), kWeatherCycleSeconds);
+    if (weatherTime < kClearWeatherSeconds) return WeatherState::Clear;
+    if (weatherTime < kRainWeatherSeconds) return WeatherState::Rain;
+    return WeatherState::Thunderstorm;
+}
+
+const char* weatherName() {
+    switch (currentWeather()) {
+        case WeatherState::Clear: return "CLEAR";
+        case WeatherState::Rain: return "RAIN";
+        case WeatherState::Thunderstorm: return "THUNDERSTORM";
+    }
+    return "CLEAR";
+}
+
+float rainIntensity() {
+    switch (currentWeather()) {
+        case WeatherState::Clear: return 0.0f;
+        case WeatherState::Rain: return 0.55f;
+        case WeatherState::Thunderstorm: return 0.92f;
+    }
+    return 0.0f;
+}
+
+float lightningIntensity() {
+    if (currentWeather() != WeatherState::Thunderstorm) return 0.0f;
+    const float weatherTime = std::fmod(std::max(0.0f, gTime), kWeatherCycleSeconds) - kRainWeatherSeconds;
+    constexpr float flashes[] = {7.0f, 26.0f, 48.0f, 72.0f};
+    float intensity = 0.0f;
+    for (const float flashStart : flashes) {
+        const float elapsed = weatherTime - flashStart;
+        if (elapsed >= 0.0f && elapsed < 0.18f) {
+            intensity = std::max(intensity, 1.0f - elapsed / 0.18f);
+        }
+    }
+    return intensity;
+}
+
 TimePhase currentTimePhase() {
     const float phaseTime = std::fmod(std::max(0.0f, gTime), kDayCycleSeconds);
-    if (phaseTime < kTimePhaseSeconds) return TimePhase::Day;
-    if (phaseTime < kTimePhaseSeconds * 2.0f) return TimePhase::Afternoon;
-    if (phaseTime < kTimePhaseSeconds * 3.0f) return TimePhase::Evening;
+    if (phaseTime < kDayPhaseSeconds) return TimePhase::Day;
+    if (phaseTime < kDayPhaseSeconds + kAfternoonPhaseSeconds) return TimePhase::Afternoon;
+    if (phaseTime < kDayPhaseSeconds + kAfternoonPhaseSeconds + kEveningPhaseSeconds) return TimePhase::Evening;
     return TimePhase::Night;
+}
+
+float currentTimePhaseDuration() {
+    switch (currentTimePhase()) {
+        case TimePhase::Day: return kDayPhaseSeconds;
+        case TimePhase::Afternoon: return kAfternoonPhaseSeconds;
+        case TimePhase::Evening: return kEveningPhaseSeconds;
+        case TimePhase::Night: return kNightPhaseSeconds;
+    }
+    return kDayPhaseSeconds;
 }
 
 const char* timePhaseName() {
@@ -292,6 +356,57 @@ void drawLantern(float x, float y, float scale, bool lit) {
     } else {
         drawCircle(x, y + 0.022f * scale, 0.018f * scale, 0.32f, 0.24f, 0.15f, 0.95f);
     }
+}
+
+void drawNightStars() {
+    constexpr float stars[][3] = {
+        {-0.86f, 0.74f, 0.008f}, {-0.67f, 0.68f, 0.006f}, {-0.46f, 0.78f, 0.009f},
+        {-0.23f, 0.70f, 0.005f}, {-0.04f, 0.82f, 0.007f}, {0.18f, 0.73f, 0.005f},
+        {0.36f, 0.84f, 0.008f}, {0.57f, 0.75f, 0.006f}, {0.82f, 0.80f, 0.009f},
+        {-0.79f, 0.49f, 0.005f}, {-0.55f, 0.56f, 0.007f}, {-0.31f, 0.48f, 0.005f},
+        {-0.10f, 0.57f, 0.008f}, {0.11f, 0.50f, 0.005f}, {0.43f, 0.54f, 0.007f},
+        {0.67f, 0.46f, 0.005f}
+    };
+    for (const auto& star : stars) {
+        drawCircle(star[0], star[1], star[2], 0.82f, 0.93f, 1.0f, 0.80f);
+    }
+}
+
+void drawRain(float intensity) {
+    if (intensity <= 0.0f) return;
+    for (int i = 0; i < 22; ++i) {
+        const float seed = static_cast<float>(i) * 0.173f;
+        const float x = -0.96f + std::fmod(seed + gTime * (0.07f + 0.004f * static_cast<float>(i)), 1.92f);
+        const float y = 0.78f - std::fmod(seed * 2.0f + gTime * (0.21f + 0.009f * static_cast<float>(i)), 1.58f);
+        const float length = 0.08f + 0.025f * intensity;
+        drawQuad(x, y, 0.0055f, length, 0.48f, 0.78f, 0.92f, 0.34f + intensity * 0.28f);
+        drawQuad(x + 0.004f, y - length * 0.35f, 0.0025f, length * 0.50f, 0.84f, 0.95f, 1.0f, 0.20f + intensity * 0.16f);
+    }
+    drawCircle(-0.46f, -0.35f, 0.045f, 0.28f, 0.72f, 0.78f, 0.12f * intensity);
+    drawCircle(-0.46f, -0.35f, 0.024f, 0.62f, 0.90f, 0.94f, 0.18f * intensity);
+    drawCircle(0.08f, -0.31f, 0.038f, 0.32f, 0.70f, 0.76f, 0.12f * intensity);
+}
+
+void drawLightning(float intensity) {
+    if (intensity <= 0.0f) return;
+    drawQuad(0.0f, 0.18f, 2.0f, 1.42f, 0.72f, 0.86f, 1.0f, intensity * 0.20f);
+    drawQuad(0.48f, 0.47f, 0.014f, 0.20f, 0.88f, 0.96f, 1.0f, intensity * 0.92f);
+    drawQuad(0.43f, 0.37f, 0.014f, 0.16f, 0.88f, 0.96f, 1.0f, intensity * 0.92f);
+    drawQuad(0.53f, 0.28f, 0.014f, 0.16f, 0.88f, 0.96f, 1.0f);
+}
+
+void drawCampfire(float weatherFactor) {
+    const float flicker = 0.88f + 0.12f * std::sin(gTime * 10.0f);
+    const float intensity = std::max(0.30f, weatherFactor) * flicker;
+    drawCircle(-0.63f, -0.36f, 0.14f, 1.0f, 0.36f, 0.06f, 0.055f * intensity);
+    drawCircle(-0.63f, -0.36f, 0.085f, 1.0f, 0.52f, 0.08f, 0.12f * intensity);
+    drawQuad(-0.63f, -0.36f, 0.16f, 0.024f, 0.20f, 0.10f, 0.05f, 1.0f);
+    drawQuad(-0.63f, -0.36f, 0.024f, 0.13f, 0.20f, 0.10f, 0.05f, 1.0f);
+    drawTriangle(-0.63f, -0.26f, 0.10f, 0.18f, 0.92f, 0.24f, 0.05f, 0.90f);
+    drawTriangle(-0.63f, -0.24f, 0.058f, 0.12f, 1.0f, 0.70f, 0.18f, 0.96f);
+    drawCircle(-0.63f, -0.25f, 0.020f, 1.0f, 0.94f, 0.58f, 0.96f);
+    drawCircle(-0.61f, -0.14f, 0.007f, 1.0f, 0.72f, 0.24f, 0.72f * intensity);
+    drawCircle(-0.67f, -0.18f, 0.005f, 1.0f, 0.82f, 0.36f, 0.68f * intensity);
 }
 
 void drawForestPath() {
@@ -558,7 +673,11 @@ void simulatePhysicsStep() {
 
 void drawWorld() {
     const float phaseTime = std::fmod(std::max(0.0f, gTime), kDayCycleSeconds);
-    const float phaseProgress = std::fmod(phaseTime, kTimePhaseSeconds) / kTimePhaseSeconds;
+    const float phaseStart = phaseTime < kDayPhaseSeconds ? 0.0f
+        : phaseTime < kDayPhaseSeconds + kAfternoonPhaseSeconds ? kDayPhaseSeconds
+        : phaseTime < kDayPhaseSeconds + kAfternoonPhaseSeconds + kEveningPhaseSeconds ? kDayPhaseSeconds + kAfternoonPhaseSeconds
+        : kDayPhaseSeconds + kAfternoonPhaseSeconds + kEveningPhaseSeconds;
+    const float phaseProgress = std::clamp((phaseTime - phaseStart) / currentTimePhaseDuration(), 0.0f, 1.0f);
     float clearR = 0.025f;
     float clearG = 0.09f;
     float clearB = 0.105f;
@@ -659,6 +778,12 @@ void drawWorld() {
         drawCircle(0.72f, 0.58f, 0.12f, 1.0f, 0.84f, 0.42f, sunGlow);
         drawCircle(0.72f, 0.58f, 0.072f, 1.0f, 0.70f, 0.28f, 0.90f);
     }
+    const float currentRain = rainIntensity();
+    const WeatherState weather = currentWeather();
+    drawCampfire(weather == WeatherState::Thunderstorm ? 0.58f : weather == WeatherState::Rain ? 0.82f : 1.0f);
+    drawRain(currentRain);
+    drawLightning(lightningIntensity());
+
     // Water is drawn before the hero so the body remains readable while ripples and
     // surface highlights communicate depth and movement on the small prototype screen.
     const auto& stream = gWaterVolumes[0];
@@ -701,6 +826,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gController.body.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
     glViewport(0, 0, width, height);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -836,7 +963,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << gDaysPlayed << '|'
           << gProgression.questObjective() << '|'
           << waterStateName() << '|'
-          << locomotionStateName();
+          << locomotionStateName() << '|'
+          << weatherName();
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }

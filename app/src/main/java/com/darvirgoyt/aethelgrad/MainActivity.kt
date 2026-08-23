@@ -529,7 +529,7 @@ class MainActivity : Activity(), SensorEventListener {
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
         stateLabel = TextView(this).apply {
-            text = "SAND  |  DAY 1  |  HP 100  |  STA 100  |  HUN 82  |  LV 1  |  XP 0/100  |  W 12  F 08  S 04"
+            text = "SAND  |  DAY 1  |  DAY  |  CLEAR  |  HP 100  |  STA 100  |  HUN 82  |  LV 1  |  XP 0/100  |  W 12  F 08  S 04"
             textSize = 13f
             setTextColor(Color.WHITE)
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -611,9 +611,17 @@ class MainActivity : Activity(), SensorEventListener {
         val objective = values.getOrNull(15)?.ifBlank { "Explore the wilds" } ?: "Explore the wilds"
         val water = values.getOrNull(16)?.ifBlank { "DRY" } ?: "DRY"
         val locomotion = values.getOrNull(17)?.ifBlank { "IDLE" } ?: "IDLE"
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  HP $health  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
-        stateLabel.setTextColor(if (levelPulse) Color.rgb(255, 236, 157) else Color.WHITE)
-        questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $water"
+        val weather = values.getOrNull(18)?.ifBlank { "CLEAR" } ?: "CLEAR"
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  HP $health  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
+        stateLabel.setTextColor(
+            when {
+                levelPulse -> Color.rgb(255, 236, 157)
+                weather == "THUNDERSTORM" -> Color.rgb(190, 220, 255)
+                weather == "RAIN" -> Color.rgb(170, 220, 236)
+                else -> Color.WHITE
+            }
+        )
+        questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  $weather  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
         questLabel.setTextColor(if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
