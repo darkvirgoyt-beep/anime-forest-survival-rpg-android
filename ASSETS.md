@@ -1,5 +1,21 @@
 # Asset Manifest
 
+## Shared visual reference
+
+| Asset | Intended use | Status |
+|---|---|---|
+| [Game visual reference board](docs/art_reference/game_visual_reference.png) | Shared direction for anime-fantasy characters, farming forest, populated sand settlement, snow predators, lighting phases, UI, and color palette | User-provided reference copied into the repository; use for style guidance only, not asset reproduction. |
+
+## Generated concept references
+
+| Asset | Intended use | Status |
+|---|---|---|
+| [Player character and emotions](docs/art_reference/generated/player_character_emotions.png) | Player identity, skin tone, costume, front/back/side views, and neutral/happy/sad/surprised/angry expressions | Generated concept reference; not yet wired as a runtime texture. |
+| [Environment and lighting times](docs/art_reference/generated/environment_lighting_times.png) | Forest village, farming, monument, and day/afternoon/evening/night lighting targets | Generated concept reference; current renderer approximates the palette procedurally. |
+| [Enemy, creatures, and boss](docs/art_reference/generated/enemy_creatures_boss.png) | Boar, deer, snow wolf, leafy spirit, and Frostclaw boss silhouettes | Generated concept reference; current renderer contains a procedural snow predator approximation. |
+| [Assets, weapons, and monument](docs/art_reference/generated/assets_weapons_monument.png) | House, drying rack, cooking pot, banner, nature props, monument, sword, bow, spear, and great blade | Generated concept reference; runtime assets remain planned for the 3D production path. |
+| [UI gameplay reference](docs/art_reference/generated/ui_gameplay_reference.png) | Minimap, player bars, quest box, time panel, abilities, inventory, and readable HUD hierarchy | Generated concept reference; current Android HUD implements a lightweight native subset. |
+
 ## Included in v0.1
 
 The current scene uses procedural OpenGL ES geometry and shader colors for the forest backdrop, trees, rocks, resources, animals, moon, combat pulse, and the hero. These elements are code-generated and do not embed third-party artwork. The hero is an original cel-shaded anime-fantasy design rendered as layered flat-color polygons and circles: a deep-violet hair silhouette, warm skin planes, a plum tunic with hard shadow blocks, teal sash accents, ink-like outlines, and a short gold-edged sword.
