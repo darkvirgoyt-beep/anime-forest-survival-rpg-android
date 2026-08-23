@@ -599,7 +599,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "Sign in with Google to protect your cloud world and continue online."
+            text = "OPTIONAL GOOGLE LINK  •  Sign in with Google to protect your cloud world and continue online."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
