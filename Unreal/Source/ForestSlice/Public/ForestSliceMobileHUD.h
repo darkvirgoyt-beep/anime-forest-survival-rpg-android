@@ -5,6 +5,7 @@
 #include "ForestSliceMobileHUD.generated.h"
 
 class AForestSliceCharacter;
+enum class EForestSliceTool : uint8;
 
 UCLASS(Abstract, BlueprintType)
 class FORESTSLICE_API UForestSliceMobileHUD : public UUserWidget
@@ -38,6 +39,24 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
     void DodgePressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void SelectShovel();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void SelectPickaxe();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void PlanGroundPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void CreateFarmContourPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void DigPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void PlantSeedPressed();
 
     UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
     void WeaponSwitchPressed(int32 SlotIndex);

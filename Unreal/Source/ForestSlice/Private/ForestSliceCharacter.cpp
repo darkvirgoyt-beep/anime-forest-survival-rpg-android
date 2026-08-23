@@ -3,6 +3,7 @@
 #include "ForestSliceCombatComponent.h"
 #include "ForestSlicePresentationComponent.h"
 #include "ForestSliceHealthComponent.h"
+#include "ForestSliceGroundPlanningComponent.h"
 #include "ForestSliceInteractionComponent.h"
 #include "ForestSliceQuickSlotComponent.h"
 #include "ForestSliceSurvivalComponent.h"
@@ -27,6 +28,7 @@ AForestSliceCharacter::AForestSliceCharacter()
     CombatComponent = CreateDefaultSubobject<UForestSliceCombatComponent>(TEXT("CombatComponent"));
     WeaponComponent = CreateDefaultSubobject<UForestSliceWeaponComponent>(TEXT("WeaponComponent"));
     SurvivalComponent = CreateDefaultSubobject<UForestSliceSurvivalComponent>(TEXT("SurvivalComponent"));
+    GroundPlanningComponent = CreateDefaultSubobject<UForestSliceGroundPlanningComponent>(TEXT("GroundPlanningComponent"));
     InteractionComponent = CreateDefaultSubobject<UForestSliceInteractionComponent>(TEXT("InteractionComponent"));
     QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
     HealthComponent = CreateDefaultSubobject<UForestSliceHealthComponent>(TEXT("HealthComponent"));
@@ -49,8 +51,12 @@ AForestSliceCharacter::AForestSliceCharacter()
     CameraBoom->SocketOffset = FVector(0.0f, 55.0f, 75.0f);
     CameraBoom->bUsePawnControlRotation = true;
     CameraBoom->bDoCollisionTest = true;
-    CameraBoom->ProbeSize = 12.0f;
+    CameraBoom->ProbeSize = 14.0f;
     CameraBoom->ProbeChannel = ECC_Camera;
+    CameraBoom->bEnableCameraLag = true;
+    CameraBoom->CameraLagSpeed = 14.0f;
+    CameraBoom->bEnableCameraRotationLag = true;
+    CameraBoom->CameraRotationLagSpeed = 16.0f;
 
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -161,8 +167,17 @@ void AForestSliceCharacter::Look(const FInputActionValue& Value)
 
 void AForestSliceCharacter::ApplyLookVector(FVector2D LookVector)
 {
-    AddControllerYawInput(LookVector.X);
-    AddControllerPitchInput(LookVector.Y);
+    if (!Controller) return;
+
+    const float OrbitLimit = FMath::Clamp(MaxCameraOrbitDegrees, 180.0f, 540.0f);
+    const float RequestedYaw = LookVector.X;
+    const float AllowedYaw = FMath::Clamp(RequestedYaw, -OrbitLimit - CameraOrbitDegrees, OrbitLimit - CameraOrbitDegrees);
+    CameraOrbitDegrees = FMath::Clamp(CameraOrbitDegrees + AllowedYaw, -OrbitLimit, OrbitLimit);
+    AddControllerYawInput(AllowedYaw);
+
+    const float CurrentPitch = FRotator::NormalizeAxis(Controller->GetControlRotation().Pitch);
+    const float TargetPitch = FMath::Clamp(CurrentPitch + LookVector.Y, MinCameraPitchDegrees, MaxCameraPitchDegrees);
+    AddControllerPitchInput(TargetPitch - CurrentPitch);
 }
 
 void AForestSliceCharacter::SetVirtualMove(FVector2D MoveVector)
@@ -202,6 +217,40 @@ void AForestSliceCharacter::TriggerVirtualLightAttack()
 void AForestSliceCharacter::TriggerVirtualJump()
 {
     StartJump(FInputActionValue());
+}
+
+void AForestSliceCharacter::SetActiveGroundTool(EForestSliceTool Tool)
+{
+    ActiveGroundTool = Tool;
+}
+
+bool AForestSliceCharacter::TriggerVirtualDig()
+{
+    if (!GroundPlanningComponent || ActiveGroundTool == EForestSliceTool::None) return false;
+
+    const FVector DigLocation = GetActorLocation() + GetActorForwardVector() * 125.0f;
+    return GroundPlanningComponent->DigAtLocation(DigLocation, ActiveGroundTool);
+}
+
+bool AForestSliceCharacter::TriggerVirtualPlanGround()
+{
+    if (!GroundPlanningComponent) return false;
+
+    const FVector PlanLocation = GetActorLocation() + GetActorForwardVector() * 125.0f;
+    return GroundPlanningComponent->PlanGround(PlanLocation, FVector2D(360.0f, 360.0f));
+}
+
+bool AForestSliceCharacter::TriggerVirtualCreateFarmContour()
+{
+    if (!GroundPlanningComponent) return false;
+
+    const FVector ContourLocation = GetActorLocation() + GetActorForwardVector() * 125.0f;
+    return GroundPlanningComponent->CreateFarmContour(ContourLocation, FVector2D(300.0f, 300.0f), ContourLocation.Z);
+}
+
+bool AForestSliceCharacter::TriggerVirtualPlantSeed()
+{
+    return GroundPlanningComponent && GroundPlanningComponent->PlantSeed();
 }
 
 void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)
@@ -273,8 +322,7 @@ void AForestSliceCharacter::ApplyGyroInput(float RotationX, float RotationY, flo
 {
     if (!bGyroEnabled || !bDeviceHasGyroscope) return;
     const float Scale = FMath::Clamp(Sensitivity, 0.05f, 4.0f);
-    AddControllerYawInput(RotationY * Scale);
-    AddControllerPitchInput(-RotationX * Scale);
+    ApplyLookVector(FVector2D(RotationY * Scale, -RotationX * Scale));
 }
 
 float AForestSliceCharacter::GetStaminaNormalized() const

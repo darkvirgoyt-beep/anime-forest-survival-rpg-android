@@ -71,3 +71,8 @@ For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.m
 ## First playable prototype
 
 The first playable milestone is documented in [`docs/FIRST_PLAYABLE_PROTOTYPE.md`](docs/FIRST_PLAYABLE_PROTOTYPE.md). It is an offline development build that starts directly in the native forest slice without Google login or remote asset packs. Build it with `gradle assemblePrototype`; the APK is written to `app/build/outputs/apk/prototype/app-prototype.apk` and uses the `.prototype` application-id suffix so it can coexist with the release build. The release build remains online-only and continues to use the production session boundary.
+
+
+## 3D digging and farming slice
+
+The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, and mobile HUD contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md). The Android GLES prototype remains the lightweight 2D control harness; the true 3D gameplay path is the Unreal project.

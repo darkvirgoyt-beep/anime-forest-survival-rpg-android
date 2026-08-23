@@ -18,6 +18,8 @@ jobs:
           test -f Unreal/Source/ForestSlice/ForestSlice.Build.cs
           test -f Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceGroundPlanningComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceGroundPlanningComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceCombatComponent.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceWeaponComponent.h
@@ -87,6 +89,14 @@ jobs:
           grep -q 'toggleViewMode' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'teleportToTower' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'drawTeleportationTower' app/src/main/cpp/forest_game.cpp
+          grep -q 'MaxCameraOrbitDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'MinCameraPitchDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'bDoCollisionTest' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          grep -q 'DigAtLocation' Unreal/Source/ForestSlice/Public/ForestSliceGroundPlanningComponent.h
+          grep -q 'UndergroundContentActor' Unreal/Source/ForestSlice/Public/ForestSliceGroundPlanningComponent.h
+          grep -q 'TriggerVirtualPlanGround' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'TriggerVirtualCreateFarmContour' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'TriggerVirtualPlantSeed' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
 
   native-tests:
     runs-on: ubuntu-latest

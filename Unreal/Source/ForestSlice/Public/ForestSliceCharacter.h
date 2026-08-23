@@ -2,12 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "ForestSliceGroundPlanningComponent.h"
 #include "ForestSliceCharacter.generated.h"
 
 class UCameraComponent;
 class UForestSliceCombatComponent;
 class UForestSliceCharacterProfileComponent;
 class UForestSliceHealthComponent;
+class UForestSliceGroundPlanningComponent;
 class UForestSliceInteractionComponent;
 class UForestSliceQuickSlotComponent;
 class UForestSlicePresentationComponent;
@@ -59,6 +61,27 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
     void TriggerVirtualJump();
 
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    void SetActiveGroundTool(EForestSliceTool Tool);
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    bool TriggerVirtualDig();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    bool TriggerVirtualPlanGround();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    bool TriggerVirtualCreateFarmContour();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
+    bool TriggerVirtualPlantSeed();
+
+    UFUNCTION(BlueprintPure, Category = "Ground")
+    UForestSliceGroundPlanningComponent* GetGroundPlanningComponent() const { return GroundPlanningComponent; }
+
+    UFUNCTION(BlueprintPure, Category = "Ground")
+    EForestSliceTool GetActiveGroundTool() const { return ActiveGroundTool; }
+
     UFUNCTION(BlueprintPure, Category = "Survival")
     float GetStaminaNormalized() const;
 
@@ -101,6 +124,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceSurvivalComponent> SurvivalComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceGroundPlanningComponent> GroundPlanningComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceInteractionComponent> InteractionComponent;
@@ -168,6 +194,15 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Water")
     float WaterDrag = 2.8f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    float MaxCameraOrbitDegrees = 270.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    float MinCameraPitchDegrees = -18.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    float MaxCameraPitchDegrees = 58.0f;
+
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Mobile|Aim")
     bool bDeviceHasGyroscope = false;
 
@@ -200,6 +235,8 @@ protected:
 
 private:
     bool bSprintHeld = false;
+    EForestSliceTool ActiveGroundTool = EForestSliceTool::Shovel;
+    float CameraOrbitDegrees = 0.0f;
     bool bInWater = false;
     float WetnessAlpha = 0.0f;
     float SlideCooldown = 0.0f;

@@ -59,6 +59,36 @@ void UForestSliceMobileHUD::DodgePressed()
     if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualDodge();
 }
 
+void UForestSliceMobileHUD::SelectShovel()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->SetActiveGroundTool(EForestSliceTool::Shovel);
+}
+
+void UForestSliceMobileHUD::SelectPickaxe()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->SetActiveGroundTool(EForestSliceTool::Pickaxe);
+}
+
+void UForestSliceMobileHUD::PlanGroundPressed()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualPlanGround();
+}
+
+void UForestSliceMobileHUD::CreateFarmContourPressed()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualCreateFarmContour();
+}
+
+void UForestSliceMobileHUD::DigPressed()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualDig();
+}
+
+void UForestSliceMobileHUD::PlantSeedPressed()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualPlantSeed();
+}
+
 void UForestSliceMobileHUD::WeaponSwitchPressed(int32 SlotIndex)
 {
     if (ControlledCharacter.IsValid()) {
