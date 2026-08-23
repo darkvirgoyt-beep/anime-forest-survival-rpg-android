@@ -105,6 +105,7 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
                     &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay);
                 if (v4Fields == 22 && schemaVersion == 4) {
                     parsed.schemaVersion = 4;
+                    parsed.discoveredSectors = 1;
                 } else {
                     const int v3Fields = std::sscanf(payload,
                         "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d}",
