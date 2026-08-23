@@ -40,6 +40,7 @@ import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.ScrollView
 import android.widget.TextView
+import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.hypot
@@ -1301,10 +1302,32 @@ class MainActivity : Activity(), SensorEventListener {
                             retry.visibility = View.VISIBLE
                         }
                     } else {
-                        status.text = if (event.complete) "Compiled graphics and shaders ready" else "Downloading compiled graphics and shaders…"
                         val downloaded = event.bytesDownloaded / (1024 * 1024)
                         val total = event.totalBytes / (1024 * 1024)
-                        details.text = if (total > 0) "$downloaded MB / $total MB compiled resources downloaded from Play Asset Delivery." else "Preparing ${ContentDownloadPlan.totalGiBLabel} of compiled graphics, shaders, and game resources…"
+                        when {
+                            event.complete -> {
+                                status.text = "Compiled graphics and shaders ready"
+                                details.text = "${ContentDownloadPlan.totalGiBLabel} of compiled resources are mounted. Starting the game…"
+                            }
+                            event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
+                                status.text = "Waiting for Wi-Fi"
+                                details.text = "Connect to Wi-Fi to continue downloading ${ContentDownloadPlan.totalGiBLabel} of compiled resources."
+                            }
+                            event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
+                                status.text = "Download confirmation required"
+                                details.text = "Confirm the large Play download in Google Play, then press retry."
+                                retry.visibility = View.VISIBLE
+                            }
+                            event.status == AssetPackStatus.CANCELED -> {
+                                status.text = "Download canceled"
+                                details.text = "Your game is locked until the compiled graphics and shaders finish downloading."
+                                retry.visibility = View.VISIBLE
+                            }
+                            else -> {
+                                status.text = "Downloading compiled graphics and shaders…"
+                                details.text = if (total > 0) "$downloaded MB / $total MB compiled resources downloaded from Play Asset Delivery." else "Preparing ${ContentDownloadPlan.totalGiBLabel} of compiled graphics, shaders, and game resources…"
+                            }
+                        }
                         progress.progress = event.percent
                         if (event.complete) finishPreparation()
                     }

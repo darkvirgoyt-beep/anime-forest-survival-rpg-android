@@ -54,7 +54,7 @@ class ResourceCenterModel:
     def __init__(self, packs: tuple[str, ...] = PACKS, envelope_total: int = 6750 * 1024 * 1024) -> None:
         self.states = {name: PackState() for name in packs}
         self.envelope_total = envelope_total
-        self.fallback_started = False
+        self.retry_count = 0
         self.history: list[int] = []
 
     def apply(self, name: str, status: str, downloaded: int, total: int, error: int = 0) -> dict:
@@ -82,16 +82,19 @@ class ResourceCenterModel:
             "failed_pack": failed,
         }
 
-    def start_direct_apk_fallback(self) -> None:
-        if self.fallback_started:
-            raise AssertionError("fallback started twice")
-        self.fallback_started = True
+    def retry(self, name: str) -> None:
+        if name not in self.states:
+            raise AssertionError(f"unexpected retry pack: {name}")
+        self.states[name] = PackState()
+        self.retry_count += 1
 
 
 def assert_source_contract(repo: Path) -> None:
     main = (repo / "app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt").read_text()
     catalog = (repo / "app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt").read_text()
     plan = (repo / "app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
+    settings = (repo / "settings.gradle.kts").read_text()
+    app_build = (repo / "app/build.gradle.kts").read_text()
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
@@ -102,6 +105,8 @@ def assert_source_contract(repo: Path) -> None:
         ("Vulkan shader pack", "assetpack_shaders_vulkan", plan),
         ("OpenGL ES shader pack", "assetpack_shaders_gles", plan),
         ("pipeline cache pack", "assetpack_pipeline_cache", plan),
+        ("all packs in settings", "assetpack_animation_sets", settings),
+        ("all packs in app bundle", ":assetpack_animation_sets", app_build),
         ("progress bar", "progress.progress = event.percent", main),
         ("retry control", "RETRY ASSET PREPARATION", main),
         ("6.6 GB plan", "full3dTargetMiB", json.dumps(manifest)),
@@ -142,13 +147,15 @@ def test_complete_requires_every_pack() -> None:
     assert result["percent"] == 100
 
 
-def test_failure_and_retry_fallback() -> None:
+def test_failure_and_retry_state() -> None:
     model = ResourceCenterModel()
     result = model.apply(PACKS[2], FAILED, 12, 100, error=9)
     assert result["status"] == FAILED
     assert result["failed_pack"] == PACKS[2]
-    model.start_direct_apk_fallback()
-    assert model.fallback_started
+    model.retry(PACKS[2])
+    assert model.retry_count == 1
+    result = model.apply(PACKS[2], DOWNLOADING, 0, 100)
+    assert result["status"] == DOWNLOADING
 
 
 def test_invalid_progress_is_rejected() -> None:
@@ -173,7 +180,7 @@ def run(repo: Path | None, unreal_project: Path | None) -> None:
         test_initial_state,
         test_aggregate_progress_is_monotonic,
         test_complete_requires_every_pack,
-        test_failure_and_retry_fallback,
+        test_failure_and_retry_state,
         test_invalid_progress_is_rejected,
     )
     for test in tests:
