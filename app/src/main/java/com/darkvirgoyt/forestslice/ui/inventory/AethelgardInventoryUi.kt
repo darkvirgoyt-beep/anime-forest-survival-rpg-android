@@ -54,6 +54,12 @@ private val AethelgardCyan = Color(0xFF8BE0D8)
 private val AethelgardError = Color(0xFFF08B8B)
 
 /** Categories are deliberately stable because they are shared by the native snapshot and UI filters. */
+enum class InventoryPanel {
+    INVENTORY,
+    EQUIPMENT,
+    CRAFT
+}
+
 enum class InventoryCategory(val label: String) {
     ALL("ALL"),
     WEAPONS("WEAPONS"),
@@ -116,6 +122,8 @@ fun AethelgardInventoryScreen(
     playerLevel: Int,
     selectedItemId: String?,
     activeCategory: InventoryCategory = InventoryCategory.ALL,
+    activePanel: InventoryPanel = InventoryPanel.INVENTORY,
+    onPanelSelected: (InventoryPanel) -> Unit = {},
     onCategorySelected: (InventoryCategory) -> Unit,
     onItemSelected: (InventoryItem) -> Unit,
     onItemLongPressed: (InventoryItem) -> Unit,
@@ -134,32 +142,41 @@ fun AethelgardInventoryScreen(
         contentColor = AethelgardIvory
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
-            InventoryHeader(onClose = onClose)
+            InventoryHeader(activePanel = activePanel, onPanelSelected = onPanelSelected, onClose = onClose)
             Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                FilterRail(
-                    activeCategory = activeCategory,
-                    inventory = inventory,
-                    onCategorySelected = onCategorySelected,
-                    modifier = Modifier.width(122.dp).fillMaxHeight()
+            when (activePanel) {
+                InventoryPanel.INVENTORY -> Row(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    FilterRail(
+                        activeCategory = activeCategory,
+                        inventory = inventory,
+                        onCategorySelected = onCategorySelected,
+                        modifier = Modifier.width(122.dp).fillMaxHeight()
+                    )
+                    BackpackGrid(
+                        inventory = inventory,
+                        activeCategory = activeCategory,
+                        selectedItemId = selectedItemId,
+                        onItemSelected = onItemSelected,
+                        onItemLongPressed = onItemLongPressed,
+                        modifier = Modifier.weight(1.15f).fillMaxHeight()
+                    )
+                    ItemDetailPanel(
+                        item = selectedItem,
+                        playerLevel = playerLevel,
+                        onEquipRequested = onEquipRequested,
+                        modifier = Modifier.weight(0.85f).fillMaxHeight()
+                    )
+                }
+                InventoryPanel.EQUIPMENT -> EquipmentPaperDoll(
+                    equipment = equipment,
+                    onSlotSelected = { slot -> equipment.itemAt(slot)?.let(onItemSelected) },
+                    onUnequipRequested = onUnequipRequested,
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
-                BackpackGrid(
-                    inventory = inventory,
-                    activeCategory = activeCategory,
-                    selectedItemId = selectedItemId,
-                    onItemSelected = onItemSelected,
-                    onItemLongPressed = onItemLongPressed,
-                    modifier = Modifier.weight(1.15f).fillMaxHeight()
-                )
-                ItemDetailPanel(
-                    item = selectedItem,
-                    playerLevel = playerLevel,
-                    onEquipRequested = onEquipRequested,
-                    modifier = Modifier.weight(0.85f).fillMaxHeight()
-                )
+                InventoryPanel.CRAFT -> CraftPanel(modifier = Modifier.weight(1f).fillMaxWidth())
             }
             Spacer(Modifier.height(10.dp))
             InventoryFooter(playerLevel = playerLevel, inventory = inventory)
@@ -168,7 +185,7 @@ fun AethelgardInventoryScreen(
 }
 
 @Composable
-private fun InventoryHeader(onClose: () -> Unit) {
+private fun InventoryHeader(activePanel: InventoryPanel, onPanelSelected: (InventoryPanel) -> Unit, onClose: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().height(46.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -184,17 +201,18 @@ private fun InventoryHeader(onClose: () -> Unit) {
             Text("  /  INVENTORY", color = AethelgardMuted, fontSize = 14.sp)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            MenuTab(label = "INVENTORY", selected = true)
-            MenuTab(label = "EQUIPMENT", selected = false)
-            MenuTab(label = "CRAFT", selected = false)
+            MenuTab(label = "INVENTORY", selected = activePanel == InventoryPanel.INVENTORY, onClick = { onPanelSelected(InventoryPanel.INVENTORY) })
+            MenuTab(label = "EQUIPMENT", selected = activePanel == InventoryPanel.EQUIPMENT, onClick = { onPanelSelected(InventoryPanel.EQUIPMENT) })
+            MenuTab(label = "CRAFT", selected = activePanel == InventoryPanel.CRAFT, onClick = { onPanelSelected(InventoryPanel.CRAFT) })
             TextButtonSurface(label = "CLOSE", onClick = onClose)
         }
     }
 }
 
 @Composable
-private fun MenuTab(label: String, selected: Boolean) {
+private fun MenuTab(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
+        modifier = Modifier.combinedClickable(onClick = onClick),
         color = if (selected) AethelgardPanelRaised else Color.Transparent,
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -553,6 +571,18 @@ private fun HeroSilhouette(modifier: Modifier = Modifier) {
 }
 
 @Composable
+@Composable
+private fun CraftPanel(modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, color = AethelgardPanel, shape = RoundedCornerShape(12.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("CRAFTING BENCH", color = AethelgardGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("Select a recipe from the field HUD to craft with your gathered materials.", color = AethelgardMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
 private fun InventoryFooter(playerLevel: Int, inventory: List<InventoryItem?>) {
     Row(
         modifier = Modifier.fillMaxWidth().height(30.dp),
@@ -588,6 +618,8 @@ private fun AethelgardInventoryPreview() {
             playerLevel = 2,
             selectedItemId = selectedId,
             activeCategory = activeCategory,
+            activePanel = InventoryPanel.INVENTORY,
+            onPanelSelected = {},
             onCategorySelected = { activeCategory = it },
             onItemSelected = { selectedId = it.instanceId },
             onItemLongPressed = { selectedId = it.instanceId },

@@ -24,6 +24,21 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import com.darkvirgoyt.forestslice.ui.inventory.AethelgardInventoryScreen
+import com.darkvirgoyt.forestslice.ui.inventory.EquipmentSlot
+import com.darkvirgoyt.forestslice.ui.inventory.EquipmentState
+import com.darkvirgoyt.forestslice.ui.inventory.InventoryCategory
+import com.darkvirgoyt.forestslice.ui.inventory.InventoryItem
+import com.darkvirgoyt.forestslice.ui.inventory.InventoryPanel
+import com.darkvirgoyt.forestslice.ui.inventory.ItemRarity
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.hypot
@@ -49,6 +64,8 @@ object NativeGameBridge {
 
 class MainActivity : Activity(), SensorEventListener {
     private lateinit var gameView: GameSurfaceView
+    private lateinit var rootContainer: FrameLayout
+    private var inventoryOverlay: ComposeView? = null
     private lateinit var gyroButton: Button
     private var sensorManager: SensorManager? = null
     private var gyroSensor: Sensor? = null
@@ -82,14 +99,14 @@ class MainActivity : Activity(), SensorEventListener {
         audio = GameAudio(this)
         audio.playMusic()
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
+        rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
-        root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
-        root.addView(buildHud())
-        root.addView(JoystickView(this) { x, y ->
+        rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
+        rootContainer.addView(buildHud())
+        rootContainer.addView(JoystickView(this) { x, y ->
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
         })
-        setContentView(root)
+        setContentView(rootContainer)
         updateGyroButton()
         registerGyro()
     }
@@ -139,18 +156,17 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onPause() {
         audio.stopMusic()
-        gyroEnabled = false
+        if (inventoryOverlay == null) gameView.onPause()
         hudHandler.removeCallbacks(hudUpdater)
         sensorManager?.unregisterListener(this)
         gameView.queueEvent { NativeGameBridge.setGyroEnabled(false) }
-        gameView.onPause()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
         audio.playMusic()
-        gameView.onResume()
+        if (inventoryOverlay == null) gameView.onResume()
         registerGyro()
         updateGyroButton()
         hudHandler.postDelayed(hudUpdater, 350L)
@@ -158,8 +174,112 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
+        closeInventoryOverlay(resumeGame = false)
         audio.release()
         super.onDestroy()
+    }
+
+    @Deprecated("Use the Android back dispatcher in production navigation.")
+    override fun onBackPressed() {
+        if (inventoryOverlay != null) {
+            closeInventoryOverlay()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    private fun showInventoryOverlay() {
+        if (inventoryOverlay != null) return
+        gameView.onPause()
+        val overlay = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                var inventory by remember { mutableStateOf(buildInventoryFromHud()) }
+                var selectedId by remember { mutableStateOf(inventory.filterNotNull().firstOrNull()?.instanceId) }
+                var activeCategory by remember { mutableStateOf(InventoryCategory.ALL) }
+                var activePanel by remember { mutableStateOf(InventoryPanel.INVENTORY) }
+                var equipment by remember {
+                    mutableStateOf(
+                        EquipmentState(
+                            mapOf(
+                                EquipmentSlot.MAIN_HAND to inventory.firstOrNull { it?.instanceId == "saber-01" },
+                                EquipmentSlot.CHEST to inventory.firstOrNull { it?.instanceId == "chest-01" }
+                            )
+                        )
+                    )
+                }
+                MaterialTheme {
+                    AethelgardInventoryScreen(
+                        inventory = inventory,
+                        equipment = equipment,
+                        playerLevel = hudNumber(0, 1),
+                        selectedItemId = selectedId,
+                        activeCategory = activeCategory,
+                        activePanel = activePanel,
+                        onPanelSelected = { activePanel = it },
+                        onCategorySelected = { activeCategory = it },
+                        onItemSelected = { selectedId = it.instanceId },
+                        onItemLongPressed = { selectedId = it.instanceId },
+                        onEquipRequested = { item ->
+                            item.equipSlot?.let { slot ->
+                                val itemIndex = inventory.indexOfFirst { it?.instanceId == item.instanceId }
+                                if (itemIndex >= 0) {
+                                    val updatedInventory = inventory.toMutableList()
+                                    updatedInventory[itemIndex] = equipment.itemAt(slot)
+                                    inventory = updatedInventory
+                                    equipment = equipment.copy(equipped = equipment.equipped + (slot to item))
+                                    selectedId = item.instanceId
+                                    Toast.makeText(this@MainActivity, "Equipped ${item.name}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        onUnequipRequested = { slot ->
+                            val item = equipment.itemAt(slot)
+                            val emptyIndex = inventory.indexOfFirst { it == null }
+                            if (item != null && emptyIndex >= 0) {
+                                val updatedInventory = inventory.toMutableList()
+                                updatedInventory[emptyIndex] = item
+                                inventory = updatedInventory
+                                equipment = equipment.copy(equipped = equipment.equipped - slot)
+                                selectedId = item.instanceId
+                                Toast.makeText(this@MainActivity, "Unequipped ${slot.label}", Toast.LENGTH_SHORT).show()
+                            } else if (item != null) {
+                                Toast.makeText(this@MainActivity, "Backpack full", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onClose = { closeInventoryOverlay() }
+                    )
+                }
+            }
+        }
+        inventoryOverlay = overlay
+        rootContainer.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    private fun closeInventoryOverlay(resumeGame: Boolean = true) {
+        val overlay = inventoryOverlay ?: return
+        rootContainer.removeView(overlay)
+        overlay.disposeComposition()
+        inventoryOverlay = null
+        if (resumeGame && !isFinishing) gameView.onResume()
+    }
+
+    private fun hudNumber(index: Int, fallback: Int): Int = lastHudSnapshot.split('|').getOrNull(index)?.toIntOrNull() ?: fallback
+
+    private var lastHudSnapshot = "1|0|100|100|100|82|12|8|4|100|0|0|THE FIRST EMBER"
+
+    private fun buildInventoryFromHud(): List<InventoryItem?> {
+        val wood = hudNumber(6, 12)
+        val fiber = hudNumber(7, 8)
+        val stone = hudNumber(8, 4)
+        return listOf(
+            InventoryItem("saber-01", "weapon.ironbloom_saber", "Ironbloom Saber", InventoryCategory.WEAPONS, ItemRarity.RARE, iconGlyph = "S", description = "A light saber that carries the warmth of the first ember.", equipSlot = EquipmentSlot.MAIN_HAND, power = 18, effectSummary = "Ember Edge: basic attacks emit a warm-light hit flash."),
+            InventoryItem("tonic-01", "consumable.moonleaf_tonic", "Moonleaf Tonic", InventoryCategory.CONSUMABLES, ItemRarity.RARE, quantity = 3, iconGlyph = "T", description = "Restores 25 health.", effectSummary = "Restore 25 HP."),
+            InventoryItem("wood-01", "material.wood", "Wood", InventoryCategory.MATERIALS, ItemRarity.COMMON, quantity = wood, iconGlyph = "W", description = "Dry timber gathered from the forest edge."),
+            InventoryItem("fiber-01", "material.fiber", "Fiber", InventoryCategory.MATERIALS, ItemRarity.COMMON, quantity = fiber, iconGlyph = "F", description = "Strong forest fiber used for bindings.", isFavorite = true),
+            InventoryItem("chest-01", "armor.wanderer_chest", "Wanderer Chest", InventoryCategory.ARMOR, ItemRarity.UNCOMMON, iconGlyph = "C", description = "A practical chest piece for long expeditions.", equipSlot = EquipmentSlot.CHEST, power = 8),
+            InventoryItem("stone-01", "material.stone", "Stone", InventoryCategory.MATERIALS, ItemRarity.COMMON, quantity = stone, iconGlyph = "O", description = "A durable stone gathered from the clearing.")
+        ) + List(18) { null }
     }
 
     private fun buildHud(): View {
@@ -225,13 +345,15 @@ class MainActivity : Activity(), SensorEventListener {
         val gather = actionButton("GATHER") { audio.playEffect("gather"); gameView.queueEvent { NativeGameBridge.gather() } }
         val craft = actionButton("CRAFT") { audio.playEffect("craft"); gameView.queueEvent { NativeGameBridge.craft() } }
         val settings = actionButton("AUDIO SETTINGS") { showAudioSettings() }
+        val inventory = actionButton("INVENTORY") { showInventoryOverlay() }
         actions.addView(sprintSlide, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(attack, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(jump, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(dodge, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(gather, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
         actions.addView(craft, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(settings, LinearLayout.LayoutParams(150, 50))
+        actions.addView(settings, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
+        actions.addView(inventory, LinearLayout.LayoutParams(150, 50))
         overlay.addView(actions, FrameLayout.LayoutParams(-1, -1))
         return overlay
     }
@@ -253,6 +375,7 @@ class MainActivity : Activity(), SensorEventListener {
         val levelPulse = number(10) > 0
         val questPulse = number(11) > 0
         val objective = values.drop(12).joinToString("|")
+        lastHudSnapshot = snapshot
         stateLabel.text = "HP $health  |  STA $stamina  |  HUN $hunger  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(if (levelPulse) Color.rgb(255, 236, 157) else Color.WHITE)
         questLabel.text = if (warden in 1..99) "$objective  •  WARDEN HP $warden%" else objective
