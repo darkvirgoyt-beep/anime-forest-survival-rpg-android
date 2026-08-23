@@ -62,11 +62,13 @@ jobs:
           test -f app/src/main/res/drawable/aethelgard_profile_gold.xml
           test -f assets/asset_budget.json
           test -f tools/validate_asset_budget.py
+          test -f tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/publish_internal_test.py
           test -f assetpack_core/build.gradle.kts
           test -f assetpack_forest/build.gradle.kts
           test -f assetpack_voice/build.gradle.kts
           python3 tools/validate_asset_budget.py
-          python3 tools/test_resource_center.py --repo .
+          python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           grep -q 'CONTINUE WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt

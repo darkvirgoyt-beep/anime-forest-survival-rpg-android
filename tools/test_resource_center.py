@@ -146,7 +146,15 @@ def test_invalid_progress_is_rejected() -> None:
     raise AssertionError("invalid byte progress was accepted")
 
 
-def run(repo: Path | None) -> None:
+def assert_unreal_project(project: Path) -> None:
+    descriptor = json.loads(project.read_text())
+    if not descriptor.get("FileVersion"):
+        raise AssertionError("Unreal project descriptor has no FileVersion")
+    if not descriptor.get("Modules"):
+        raise AssertionError("Unreal project descriptor has no Modules")
+
+
+def run(repo: Path | None, unreal_project: Path | None) -> None:
     tests = (
         test_initial_state,
         test_aggregate_progress_is_monotonic,
@@ -157,18 +165,28 @@ def run(repo: Path | None) -> None:
     for test in tests:
         test()
         print(f"PASS {test.__name__}")
+    checks = len(tests)
     if repo is not None:
         assert_source_contract(repo)
         print(f"PASS source_contract {repo}")
-    print(f"RESOURCE_CENTER_TESTS_PASS={len(tests) + (1 if repo is not None else 0)}")
+        checks += 1
+    if unreal_project is not None:
+        assert_unreal_project(unreal_project)
+        print(f"PASS unreal_project {unreal_project}")
+        checks += 1
+    print(f"RESOURCE_CENTER_TESTS_PASS={checks}")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, help="repository root for source-contract checks")
+    parser.add_argument("--unreal-project", type=Path, help="Unreal .uproject descriptor to validate")
     args = parser.parse_args()
     try:
-        run(args.repo.resolve() if args.repo else None)
+        run(
+            args.repo.resolve() if args.repo else None,
+            args.unreal_project.resolve() if args.unreal_project else None,
+        )
     except (AssertionError, FileNotFoundError, json.JSONDecodeError) as error:
         print(f"FAIL {error}", file=sys.stderr)
         return 1
