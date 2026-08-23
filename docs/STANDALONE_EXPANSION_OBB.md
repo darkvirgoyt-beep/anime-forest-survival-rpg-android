@@ -13,18 +13,25 @@ The OBB is a ZIP container with a checked `obb_manifest.json` plus a `content/` 
 Stage the output of the Unreal Android cook first. The input directory should contain the real cooked `.pak` files, compiled shader libraries, pipeline cache data, platform-qualified textures, world-sector metadata, audio, VFX, and other runtime files. Do not put `.uasset`, `.umap`, editor-only files, or a zero-filled size placeholder in this directory.
 
 ```bash
+APK_PATH=app/build/outputs/apk/release/app-release.apk
+AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
+APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+APK_VERSION_CODE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p")"
+
 python3 tools/build_expansion_obb.py \
   --input-dir Build/Android/expansion-staging \
   --output-dir Build/Android/obb \
-  --package-name com.darvirgoyt.aethelgrad \
-  --version-code 3 \
+  --package-name "$APK_PACKAGE" \
+  --version-code "$APK_VERSION_CODE" \
   --content-version unreal-cook-2026-08-23
 
-python3 tools/verify_expansion_obb.py \
-  Build/Android/obb/main.3.com.darvirgoyt.aethelgrad.obb
+OBB_PATH="Build/Android/obb/main.${APK_VERSION_CODE}.${APK_PACKAGE}.obb"
+python3 tools/verify_expansion_obb.py "$OBB_PATH" \
+  --expected-package "$APK_PACKAGE" \
+  --expected-version "$APK_VERSION_CODE"
 ```
 
-The command prints the content file count, uncompressed payload bytes, archive bytes, and archive SHA-256. The OBB is not padded to a target size. Therefore, the current repository’s development OBB remains small because the checked-in project does not yet contain the real 4.2 GB/6.6 GB Unreal cooked payload.
+The command prints the content file count, uncompressed payload bytes, archive bytes, and archive SHA-256. The verifier now checks the OBB package and version against the APK-derived values. The OBB is not padded to a target size. Therefore, the current repository’s development OBB remains small because the checked-in project does not yet contain the real 4.2 GB/6.6 GB Unreal cooked payload.
 
 ## Private APK/device-lab installation
 

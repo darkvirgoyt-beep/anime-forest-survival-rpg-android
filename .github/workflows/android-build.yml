@@ -238,19 +238,29 @@ jobs:
           mkdir -p build/obb-staging
           cp app/src/main/assets/asset_manifest.json build/obb-staging/asset_manifest.json
           cp -R app/src/main/assets/asset_packs build/obb-staging/asset_packs
+          AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
+          APK_VERSION_CODE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p")"
+          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
+          test "$APK_VERSION_CODE" -gt 0
           python3 tools/build_expansion_obb.py \
             --input-dir build/obb-staging \
             --output-dir build/expansion-obb \
-            --package-name com.darvirgoyt.aethelgrad \
-            --version-code 3 \
+            --package-name "$APK_PACKAGE" \
+            --version-code "$APK_VERSION_CODE" \
             --content-version "production-${GITHUB_SHA}"
-          python3 tools/verify_expansion_obb.py build/expansion-obb/main.3.com.darvirgoyt.aethelgrad.obb
+          OBB_PATH="build/expansion-obb/main.${APK_VERSION_CODE}.${APK_PACKAGE}.obb"
+          test -f "$OBB_PATH"
+          python3 tools/verify_expansion_obb.py "$OBB_PATH" \
+            --expected-package "$APK_PACKAGE" \
+            --expected-version "$APK_VERSION_CODE"
 
       - name: Upload standalone expansion OBB artifact
         uses: actions/upload-artifact@v4
         with:
           name: aethelgard-expansion-obb
-          path: build/expansion-obb/main.3.com.darvirgoyt.aethelgrad.obb
+          path: build/expansion-obb/main.*.com.darvirgoyt.aethelgrad.obb
           if-no-files-found: error
 
       - name: Upload direct APK artifact

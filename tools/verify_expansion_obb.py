@@ -21,7 +21,7 @@ def digest(stream) -> str:
     return hasher.hexdigest()
 
 
-def verify(path: str) -> None:
+def verify(path: str, expected_package: str | None = None, expected_version: int | None = None) -> None:
     archive_path = __import__("pathlib").Path(path)
     match = NAME_RE.fullmatch(archive_path.name)
     if not match:
@@ -37,6 +37,10 @@ def verify(path: str) -> None:
             raise SystemExit("ERROR: filename versionCode does not match manifest")
         if manifest.get("packageName") != match.group("package"):
             raise SystemExit("ERROR: filename package name does not match manifest")
+        if expected_package is not None and match.group("package") != expected_package:
+            raise SystemExit("ERROR: OBB package does not match the APK package")
+        if expected_version is not None and int(match.group("version")) != expected_version:
+            raise SystemExit("ERROR: OBB versionCode does not match the APK versionCode")
 
         entries = manifest.get("entries")
         if not isinstance(entries, list) or not entries:
@@ -81,8 +85,10 @@ def verify(path: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("obb")
+    parser.add_argument("--expected-package", help="require this Android package name")
+    parser.add_argument("--expected-version", type=int, help="require this Android versionCode")
     args = parser.parse_args()
     try:
-        verify(args.obb)
+        verify(args.obb, args.expected_package, args.expected_version)
     except (OSError, ValueError, KeyError, json.JSONDecodeError, zipfile.BadZipFile) as error:
         raise SystemExit(f"ERROR: {error}")

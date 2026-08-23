@@ -118,7 +118,7 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
     private var hudPlayerTitle: TextView? = null
-    private var currentPlayerName = "WAYFARER"
+    private var currentPlayerName = "PLAYER NAME"
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
@@ -390,7 +390,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (::identityStatusLabel.isInitialized) {
             val accountId = accountSession.snapshot.accountId
             val username = currentPlayerProfile?.username?.takeIf { it.isNotBlank() }
-                ?: if (accountSession.snapshot.isGuest) "GUEST" else "WAYFARER"
+                ?: if (accountSession.snapshot.isGuest) "GUEST" else currentPlayerName
             val safeId = accountId?.take(10)?.let { "$it…" } ?: "PENDING"
             identityStatusLabel.text = "PLAYER: $username  •  ID: $safeId"
         }
@@ -2332,7 +2332,12 @@ class MainActivity : Activity(), SensorEventListener {
     private fun showAssetPatchOverlay(onReady: () -> Unit = {}) {
         if (assetPatchOverlay != null) return
         val resourceTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
-        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(4, 10, 16)) }
+        val overlay = FrameLayout(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(4, 18, 26), Color.rgb(3, 7, 13))
+            )
+        }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -2345,8 +2350,16 @@ class MainActivity : Activity(), SensorEventListener {
                 setStroke(dp(1), Color.rgb(150, 116, 62))
             }
         }
+        val ambientEmber = TextView(this).apply {
+            text = "✦"
+            textSize = 48f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(245, 199, 104))
+            setShadowLayer(26f, 0f, 0f, Color.rgb(218, 130, 54))
+            alpha = 0.92f
+        }
         val title = TextView(this).apply {
-            text = "DOWNLOAD ${resourceTier.name} 3D CONTENT  •  ${resourceTier.storageLabel}"
+            text = "PREPARE ${resourceTier.name} GRAPHICS  •  ${resourceTier.storageLabel}"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
@@ -2372,7 +2385,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The APK is only the bootstrap. Download the selected ${resourceTier.storageLabel} package of compiled graphics, all world sectors, characters, photos, shaders, and gameplay resources. Production requires a signed Play Asset Delivery AAB."
+            text = "The APK is only the bootstrap. Download the selected ${resourceTier.storageLabel} package of compiled graphics, world sectors, shaders, VFX, audio, and gameplay resources. Gameplay stays locked until this preparation finishes."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2380,6 +2393,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val retry = actionButton("RETRY ASSET PREPARATION") { }
         retry.visibility = View.GONE
+        panel.addView(ambientEmber, LinearLayout.LayoutParams(-1, dp(58)))
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
         panel.addView(status, LinearLayout.LayoutParams(-1, dp(46)))
         panel.addView(progress, LinearLayout.LayoutParams(dp(430), dp(28)))
@@ -2390,7 +2404,22 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(overlay)
         assetPatchOverlay = overlay
 
+        val loadingAnimationHandler = Handler(Looper.getMainLooper())
+        val loadingAnimation = object : Runnable {
+            override fun run() {
+                if (assetPatchOverlay !== overlay || overlay.parent == null) return
+                ambientEmber.animate().rotationBy(180f).scaleX(1.12f).scaleY(1.12f).alpha(0.58f)
+                    .setDuration(420L).withEndAction {
+                        ambientEmber.animate().scaleX(1.0f).scaleY(1.0f).alpha(0.92f)
+                            .setDuration(420L).start()
+                    }.start()
+                loadingAnimationHandler.postDelayed(this, 900L)
+            }
+        }
+        loadingAnimationHandler.post(loadingAnimation)
+
         fun finishPreparation() {
+            loadingAnimationHandler.removeCallbacks(loadingAnimation)
             hudHandler.postDelayed({
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
@@ -2409,12 +2438,11 @@ class MainActivity : Activity(), SensorEventListener {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        status.text = "OPTIONAL VISUAL CONTENT UNAVAILABLE"
-                        details.text = "The bundled world remains ready to play. High-detail resources can be retried later."
-                        note.text = "No action is required to enter Aethelgard. Technical download details are kept out of the player interface."
-                        note.setTextColor(Color.rgb(255, 205, 145))
-                        progress.progress = 0
-                        finishPreparation()
+                        status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
+                        details.text = "The selected ${resourceTier.storageLabel} resources were not mounted. Check Wi-Fi and free storage, then press retry."
+                        note.text = "The game will not enter the world until compiled graphics, shaders, and required world packs are ready."
+                        note.setTextColor(Color.rgb(255, 188, 142))
+                        retry.visibility = View.VISIBLE
                     }
                 } else {
                     val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2426,22 +2454,23 @@ class MainActivity : Activity(), SensorEventListener {
                             details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
                         event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
-                            status.text = "OPTIONAL RESOURCES WAITING"
-                            details.text = "The bundled world remains playable while optional visual resources wait."
+                            status.text = "WAITING FOR WI-FI  •  GAME LOCKED"
+                            details.text = "The ${resourceTier.storageLabel} download will resume on Wi-Fi. Gameplay remains locked until every required pack is ready."
+                            retry.visibility = View.VISIBLE
                         }
                         event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
-                            status.text = "Download confirmation required"
-                            details.text = "Confirm the large Play download in Google Play, then press retry."
+                            status.text = "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED"
+                            details.text = "Confirm the ${resourceTier.storageLabel} Play download, then press retry to continue preparation."
                             retry.visibility = View.VISIBLE
                         }
                         event.status == AssetPackStatus.CANCELED -> {
-                            status.text = "Download canceled"
-                            details.text = "Your game is locked until the compiled graphics and shaders finish downloading."
+                            status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
+                            details.text = "Press retry to download the compiled graphics, shaders, world sectors, and gameplay resources."
                             retry.visibility = View.VISIBLE
                         }
                         else -> {
-                            status.text = "Downloading compiled graphics and shaders…"
-                            details.text = if (total > 0) "$downloaded MB / $total MB ${resourceTier.name.lowercase()} resources downloaded from Play Asset Delivery." else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, shaders, world sectors, and character resources…"
+                            status.text = "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
+                            details.text = if (total > 0) "$downloaded MB / $total MB downloaded  •  world sectors, shaders, and gameplay resources" else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, shaders, world sectors, and gameplay resources…"
                         }
                     }
                     progress.progress = event.percent

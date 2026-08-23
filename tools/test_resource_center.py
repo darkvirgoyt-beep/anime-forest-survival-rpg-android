@@ -110,10 +110,10 @@ def assert_source_contract(repo: Path) -> None:
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
-        ("resource-center title", "DOWNLOAD ${resourceTier.name} 3D CONTENT", main),
+        ("resource-center title", "PREPARE ${resourceTier.name} GRAPHICS", main),
         ("resource-tier chooser", "SELECT GRAPHICS QUALITY", main),
         ("low-resource option", "LOW GRAPHICS", main),
-        ("compiled graphics copy", "compiled graphics and shaders", main),
+        ("compiled graphics copy", "compiled graphics, world sectors, shaders", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
         ("tier pack selection", "packNamesFor(tier)", catalog),
         ("production readiness gate", "productionContentReady", catalog),
