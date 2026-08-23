@@ -163,16 +163,6 @@ class MainActivity : Activity(), SensorEventListener {
         accountSession.initialize(this, ::applyAccountSnapshot)
     }
 
-    override fun onDestroy() {
-        hudHandler.removeCallbacks(hudUpdater)
-        hudHandler.removeCallbacks(cloudSaveUpdater)
-        accountSession.shutdown()
-        if (::assetDelivery.isInitialized) assetDelivery.shutdown()
-        if (::assetPacks.isInitialized) assetPacks.close()
-        if (::audio.isInitialized) audio.release()
-        super.onDestroy()
-    }
-
     private fun detectSupportedTargetFps(): List<Int> {
         val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
         val maxRefreshRate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
