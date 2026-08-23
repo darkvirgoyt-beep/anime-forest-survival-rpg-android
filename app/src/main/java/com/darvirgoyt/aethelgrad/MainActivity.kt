@@ -199,6 +199,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var coOpSaveInFlight = false
     private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
+    private var selectedServerLatencyMs: Int? = null
+    private var serverLatencyProbeToken = 0L
     private lateinit var networkMonitor: NetworkConnectivityMonitor
     private var networkOnline = false
     private var guestSignInAttempted = false
@@ -432,6 +434,107 @@ class MainActivity : Activity(), SensorEventListener {
             val safeId = accountId?.take(10)?.let { "$it…" } ?: "PENDING"
             identityStatusLabel.text = "PLAYER: $username  •  ID: $safeId"
         }
+    }
+
+    private fun apiLatencyProbeHost(): String =
+        Uri.parse(getString(R.string.api_base_url)).host.orEmpty()
+
+    private fun serverLatencySummary(latencyMs: Int?): String = when {
+        !networkOnline -> "ROUTE CHECK  •  WAITING FOR NETWORK"
+        latencyMs == null -> "ROUTE CHECK  •  UNAVAILABLE"
+        latencyMs <= 80 -> "ROUTE CHECK  •  ${latencyMs} ms  •  EXCELLENT"
+        latencyMs <= 160 -> "ROUTE CHECK  •  ${latencyMs} ms  •  STEADY"
+        else -> "ROUTE CHECK  •  ${latencyMs} ms  •  HIGH LATENCY"
+    }
+
+    private fun measureServerLatency(region: ServerRegion, onRendered: (String) -> Unit = {}) {
+        val probeToken = ++serverLatencyProbeToken
+        val host = apiLatencyProbeHost()
+        if (!networkOnline || host.isBlank()) {
+            if (region.id == selectedServer.id) selectedServerLatencyMs = null
+            onRendered(serverLatencySummary(null))
+            return
+        }
+        onRendered("ROUTE CHECK  •  OPTIMIZING…")
+        // The backend receives the selected region for matchmaking and cloud worlds.
+        // This check measures the real API route only; it never delays world entry.
+        networkMonitor.measureTcpLatency(host, timeoutMs = 900) { latencyMs ->
+            if (probeToken != serverLatencyProbeToken) return@measureTcpLatency
+            if (region.id == selectedServer.id) selectedServerLatencyMs = latencyMs
+            onRendered(serverLatencySummary(latencyMs))
+        }
+    }
+
+    private fun applyServerRegion(region: ServerRegion, serverButton: Button?) {
+        selectedServer = region
+        selectedServerLatencyMs = null
+        serverButton?.text = "◉  ${region.name.removePrefix("Aethelgard ").uppercase()}  ▾"
+        if (::onboardingStatus.isInitialized) {
+            onboardingStatus.text = "${region.name} selected  •  MATCH REGION READY"
+        }
+        measureServerLatency(region) { summary ->
+            if (::onboardingStatus.isInitialized && !authenticationTransitionStarted) {
+                onboardingStatus.text = "${region.name.removePrefix("Aethelgard ").uppercase()}  •  $summary"
+            }
+        }
+    }
+
+    private fun showServerLocationPicker(serverButton: Button) {
+        val regions = ServerDirectory.regions
+        if (regions.isEmpty()) return
+        var candidateIndex = regions.indexOfFirst { it.id == selectedServer.id }.coerceAtLeast(0)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(16), dp(24), dp(8))
+        }
+        val locationLabel = TextView(this).apply {
+            setTextColor(Color.rgb(246, 232, 196))
+            textSize = 18f
+            gravity = Gravity.CENTER
+        }
+        val routeLabel = TextView(this).apply {
+            setTextColor(Color.rgb(167, 214, 232))
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        val slider = SeekBar(this).apply {
+            max = regions.lastIndex
+            progress = candidateIndex
+            contentDescription = "Server location"
+        }
+        fun renderCandidate(checkRoute: Boolean) {
+            val region = regions[candidateIndex]
+            locationLabel.text = region.name.removePrefix("Aethelgard ").uppercase()
+            routeLabel.text = if (checkRoute) "ROUTE CHECK  •  OPTIMIZING…" else serverLatencySummary(
+                if (region.id == selectedServer.id) selectedServerLatencyMs else null
+            )
+            if (checkRoute) measureServerLatency(region) { summary -> routeLabel.text = summary }
+        }
+        slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                serverLatencyProbeToken++
+                candidateIndex = value.coerceIn(0, regions.lastIndex)
+                renderCandidate(false)
+            }
+
+            override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+
+            override fun onStopTrackingTouch(bar: SeekBar?) = renderCandidate(true)
+        })
+        panel.addView(locationLabel)
+        panel.addView(slider, LinearLayout.LayoutParams(-1, dp(40)))
+        panel.addView(routeLabel)
+        renderCandidate(true)
+        AlertDialog.Builder(this)
+            .setTitle("SERVER LOCATION")
+            .setMessage("Choose the co-op and cloud-world region. Route checks run in the background and never delay entering the world.")
+            .setView(panel)
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("USE LOCATION") { _, _ ->
+                applyServerRegion(regions[candidateIndex], serverButton)
+            }
+            .show()
     }
 
     private fun requireOnline(action: String): Boolean {
@@ -674,11 +777,8 @@ class MainActivity : Activity(), SensorEventListener {
             )
         }, FrameLayout.LayoutParams(-1, -1))
 
-        val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {
-            val index = ServerDirectory.regions.indexOfFirst { it.id == selectedServer.id }
-            selectedServer = ServerDirectory.regions[(index + 1) % ServerDirectory.regions.size]
-            onboardingStatus.text = "${selectedServer.name} selected  •  CONNECTING TO ONLINE WORLD"
-        }
+        val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {}
+        serverButton.setOnClickListener { showServerLocationPicker(serverButton) }
         overlay.addView(serverButton, FrameLayout.LayoutParams(dp(176), dp(42), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(18)
             rightMargin = dp(24)
