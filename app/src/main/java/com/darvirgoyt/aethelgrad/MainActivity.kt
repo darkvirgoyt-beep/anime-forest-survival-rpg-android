@@ -163,8 +163,6 @@ class MainActivity : Activity(), SensorEventListener {
         accountSession.initialize(this, ::applyAccountSnapshot)
     }
 
-<<<<<<< HEAD
-=======
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
@@ -175,7 +173,6 @@ class MainActivity : Activity(), SensorEventListener {
         super.onDestroy()
     }
 
->>>>>>> ffd8816 (Fix asset delivery Android build integration)
     private fun detectSupportedTargetFps(): List<Int> {
         val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
         val maxRefreshRate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

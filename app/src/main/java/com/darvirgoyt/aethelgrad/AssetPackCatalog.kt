@@ -5,6 +5,7 @@ import com.google.android.play.core.assetpacks.AssetPackManager
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.android.play.core.assetpacks.AssetPackState
 import com.google.android.play.core.assetpacks.AssetPackStateUpdateListener
+import com.google.android.play.core.assetpacks.model.AssetPackStatus
 
 /**
  * Runtime boundary for Play Asset Delivery.
