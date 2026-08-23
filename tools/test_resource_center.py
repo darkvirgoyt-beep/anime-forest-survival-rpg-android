@@ -97,7 +97,8 @@ def assert_source_contract(repo: Path) -> None:
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
-        ("resource-center title", "PREPARE ${resourceTier.name} GRAPHICS", main),
+        ("optional visual-content title", "OPTIONAL ${resourceTier.name} VISUAL CONTENT", main),
+        ("bundled world fallback", "BUNDLED WORLD READY", main),
         ("high-end content description", "resourceTier.description", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
         ("tier pack selection", "startupPackNamesFor(tier)", catalog),
