@@ -49,13 +49,15 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("boolean", "PROTOTYPE_MODE", "true")
+            // All variants use the real online Google authentication flow.
+            buildConfigField("boolean", "PROTOTYPE_MODE", "false")
         }
         create("prototype") {
             initWith(getByName("debug"))
             applicationIdSuffix = ".prototype"
             versionNameSuffix = "-prototype"
-            buildConfigField("boolean", "PROTOTYPE_MODE", "true")
+            // Keep the separate application ID for testing, but do not bypass login.
+            buildConfigField("boolean", "PROTOTYPE_MODE", "false")
             matchingFallbacks += listOf("debug")
         }
         release {

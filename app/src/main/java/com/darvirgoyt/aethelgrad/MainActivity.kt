@@ -256,33 +256,23 @@ class MainActivity : Activity(), SensorEventListener {
         registerGyro()
         networkProbeHost = Uri.parse(getString(R.string.api_base_url)).host.orEmpty()
         networkMonitor = NetworkConnectivityMonitor(this)
-        if (!BuildConfig.PROTOTYPE_MODE) {
-            // Initialize the session boundary before starting connectivity callbacks;
-            // the monitor can report immediately on a warm network.
-            accountSession.initialize(this, ::applyAccountSnapshot)
-        }
+        // Initialize the session boundary before starting connectivity callbacks;
+        // the monitor can report immediately on a warm network.
+        accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        if (BuildConfig.PROTOTYPE_MODE) {
-            // The .prototype application id is an offline development harness.
-            // It must not masquerade as the signed online release or request a
-            // Google credential whose Android OAuth package deliberately differs.
-            onboardingOverlay.visibility = View.GONE
-        } else {
-            // The release package remains online-only and requires an explicit
-            // Google account sign-in before entering the production world.
-            onboardingOverlay.visibility = View.VISIBLE
-            if (networkOnline) {
-                when {
-                    selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
-                        applyResourceTier(chosenTier)
-                        showAssetPatchOverlay()
-                    }
-                    assetPacks.productionContentReady(selectedResourceTier!!) -> resourcePreparationComplete = true
-                    else -> showAssetPatchOverlay()
+        // Every build requires the real online Google sign-in flow.
+        onboardingOverlay.visibility = View.VISIBLE
+        if (networkOnline) {
+            when {
+                selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
+                    applyResourceTier(chosenTier)
+                    showAssetPatchOverlay()
                 }
-            } else {
-                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+                assetPacks.productionContentReady(selectedResourceTier!!) -> resourcePreparationComplete = true
+                else -> showAssetPatchOverlay()
             }
+        } else {
+            onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
         }
     }
 
