@@ -118,6 +118,9 @@ jobs:
           grep -q 'SetGyroSensorSupport' Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
           grep -q 'StartGooglePlaySignIn' Unreal/Source/ForestSlice/Public/ForestSliceAccountSubsystem.h
           grep -q 'toggleViewMode' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'currentPlayerName' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'setPlayerName' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          ! grep -q 'text = "AETHELGRAD  •  DAY 1  •  DAY"' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'teleportToTower' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'drawTeleportationTower' app/src/main/cpp/forest_game.cpp
           grep -q 'MaxCameraOrbitDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h

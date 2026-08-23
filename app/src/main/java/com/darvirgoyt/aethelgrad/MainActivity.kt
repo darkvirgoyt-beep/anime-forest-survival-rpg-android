@@ -109,6 +109,8 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var assetDelivery: AssetDeliveryManager
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
+    private var hudPlayerTitle: TextView? = null
+    private var currentPlayerName = "WAYFARER"
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
@@ -729,6 +731,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
+            setPlayerName("GUEST")
             authenticationTransitionStarted = true
             if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
                 enterGuestOnlineWorld()
@@ -793,6 +796,7 @@ class MainActivity : Activity(), SensorEventListener {
     /** The login panel remains available only for optional account linking; guest launch never reaches it. */
     private fun showCharacterSetup(accountId: String?, recoveredProfile: PlayerProfile? = null, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
         runOnUiThread {
+            setPlayerName(recoveredProfile?.username)
             if (characterSetupOverlay != null) return@runOnUiThread
             val availableWorlds = recoveredWorlds.take(6)
             var selectedWorld = availableWorlds.firstOrNull()
@@ -1006,6 +1010,7 @@ class MainActivity : Activity(), SensorEventListener {
                     return@cinematicButton
                 }
                 characterCreation.name = characterNameInput.text.toString()
+                setPlayerName(characterCreation.name)
                 val issue = characterCreation.validate()
                 if (issue != null) {
                     validation.text = issue
@@ -1274,6 +1279,12 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
+    private fun setPlayerName(name: String?) {
+        val normalized = name?.trim()?.replace(Regex("\\s+"), " ")?.take(24).orEmpty()
+        if (normalized.isNotBlank()) currentPlayerName = normalized
+        hudPlayerTitle?.text = currentPlayerName
+    }
+
     private fun buildHud(): View {
         val overlay = FrameLayout(this)
         val top = LinearLayout(this).apply {
@@ -1282,15 +1293,12 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(dp(126), dp(12), dp(158), 0)
         }
         val title = TextView(this).apply {
-            text = if (BuildConfig.PROTOTYPE_MODE) {
-                "AETHELGRAD  •  PROTOTYPE  •  OFFLINE"
-            } else {
-                "AETHELGRAD  •  DAY 1  •  DAY"
-            }
+            text = currentPlayerName
             textSize = 15f
             setTextColor(Color.rgb(244, 218, 155))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
+        hudPlayerTitle = title
         stateLabel = TextView(this).apply {
             text = "FOREST  •  DAY 1  •  DAY  •  CLEAR  •  HP 100  •  STA 100  •  LV 1"
             textSize = 13f
@@ -1314,6 +1322,7 @@ class MainActivity : Activity(), SensorEventListener {
             gameView.queueEvent { NativeGameBridge.setGyroEnabled(gyroEnabled) }
             updateGyroButton()
         }
+        setPlayerName(currentPlayerName)
         top.addView(title, LinearLayout.LayoutParams(-2, -1))
         top.addView(stateLabel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = dp(16); rightMargin = dp(10) })
         overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
