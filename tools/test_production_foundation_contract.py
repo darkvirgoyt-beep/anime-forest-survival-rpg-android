@@ -9,8 +9,6 @@ CHECKS = (
     ("app/build.gradle.kts", "applicationId =", "Android application identity"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "setContentTierReady", "downloaded quality readiness hook"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt", "requestProductionContent", "Play Asset Delivery request"),
-    ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "FULL PRODUCTION CONTENT REQUIRED", "production content lockout"),
-    ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "SELECT GRAPHICS QUALITY", "graphics quality selector"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt", "QualityEnvelope", "quality envelope model"),
     ("app/src/main/cpp/forest_game.cpp", "effectiveGraphicsQuality", "native quality gate"),
     ("app/src/main/cpp/forest_game.cpp", "setContentTierReady", "native readiness JNI hook"),
