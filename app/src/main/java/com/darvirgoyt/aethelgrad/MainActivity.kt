@@ -30,6 +30,7 @@ import android.view.SurfaceHolder
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.content.Context
@@ -122,6 +123,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var assetPatchOverlay: View? = null
     private var cinematicEntryOverlay: View? = null
     private var worldLoadingOverlay: View? = null
+    private var worldFadeCurtain: View? = null
     private var worldLoadingCard: View? = null
     private var worldLoadingProgress: ProgressBar? = null
     private var worldLoadingStatus: TextView? = null
@@ -1082,19 +1084,38 @@ class MainActivity : Activity(), SensorEventListener {
             audio.stopLoadingMusic()
             audio.playEffect("craft", rate = 1.08f)
             audio.playMusic()
+            fadeLoadingIntoWorld(onWorldReady)
+        }, remainingMinimumPresentation)
+    }
+
+    /** Fades the completed loading state to ink, applies the world entry, then reveals Wisteria Forest. */
+    private fun fadeLoadingIntoWorld(onWorldReady: () -> Unit) {
+        val overlay = worldLoadingOverlay
+        val curtain = View(this).apply {
+            alpha = 0f
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(3, 12, 15), Color.rgb(12, 7, 22), Color.rgb(3, 16, 18))
+            )
+        }
+        worldFadeCurtain = curtain
+        rootContainer.addView(curtain, FrameLayout.LayoutParams(-1, -1))
+        overlay?.animate()?.alpha(0f)?.setDuration(240L)?.setInterpolator(AccelerateDecelerateInterpolator())?.start()
+        curtain.animate().alpha(1f).setDuration(260L).setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
             onWorldReady()
-            val overlay = worldLoadingOverlay
-            if (overlay != null) {
-                overlay.animate().alpha(0f).setDuration(260L).withEndAction {
-                    rootContainer.removeView(overlay)
+            rootContainer.postDelayed({
+                curtain.animate().alpha(0f).setDuration(520L).setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
+                    rootContainer.removeView(curtain)
+                    if (worldFadeCurtain === curtain) worldFadeCurtain = null
+                    if (overlay != null) rootContainer.removeView(overlay)
                     if (worldLoadingOverlay === overlay) worldLoadingOverlay = null
                     worldLoadingCard = null
                     worldLoadingProgress = null
                     worldLoadingStatus = null
                     worldLoadingSkip = null
                 }.start()
-            }
-        }, remainingMinimumPresentation)
+            }, 80L)
+        }.start()
     }
 
     private fun connectGuestToOnlineRoom() {
