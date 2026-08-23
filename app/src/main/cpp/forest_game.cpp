@@ -54,6 +54,9 @@ float gGyroX = 0.0f;
 float gGyroY = 0.0f;
 bool gGyroEnabled = false;
 bool gAuthoritativeOnline = false;
+bool gCampBuilt = false;
+int gCapturedMobIndex = -1;
+bool gCapturedCompanionStay = false;
 int gWood = 12;
 int gFiber = 8;
 int gStone = 4;
@@ -95,6 +98,7 @@ struct MobState {
     float hitFlash;
     float attackCooldown;
     float defeatTimer;
+    bool captured = false;
 };
 
 MobState gMobs[forest::mobs::kProfileCount] = {
@@ -115,7 +119,10 @@ void resetMobs() {
         mob.hitFlash = 0.0f;
         mob.attackCooldown = 0.0f;
         mob.defeatTimer = 0.0f;
+        mob.captured = false;
     }
+    gCapturedMobIndex = -1;
+    gCapturedCompanionStay = false;
 }
 
 int nearestLivingMob() {
@@ -123,7 +130,7 @@ int nearestLivingMob() {
     float nearestDistance = 100.0f;
     for (int i = 0; i < forest::mobs::kProfileCount; ++i) {
         const MobState& mob = gMobs[i];
-        if (mob.health <= 0.0f) continue;
+        if (mob.health <= 0.0f || mob.captured) continue;
         const float dx = mob.position.x - gPlayerX;
         const float dy = mob.position.y - gPlayerY;
         const float distance = std::sqrt(dx * dx + dy * dy);
@@ -861,10 +868,19 @@ void draw3DMobs(const Mat4& viewProjection) {
     const int nearest = nearestLivingMob();
     for (int i = 0; i < forest::mobs::kProfileCount; ++i) {
         const MobState& mob = gMobs[i];
+        if (mob.captured) continue;
         const float dx = mob.position.x - gPlayerX;
         const float dy = mob.position.y - gPlayerY;
         const bool combatTarget = i == nearest && std::sqrt(dx * dx + dy * dy) < 0.52f;
         draw3DMob(viewProjection, mob, combatTarget);
+    }
+    if (gCapturedMobIndex >= 0 && gCapturedMobIndex < forest::mobs::kProfileCount) {
+        const MobState& companion = gMobs[gCapturedMobIndex];
+        const float x = companion.position.x * 4.3f;
+        const float z = -companion.position.y * 4.0f;
+        const float pulse = 0.58f + 0.18f * std::sin(gTime * 3.5f);
+        draw3DBox(viewProjection, x, 0.035f, z, 0.66f, 0.018f, 0.46f, 0.95f, 0.72f, 0.24f, pulse);
+        draw3DMob(viewProjection, companion, false);
     }
 }
 
@@ -917,6 +933,19 @@ void drawTeleportationTower(const Mat4& viewProjection) {
 void drawQuad(float x, float y, float width, float height, float r, float g, float b, float a);
 void drawTriangle(float x, float y, float width, float height, float r, float g, float b, float a);
 void drawCircle(float x, float y, float radius, float r, float g, float b, float a);
+
+void draw3DFieldCamp(const Mat4& viewProjection) {
+    if (!gCampBuilt) return;
+    const float firePulse = 0.72f + 0.18f * std::sin(gTime * 4.6f);
+    // A compact original field camp gives the player a readable home anchor
+    // without adding a heavyweight asset dependency to the Android slice.
+    draw3DBox(viewProjection, -2.75f, 0.08f, -2.10f, 1.48f, 0.16f, 1.12f, 0.20f, 0.12f, 0.08f);
+    draw3DBox(viewProjection, -2.75f, 0.66f, -2.10f, 1.24f, 0.98f, 0.90f, 0.55f, 0.22f, 0.16f);
+    draw3DBox(viewProjection, -2.75f, 1.24f, -2.10f, 1.36f, 0.16f, 1.00f, 0.82f, 0.50f, 0.20f);
+    draw3DBox(viewProjection, -2.75f, 0.34f, -1.48f, 0.58f, 0.38f, 0.16f, 0.48f, 0.30f, 0.16f);
+    draw3DBox(viewProjection, -2.75f, 0.21f, -1.26f, 0.34f, 0.10f, 0.34f, 0.96f, 0.62f, 0.22f, firePulse);
+    draw3DBox(viewProjection, -2.75f, 0.38f, -1.26f, 0.10f, 0.24f, 0.10f, 1.0f, 0.86f, 0.30f, firePulse);
+}
 
 void draw3DPeer(const Mat4& viewProjection, const CoOpPeer& peer, int index) {
     if (!peer.active) return;
@@ -1173,6 +1202,7 @@ void draw3DWorld() {
     draw3DBox(viewProjection, 3.8f, 0.10f, -1.2f, 1.2f, 0.20f, 0.8f, 0.78f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 3.8f, 0.28f, -1.2f, 0.75f, 0.18f, 0.52f, 0.92f, 0.65f, 0.22f);
     drawTeleportationTower(viewProjection);
+    draw3DFieldCamp(viewProjection);
     if (gProgression.questStage == forest::rpg::QuestStage::DefeatWarden) {
         draw3DBox(viewProjection, -1.4f, 0.48f, 1.6f, 0.72f, 0.96f, 0.72f, 0.20f, 0.12f, 0.32f);
         draw3DBox(viewProjection, -1.4f, 1.18f, 1.6f, 0.88f, 0.18f, 0.88f, 0.58f, 0.28f, 0.77f);
@@ -1590,7 +1620,7 @@ void updateMobs(float deltaSeconds) {
         mob.hitFlash = std::max(0.0f, mob.hitFlash - deltaSeconds);
         mob.attackCooldown = std::max(0.0f, mob.attackCooldown - deltaSeconds);
         mob.defeatTimer = std::max(0.0f, mob.defeatTimer - deltaSeconds);
-        if (mob.health <= 0.0f) continue;
+        if (mob.health <= 0.0f || mob.captured) continue;
 
         const float dx = gPlayerX - mob.position.x;
         const float dy = gPlayerY - mob.position.y;
@@ -1607,6 +1637,17 @@ void updateMobs(float deltaSeconds) {
             gQuestPulse = std::max(gQuestPulse, 12);
         }
     }
+    if (gCapturedMobIndex >= 0 && gCapturedMobIndex < forest::mobs::kProfileCount) {
+        MobState& companion = gMobs[gCapturedMobIndex];
+        companion.health = static_cast<float>(forest::mobs::profile(companion.type).maxHealth) * 0.75f;
+        if (!gCapturedCompanionStay) {
+            const float followX = gPlayerX - 0.16f;
+            const float followY = gPlayerY + 0.13f;
+            const float blend = std::min(1.0f, deltaSeconds * 4.2f);
+            companion.position.x += (followX - companion.position.x) * blend;
+            companion.position.y += (followY - companion.position.y) * blend;
+        }
+    }
 }
 
 void applyMobDamage(const forest::combat::Hitbox& hitbox, const forest::physics::Vec2& facing) {
@@ -1615,7 +1656,7 @@ void applyMobDamage(const forest::combat::Hitbox& hitbox, const forest::physics:
         hitbox.halfExtents
     };
     for (MobState& mob : gMobs) {
-        if (mob.health <= 0.0f) continue;
+        if (mob.health <= 0.0f || mob.captured) continue;
         const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
         const float hitRadius = 0.075f * mobProfile.scale;
         const forest::physics::Aabb mobBox{mob.position, {hitRadius, 0.10f * mobProfile.scale}};
@@ -1659,6 +1700,16 @@ void simulatePhysicsStep() {
     if (combatEvent.attackStarted) {
         gAttackPulse = combatEvent.heavyAttack ? 16 : 6 + combatEvent.comboIndex * 2;
         gHitRegistered = false;
+        if (!gAuthoritativeOnline && gCapturedMobIndex >= 0 && !gCapturedCompanionStay) {
+            const int target = nearestLivingMob();
+            if (target >= 0) {
+                MobState& companionTarget = gMobs[target];
+                const float assistDamage = combatEvent.heavyAttack ? 10.0f : 5.0f;
+                companionTarget.health = std::max(0.0f, companionTarget.health - assistDamage);
+                companionTarget.hitFlash = 0.12f;
+                if (companionTarget.health <= 0.0f) companionTarget.defeatTimer = 1.5f;
+            }
+        }
     }
     if (gCombat.isHitActive() && !gHitRegistered && !gAuthoritativeOnline) {
         const forest::physics::Vec2 facing{
@@ -1690,6 +1741,11 @@ void simulatePhysicsStep() {
     gPlayerX = gController.body.position.x;
     gPlayerY = gController.body.position.y;
     forest::rpg::updateEmberling(gEmberling, gPlayerX, gPlayerY, kPhysicsStep, currentWeather() == WeatherState::Thunderstorm);
+    const float campDistance = std::sqrt((gPlayerX + 0.64f) * (gPlayerX + 0.64f) + (gPlayerY - 0.52f) * (gPlayerY - 0.52f));
+    if (gCampBuilt && campDistance < 0.26f) {
+        gController.health = std::min(1.0f, gController.health + kPhysicsStep * 0.018f);
+        gHunger = std::min(1.0f, gHunger + kPhysicsStep * 0.020f);
+    }
     gHunger = std::max(0.0f, gHunger - kPhysicsStep * 0.001f);
     if (gHunger < 0.20f) gController.health = std::max(0.0f, gController.health - kPhysicsStep * 0.004f);
     gLevelPulse = std::max(0, gLevelPulse - 1);
@@ -1856,6 +1912,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     for (CoOpPeer& peer : gCoOpPeers) peer = {};
     gProgression = {};
     gEmberling = {};
+    gCampBuilt = false;
+    gCapturedMobIndex = -1;
+    gCapturedCompanionStay = false;
     gWood = 12;
     gFiber = 8;
     gStone = 4;
@@ -2118,6 +2177,53 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_craft(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_captureNearestCreature(JNIEnv*, jobject) {
+    if (gCapturedMobIndex >= 0) return;
+    const int target = nearestLivingMob();
+    if (target < 0) return;
+    MobState& mob = gMobs[target];
+    const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
+    const float dx = mob.position.x - gPlayerX;
+    const float dy = mob.position.y - gPlayerY;
+    const float distance = std::sqrt(dx * dx + dy * dy);
+    if (distance > 0.38f || mob.health > static_cast<float>(mobProfile.maxHealth) * 0.38f || gFiber < 2) return;
+    gFiber -= 2;
+    mob.captured = true;
+    mob.health = static_cast<float>(mobProfile.maxHealth) * 0.75f;
+    mob.position = {gPlayerX - 0.16f, gPlayerY + 0.13f};
+    gCapturedMobIndex = target;
+    gCapturedCompanionStay = false;
+    gQuestPulse = 150;
+    awardExperience(24);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleCompanionCommand(JNIEnv*, jobject) {
+    if (gCapturedMobIndex >= 0) {
+        gCapturedCompanionStay = !gCapturedCompanionStay;
+        gQuestPulse = 90;
+    } else {
+        const forest::rpg::EmberlingInteraction outcome = forest::rpg::interactWithEmberling(
+            gEmberling, gProgression.emberKitCrafted, gFiber, gPlayerX, gPlayerY);
+        if (outcome == forest::rpg::EmberlingInteraction::Bonded) awardExperience(30);
+        if (outcome != forest::rpg::EmberlingInteraction::TooFar && outcome != forest::rpg::EmberlingInteraction::NeedsEmberKit && outcome != forest::rpg::EmberlingInteraction::NeedsFiber) {
+            gQuestPulse = 90;
+        }
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_buildCamp(JNIEnv*, jobject) {
+    if (gCampBuilt || gWood < 6 || gFiber < 4) return;
+    gWood -= 6;
+    gFiber -= 4;
+    gCampBuilt = true;
+    gCraftPulse = 20;
+    gQuestPulse = 150;
+    awardExperience(24);
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_interactEmberling(JNIEnv*, jobject) {
     const forest::rpg::EmberlingInteraction outcome = forest::rpg::interactWithEmberling(
         gEmberling, gProgression.emberKitCrafted, gFiber, gPlayerX, gPlayerY);
@@ -2154,8 +2260,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << (gViewMode == ViewMode::FirstPerson ? "FIRST_PERSON" : "THIRD_PERSON") << '|'
           << (gWorldMapVisible ? "MAP_ON" : "MAP_OFF") << '|'
           << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY") << '|'
-          << forest::rpg::emberlingStatus(gEmberling) << '|'
-          << nearestMobStatus();
+          << (gCapturedMobIndex >= 0 ? "CAPTURED_COMPANION" : forest::rpg::emberlingStatus(gEmberling)) << '|'
+          << nearestMobStatus() << '|'
+          << (gCampBuilt ? "CAMP_BUILT" : "NO_CAMP");
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }

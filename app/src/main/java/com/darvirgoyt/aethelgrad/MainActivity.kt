@@ -81,6 +81,9 @@ object NativeGameBridge {
     external fun gather()
     external fun craft()
     external fun interactEmberling()
+    external fun captureNearestCreature()
+    external fun toggleCompanionCommand()
+    external fun buildCamp()
     external fun getHudState(): String
     external fun setGraphicsQuality(level: Int)
     external fun setContentTierReady(ready: Boolean, tier: Int)
@@ -1498,9 +1501,17 @@ class MainActivity : Activity(), SensorEventListener {
         val dodge = gameplayButton("◆  DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
         val gather = gameplayButton("✧  GATHER") { submitAuthoritativeInventory("gather") }
         val craft = gameplayButton("⌂  CRAFT") { submitAuthoritativeInventory("craft") }
-        val emberling = gameplayButton("✦  EMBERLING") {
+        val companion = gameplayButton("✦  COMPANION") {
             audio.playEffect("ui")
-            gameView.queueEvent { NativeGameBridge.interactEmberling() }
+            gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
+        }
+        val capture = gameplayButton("◎  CAPTURE") {
+            audio.playEffect("ui")
+            gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
+        }
+        val camp = gameplayButton("⌂  BUILD CAMP") {
+            audio.playEffect("craft")
+            gameView.queueEvent { NativeGameBridge.buildCamp() }
         }
         fun controlRow(first: View, second: View): LinearLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1512,7 +1523,8 @@ class MainActivity : Activity(), SensorEventListener {
         actions.addView(controlRow(sprintSlide, attack), rowParams())
         actions.addView(controlRow(heavy, jump), rowParams())
         actions.addView(controlRow(dodge, gather), rowParams())
-        actions.addView(controlRow(craft, emberling), LinearLayout.LayoutParams(-1, dp(50)))
+        actions.addView(controlRow(craft, companion), rowParams())
+        actions.addView(controlRow(capture, camp), LinearLayout.LayoutParams(-1, dp(50)))
         overlay.addView(actions, FrameLayout.LayoutParams(dp(360), -2, Gravity.BOTTOM or Gravity.END).apply {
             rightMargin = dp(16)
             bottomMargin = dp(16)
@@ -1547,8 +1559,10 @@ class MainActivity : Activity(), SensorEventListener {
         val viewMode = values.getOrNull(19)?.replace('_', ' ')?.ifBlank { "THIRD PERSON" } ?: "THIRD PERSON"
         val mapState = values.getOrNull(20)?.ifBlank { "MAP OFF" } ?: "MAP OFF"
         val towerState = values.getOrNull(21)?.replace('_', ' ')?.ifBlank { "TOWER READY" } ?: "TOWER READY"
-        val emberling = values.getOrNull(22)?.replace('_', ' ')?.ifBlank { "EMBERLING WILD" } ?: "EMBERLING WILD"
+        val companion = values.getOrNull(22)?.replace('_', ' ')?.ifBlank { "EMBERLING WILD" } ?: "EMBERLING WILD"
         val target = values.getOrNull(23)?.replace('_', ' ')?.ifBlank { "NO TARGET" } ?: "NO TARGET"
+        val companionState = values.getOrNull(24)?.replace('_', ' ')?.ifBlank { companion } ?: companion
+        val campState = values.getOrNull(25)?.replace('_', ' ')?.ifBlank { "NO CAMP" } ?: "NO CAMP"
         stateLabel.text = "$biome  •  DAY $daysPlayed  •  $phase  •  $weather  •  $viewMode  •  TARGET $target  •  HP $health  •  STA $stamina  •  LV $level"
         stateLabel.setTextColor(
             when {
@@ -1559,7 +1573,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
         )
         val recoveryNotice = cloudRecoveryNotice
-        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  WARDEN HP $warden/100  •  $locomotion" else if (target != "NO TARGET") "$objective  •  TARGET $target  •  $biome  •  $weather  •  W $wood  F $fiber  S $stone" else "$objective  •  $biome  •  $weather  •  $water  •  W $wood  F $fiber  S $stone  •  $xpLabel"
+        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  WARDEN HP $warden/100  •  $locomotion  •  $companionState" else if (target != "NO TARGET") "$objective  •  TARGET $target  •  $biome  •  $weather  •  W $wood  F $fiber  S $stone  •  $companionState  •  $campState" else "$objective  •  $biome  •  $weather  •  $water  •  W $wood  F $fiber  S $stone  •  $xpLabel  •  $companionState  •  $campState"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
