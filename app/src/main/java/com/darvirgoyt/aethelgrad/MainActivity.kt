@@ -20,6 +20,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.Surface
+import android.view.SurfaceHolder
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
@@ -1173,8 +1174,25 @@ private class CinematicLoginBackdropView(context: Context) : View(context) {
 private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
     private val renderer = GameRenderer()
     private var targetFps = 60
+    private var surfaceReady = false
     private var lastLookX = 0f
     private var lastLookY = 0f
+
+    private val surfaceCallback = object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+            surfaceReady = holder.surface.isValid
+            applyFrameRateIfSurfaceReady()
+        }
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            surfaceReady = holder.surface.isValid
+            applyFrameRateIfSurfaceReady()
+        }
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            surfaceReady = false
+        }
+    }
 
     init {
         setEGLContextClientVersion(3)
@@ -1182,14 +1200,33 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
         setPreserveEGLContextOnPause(true)
         renderMode = RENDERMODE_CONTINUOUSLY
         isFocusable = true
+        holder.addCallback(surfaceCallback)
     }
 
     fun applyTargetFps(value: Int) {
         targetFps = value.coerceIn(60, 120)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            holder.surface.setFrameRate(targetFps.toFloat(), Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE, Surface.CHANGE_FRAME_RATE_ALWAYS)
-        }
         renderer.targetFps = targetFps
+        applyFrameRateIfSurfaceReady()
+    }
+
+    private fun applyFrameRateIfSurfaceReady() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !surfaceReady) return
+        val surface = holder.surface
+        if (!surface.isValid) {
+            surfaceReady = false
+            return
+        }
+        try {
+            surface.setFrameRate(
+                targetFps.toFloat(),
+                Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                Surface.CHANGE_FRAME_RATE_ALWAYS
+            )
+        } catch (_: IllegalStateException) {
+            // The Surface can be released between isValid and setFrameRate during a
+            // pause/recreate race. It will be retried from surfaceCreated/Changed.
+            surfaceReady = false
+        }
     }
 
     fun applyGraphicsTier(level: Int) {
