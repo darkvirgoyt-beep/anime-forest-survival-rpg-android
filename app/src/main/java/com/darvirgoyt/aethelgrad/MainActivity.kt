@@ -14,6 +14,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
