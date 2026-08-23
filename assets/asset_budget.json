@@ -1,24 +1,34 @@
 {
   "project": "AETHELGRAD",
   "unit": "MiB",
-  "target_total_mib": 10116,
+  "target_total_mib": 7108,
   "policy": {
     "padding_files_for_size": false,
     "asset_packs_are_read_only_at_runtime": true,
     "every_binary_asset_requires_source_and_license": true,
-    "budgets_are_uncompressed_source_targets_before_platform_compression": true
+    "budgets_are_uncompressed_source_targets_before_platform_compression": true,
+    "post_install_full3d_target_mib": 6750,
+    "documented_per_dynamic_pack_ceiling_mib": 512
   },
   "packs": [
-    {"module": "assetpack_core", "delivery": "install-time", "target_mib": 358, "content": "boot shaders, fallback materials, first-launch UI, low-resolution fallback textures"},
-    {"module": "assetpack_forest", "delivery": "fast-follow", "target_mib": 1075, "content": "forest terrain, village, foliage, water region, gathering props, navigation data"},
-    {"module": "assetpack_sand", "delivery": "on-demand", "target_mib": 973, "content": "sand terrain, settlement, heat-biome props, dust and weather content"},
-    {"module": "assetpack_snow", "delivery": "on-demand", "target_mib": 973, "content": "snow terrain, Frostclaw arena, predators, ice materials, blizzard content"},
-    {"module": "assetpack_characters", "delivery": "on-demand", "target_mib": 1126, "content": "original hero, creatures, armor variants, rigs, animation clips, facial assets"},
-    {"module": "assetpack_audio_hd", "delivery": "on-demand", "target_mib": 870, "content": "high-quality ambience, footsteps, water, combat, wildlife and spatial audio"},
-    {"module": "assetpack_cinematics", "delivery": "on-demand", "target_mib": 1229, "content": "story cinematics, transitions, trailers and high-resolution scene captures"},
-    {"module": "assetpack_hd_textures", "delivery": "on-demand", "target_mib": 1126, "content": "PBR texture variants, material atlases, normal, roughness and mask maps"},
-    {"module": "assetpack_dungeons", "delivery": "on-demand", "target_mib": 973, "content": "ruins, caves, late-game dungeons, boss arenas and streaming chunks"},
-    {"module": "assetpack_vfx", "delivery": "on-demand", "target_mib": 768, "content": "water surfaces, particles, weather, combat effects, destruction and post-process assets"},
-    {"module": "assetpack_voice", "delivery": "on-demand", "target_mib": 645, "content": "localized dialogue, NPC barks, subtitles and accessibility voice resources"}
+    {"module": "assetpack_core", "delivery": "install-time", "target_mib": 358, "content": "bootstrap UI, fallback materials, core runtime data and loading scene"},
+    {"module": "assetpack_graphics_base", "delivery": "on-demand", "target_mib": 450, "content": "compiled materials, base shaders, shared meshes and mobile render resources"},
+    {"module": "assetpack_forest", "delivery": "fast-follow", "target_mib": 350, "content": "forest launch region, village, foliage, water, collision and navigation"},
+    {"module": "assetpack_sand", "delivery": "on-demand", "target_mib": 400, "content": "sand biome terrain, settlements, rocks, foliage and weather"},
+    {"module": "assetpack_snow", "delivery": "on-demand", "target_mib": 400, "content": "snow biome terrain, caves, ice materials and weather"},
+    {"module": "assetpack_characters", "delivery": "on-demand", "target_mib": 500, "content": "heroes, NPCs, animals, enemies, rigs and animation bindings"},
+    {"module": "assetpack_audio_hd", "delivery": "on-demand", "target_mib": 450, "content": "music, ambience, combat sounds, wildlife and high-quality mixes"},
+    {"module": "assetpack_cinematics", "delivery": "on-demand", "target_mib": 450, "content": "story scenes, sequences and camera animation data"},
+    {"module": "assetpack_hd_textures", "delivery": "on-demand", "target_mib": 500, "content": "high-resolution PBR textures, virtual-texture pages and decals"},
+    {"module": "assetpack_dungeons", "delivery": "on-demand", "target_mib": 400, "content": "dungeon cells, props, traps, encounter data and lighting data"},
+    {"module": "assetpack_vfx", "delivery": "on-demand", "target_mib": 300, "content": "Niagara systems, GPU particles, weather and impact effects"},
+    {"module": "assetpack_voice", "delivery": "on-demand", "target_mib": 250, "content": "dialogue, localization voice banks and subtitle metadata"},
+    {"module": "assetpack_shaders_vulkan", "delivery": "on-demand", "target_mib": 300, "content": "compiled Vulkan shader libraries and pipeline-state resources"},
+    {"module": "assetpack_shaders_gles", "delivery": "on-demand", "target_mib": 250, "content": "compiled OpenGL ES shader libraries and pipeline-state resources"},
+    {"module": "assetpack_pipeline_cache", "delivery": "on-demand", "target_mib": 100, "content": "device-safe pipeline-cache seeds and shader warm-up data"},
+    {"module": "assetpack_world_streaming", "delivery": "on-demand", "target_mib": 400, "content": "world-partition descriptors, streamed sublevels and navigation data"},
+    {"module": "assetpack_foliage_lods", "delivery": "on-demand", "target_mib": 400, "content": "foliage clusters, impostors and mobile LODs"},
+    {"module": "assetpack_terrain_lod", "delivery": "on-demand", "target_mib": 425, "content": "terrain heightfields, landscape LODs and mobile shadow data"},
+    {"module": "assetpack_animation_sets", "delivery": "on-demand", "target_mib": 425, "content": "locomotion, combat, traversal, emotes and montage sections"}
   ]
 }

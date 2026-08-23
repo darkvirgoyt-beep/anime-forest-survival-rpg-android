@@ -80,7 +80,15 @@ android {
         ":assetpack_hd_textures",
         ":assetpack_dungeons",
         ":assetpack_vfx",
-        ":assetpack_voice"
+        ":assetpack_voice",
+        ":assetpack_graphics_base",
+        ":assetpack_shaders_vulkan",
+        ":assetpack_shaders_gles",
+        ":assetpack_pipeline_cache",
+        ":assetpack_world_streaming",
+        ":assetpack_foliage_lods",
+        ":assetpack_terrain_lod",
+        ":assetpack_animation_sets"
     )
 
     externalNativeBuild {

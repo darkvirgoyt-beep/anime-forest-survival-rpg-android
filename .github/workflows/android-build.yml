@@ -67,6 +67,14 @@ jobs:
           test -f assetpack_core/build.gradle.kts
           test -f assetpack_forest/build.gradle.kts
           test -f assetpack_voice/build.gradle.kts
+          test -f assetpack_graphics_base/build.gradle.kts
+          test -f assetpack_shaders_vulkan/build.gradle.kts
+          test -f assetpack_shaders_gles/build.gradle.kts
+          test -f assetpack_pipeline_cache/build.gradle.kts
+          test -f assetpack_world_streaming/build.gradle.kts
+          test -f assetpack_foliage_lods/build.gradle.kts
+          test -f assetpack_terrain_lod/build.gradle.kts
+          test -f assetpack_animation_sets/build.gradle.kts
           python3 tools/validate_asset_budget.py
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           grep -q 'CONTINUE WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt

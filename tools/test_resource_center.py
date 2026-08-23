@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PACKS = (
+    "assetpack_graphics_base",
     "assetpack_forest",
     "assetpack_sand",
     "assetpack_snow",
@@ -25,6 +26,13 @@ PACKS = (
     "assetpack_dungeons",
     "assetpack_vfx",
     "assetpack_voice",
+    "assetpack_shaders_vulkan",
+    "assetpack_shaders_gles",
+    "assetpack_pipeline_cache",
+    "assetpack_world_streaming",
+    "assetpack_foliage_lods",
+    "assetpack_terrain_lod",
+    "assetpack_animation_sets",
 )
 
 DOWNLOADING = "DOWNLOADING"
@@ -83,11 +91,17 @@ class ResourceCenterModel:
 def assert_source_contract(repo: Path) -> None:
     main = (repo / "app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt").read_text()
     catalog = (repo / "app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt").read_text()
+    plan = (repo / "app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
         ("resource-center title", "DOWNLOAD FULL 3D CONTENT", main),
+        ("compiled graphics copy", "compiled graphics and shaders", main),
         ("production request", "requestProductionContent", catalog),
+        ("production readiness gate", "productionContentReady", catalog),
+        ("Vulkan shader pack", "assetpack_shaders_vulkan", plan),
+        ("OpenGL ES shader pack", "assetpack_shaders_gles", plan),
+        ("pipeline cache pack", "assetpack_pipeline_cache", plan),
         ("progress bar", "progress.progress = event.percent", main),
         ("retry control", "RETRY ASSET PREPARATION", main),
         ("6.6 GB plan", "full3dTargetMiB", json.dumps(manifest)),

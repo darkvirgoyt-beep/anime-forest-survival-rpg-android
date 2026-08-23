@@ -30,6 +30,17 @@ def main() -> int:
     manifest_path = root / "assets" / "asset_budget.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     packs = manifest["packs"]
+    policy = manifest.get("policy", {})
+    dynamic_ceiling = int(policy.get("documented_per_dynamic_pack_ceiling_mib", 512))
+    install_ceiling = 1024
+    fast_follow_count = sum(pack.get("delivery") == "fast-follow" for pack in packs)
+    if fast_follow_count > 1:
+        raise SystemExit(f"too many fast-follow packs: {fast_follow_count}; Play allows one")
+    for pack in packs:
+        delivery = pack.get("delivery")
+        ceiling = install_ceiling if delivery == "install-time" else dynamic_ceiling
+        if int(pack["target_mib"]) > ceiling:
+            raise SystemExit(f"{pack['module']} target {pack['target_mib']} MiB exceeds {delivery} ceiling {ceiling} MiB")
     planned_total = sum(int(pack["target_mib"]) for pack in packs)
     if planned_total != int(manifest["target_total_mib"]):
         raise SystemExit(f"manifest total mismatch: packs={planned_total} target_total_mib={manifest['target_total_mib']}")

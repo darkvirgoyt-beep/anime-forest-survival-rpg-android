@@ -1,67 +1,42 @@
 {
-  "manifestVersion": 1,
-  "catalogId": "aethelgard-dev-catalog",
+  "manifestVersion": 2,
+  "catalogId": "aethelgard-production-catalog",
   "signature": {
     "algorithm": "ed25519",
-    "value": "DEVELOPMENT_ONLY_REPLACE_WITH_SERVER_SIGNATURE"
+    "value": "PRODUCTION_REPLACE_WITH_SERVER_SIGNATURE"
   },
   "contentDelivery": {
     "mode": "play-asset-delivery",
-    "bootstrapInstallMiB": 1200,
+    "bootstrapInstallMiB": 358,
     "full3dTargetMiB": 6750,
     "full3dTargetLabel": "6.6 GB",
-    "cameraProfile": "third-person-orbit-360-horizontal-180-vertical"
+    "requiredBeforeStart": true,
+    "cameraProfile": "third-person-orbit-360-horizontal-180-vertical",
+    "compiledGraphics": {
+      "required": true,
+      "shaderVariants": ["vulkan", "gles"],
+      "pipelineCacheRequired": true,
+      "runtimeFormat": "unreal-cooked-pak-v1"
+    }
   },
   "packs": [
-    {
-      "tier": "low",
-      "version": "dev-1",
-      "source": "asset://asset_packs/low.zip",
-      "sha256": "dd8e00d87687a5494fee1848718ca0caf3bdbfbd579406310435103e5e57e47f",
-      "byteSize": 331,
-      "runtimeFormat": "aethelgard-cooked-v1",
-      "maxUnpackedBytes": 1048576,
-      "maxFileCount": 64
-    },
-    {
-      "tier": "medium",
-      "version": "dev-1",
-      "source": "asset://asset_packs/medium.zip",
-      "sha256": "8c97667eb91bbfe6b6cb320a32ca4aa478e10ad5738c972e607fc209e322cf20",
-      "byteSize": 335,
-      "runtimeFormat": "aethelgard-cooked-v1",
-      "maxUnpackedBytes": 2097152,
-      "maxFileCount": 96
-    },
-    {
-      "tier": "high",
-      "version": "dev-1",
-      "source": "asset://asset_packs/high.zip",
-      "sha256": "dcd90a916f3d151dfded617fe92b6ca2357bbb1d4952cef68c0e165e259a1f52",
-      "byteSize": 332,
-      "runtimeFormat": "aethelgard-cooked-v1",
-      "maxUnpackedBytes": 4194304,
-      "maxFileCount": 128
-    },
-    {
-      "tier": "ultra",
-      "version": "dev-1",
-      "source": "asset://asset_packs/ultra.zip",
-      "sha256": "982c316a43141f99c8545209266ffd128efbe3262f493db2e9370e1125d19536",
-      "byteSize": 335,
-      "runtimeFormat": "aethelgard-cooked-v1",
-      "maxUnpackedBytes": 8388608,
-      "maxFileCount": 160
-    },
-    {
-      "tier": "max",
-      "version": "dev-1",
-      "source": "asset://asset_packs/max.zip",
-      "sha256": "d4b8c3ae55c0c6cb29bc1eccd5e5faf02714b8af95fb2eceaf47e4feb99126e7",
-      "byteSize": 332,
-      "runtimeFormat": "aethelgard-cooked-v1",
-      "maxUnpackedBytes": 16777216,
-      "maxFileCount": 192
-    }
+    {"name": "assetpack_graphics_base", "delivery": "on-demand", "targetMiB": 450, "contents": "compiled materials, base shaders, shared meshes and mobile render resources"},
+    {"name": "assetpack_forest", "delivery": "fast-follow", "targetMiB": 350, "contents": "forest launch region, village, foliage, water, collision and navigation"},
+    {"name": "assetpack_sand", "delivery": "on-demand", "targetMiB": 400, "contents": "sand biome terrain, settlements, rocks, foliage and weather"},
+    {"name": "assetpack_snow", "delivery": "on-demand", "targetMiB": 400, "contents": "snow biome terrain, caves, ice materials and weather"},
+    {"name": "assetpack_characters", "delivery": "on-demand", "targetMiB": 500, "contents": "heroes, NPCs, animals, enemies, rigs and animation bindings"},
+    {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "contents": "music, ambience, combat sounds, wildlife and high-quality mixes"},
+    {"name": "assetpack_cinematics", "delivery": "on-demand", "targetMiB": 450, "contents": "story scenes, sequences and camera animation data"},
+    {"name": "assetpack_hd_textures", "delivery": "on-demand", "targetMiB": 500, "contents": "high-resolution PBR textures, virtual-texture pages and decals"},
+    {"name": "assetpack_dungeons", "delivery": "on-demand", "targetMiB": 400, "contents": "dungeon cells, props, traps, encounter data and lighting data"},
+    {"name": "assetpack_vfx", "delivery": "on-demand", "targetMiB": 300, "contents": "Niagara systems, GPU particles, weather and impact effects"},
+    {"name": "assetpack_voice", "delivery": "on-demand", "targetMiB": 250, "contents": "dialogue, localization voice banks and subtitle metadata"},
+    {"name": "assetpack_shaders_vulkan", "delivery": "on-demand", "targetMiB": 300, "contents": "compiled Vulkan shader libraries and pipeline-state resources"},
+    {"name": "assetpack_shaders_gles", "delivery": "on-demand", "targetMiB": 250, "contents": "compiled OpenGL ES shader libraries and pipeline-state resources"},
+    {"name": "assetpack_pipeline_cache", "delivery": "on-demand", "targetMiB": 100, "contents": "device-safe pipeline-cache seeds and shader warm-up data"},
+    {"name": "assetpack_world_streaming", "delivery": "on-demand", "targetMiB": 400, "contents": "world-partition descriptors, streamed sublevels and navigation data"},
+    {"name": "assetpack_foliage_lods", "delivery": "on-demand", "targetMiB": 400, "contents": "foliage clusters, impostors and mobile LODs"},
+    {"name": "assetpack_terrain_lod", "delivery": "on-demand", "targetMiB": 425, "contents": "terrain heightfields, landscape LODs and mobile shadow data"},
+    {"name": "assetpack_animation_sets", "delivery": "on-demand", "targetMiB": 425, "contents": "locomotion, combat, traversal, emotes and montage sections"}
   ]
 }

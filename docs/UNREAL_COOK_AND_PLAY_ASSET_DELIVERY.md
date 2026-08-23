@@ -14,18 +14,19 @@ Keep the bootstrap small. Put the account shell, settings, loading map, core sha
 
 Epic’s Unreal GooglePAD reference documents one install-time pack up to 1 GB, one fast-follow pack up to 512 MB, on-demand packs up to 512 MB each, and up to 50 packs per app. Google’s current Play documentation also says fast-follow and on-demand packs are downloaded outside the base install and must be accessed through the Play Asset Delivery API. Verify the current Play Console limits before release because platform limits can change.
 
-A 6,750 MiB envelope should therefore be split into at least fourteen packs if each stays below 512 MiB. A practical layout is one install-time core pack, one fast-follow launch-region pack, and fourteen or more on-demand packs. Split by region and platform quality rather than making one oversized pack:
+The repository’s 6,750 MiB post-install envelope is split into 18 physical packs. Every dynamic pack is below 512 MiB, with one install-time core pack and one fast-follow launch-region pack. The exact names must stay synchronized across `ContentDownloadPlan`, Gradle, the manifest, and the runtime catalog:
 
-| Pack family | Example packs | Delivery | Typical purpose |
-|---|---|---|---|
-| Bootstrap | `assetpack_core` | Install-time | Account shell, loading scene, core runtime data |
-| First playable region | `assetpack_forest` | Fast-follow | Forest terrain, launch village, collision, navigation |
-| Regions | `assetpack_sand_01`, `assetpack_sand_02`, `assetpack_snow_01`, `assetpack_dungeons_01` | On-demand | Separate biome cells and dungeon cells |
-| Characters | `assetpack_characters_01`, `assetpack_characters_02` | On-demand | Skeletal meshes, materials, skins, rigs, animation sets |
-| Graphics tiers | `assetpack_textures_high_01`, `assetpack_textures_ultra_01`, `assetpack_shaders_vulkan`, `assetpack_shaders_gles` | On-demand | Device-qualified textures, shaders, PSO/cache data |
-| Presentation | `assetpack_vfx_01`, `assetpack_audio_01`, `assetpack_voice_01`, `assetpack_cinematics_01` | On-demand | Effects, music, voices, cinematics and localization |
+| Pack family | Exact pack names | Delivery | Target |
+|---|---|---|---:|
+| Bootstrap | `assetpack_core` | Install-time | 358 MiB |
+| Compiled base and world | `assetpack_graphics_base`, `assetpack_world_streaming` | On-demand | 850 MiB |
+| Launch and biomes | `assetpack_forest`, `assetpack_sand`, `assetpack_snow`, `assetpack_dungeons` | Fast-follow + on-demand | 1,550 MiB |
+| Characters and animation | `assetpack_characters`, `assetpack_animation_sets` | On-demand | 925 MiB |
+| Shaders and pipeline | `assetpack_shaders_vulkan`, `assetpack_shaders_gles`, `assetpack_pipeline_cache` | On-demand | 650 MiB |
+| Textures and LODs | `assetpack_hd_textures`, `assetpack_foliage_lods`, `assetpack_terrain_lod` | On-demand | 1,325 MiB |
+| Presentation | `assetpack_audio_hd`, `assetpack_cinematics`, `assetpack_vfx`, `assetpack_voice` | On-demand | 1,450 MiB |
 
-Choose the final number from the cooked byte sizes. Every pack should be comfortably below the limit, not exactly at it, to leave room for metadata and future patches.
+Choose final byte sizes from the cooked output. Keep safety headroom below the platform limit and let `tools/validate_asset_budget.py` reject oversized dynamic packs or a second fast-follow pack.
 
 ## 3. Cook and stage Unreal chunks
 

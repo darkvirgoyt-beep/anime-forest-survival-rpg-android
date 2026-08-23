@@ -1225,7 +1225,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "Preparing your post-install graphics download…"
+            text = "Full resources are required before the game can start…"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -1238,14 +1238,14 @@ class MainActivity : Activity(), SensorEventListener {
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 56, 61))
         }
         val details = TextView(this).apply {
-            text = "Your base install is small. This download adds the selected 3D graphics tier, world regions, characters, audio, and effects."
+            text = "This download includes compiled shaders, pipeline caches, 3D graphics, world regions, characters, audio, VFX, and animations."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(161, 190, 187))
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "Production target: ${ContentDownloadPlan.totalGiBLabel} delivered separately from the APK. Development builds use tiny offline bundles; production requires signed CDN or Play Asset Delivery packs."
+            text = "The APK is only the bootstrap. Download ${ContentDownloadPlan.totalGiBLabel} of compiled graphics and shaders, then the game will unlock. Production requires a signed Play Asset Delivery AAB."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -1299,15 +1299,18 @@ class MainActivity : Activity(), SensorEventListener {
                     if (event.failed) {
                         if (!fallbackStarted) {
                             fallbackStarted = true
-                            note.text = "Play Asset Delivery is unavailable for this direct APK. Trying the small local fallback so the build remains testable. Install the Play Store AAB for the full ${ContentDownloadPlan.totalGiBLabel} production download."
-                            note.setTextColor(Color.rgb(255, 205, 145))
-                            showLocalPreparationFallback()
+                            status.text = "Full resources are required before start"
+                            details.text = "Play Asset Delivery could not start for this installation."
+                            note.text = "Install the Play Store/internal-test AAB to download the compiled ${ContentDownloadPlan.totalGiBLabel} resource packs. A direct APK cannot unlock the production world."
+                            note.setTextColor(Color.rgb(255, 180, 150))
+                            progress.progress = 0
+                            retry.visibility = View.VISIBLE
                         }
                     } else {
-                        status.text = if (event.complete) "Full 3D content ready" else "Downloading separate 3D resource packs…"
+                        status.text = if (event.complete) "Compiled graphics and shaders ready" else "Downloading compiled graphics and shaders…"
                         val downloaded = event.bytesDownloaded / (1024 * 1024)
                         val total = event.totalBytes / (1024 * 1024)
-                        details.text = if (total > 0) "$downloaded MB / $total MB downloaded from Play Asset Delivery." else "Preparing ${ContentDownloadPlan.totalGiBLabel} of separately delivered 3D content…"
+                        details.text = if (total > 0) "$downloaded MB / $total MB compiled resources downloaded from Play Asset Delivery." else "Preparing ${ContentDownloadPlan.totalGiBLabel} of compiled graphics, shaders, and game resources…"
                         progress.progress = event.percent
                         if (event.complete) finishPreparation()
                     }

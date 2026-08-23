@@ -39,18 +39,8 @@ class AssetPackCatalog(context: Context) {
 
     companion object {
         /** Content stays outside the base APK and is downloaded independently. */
-        val productionPackNames = listOf(
-            "assetpack_forest",
-            "assetpack_sand",
-            "assetpack_snow",
-            "assetpack_characters",
-            "assetpack_audio_hd",
-            "assetpack_cinematics",
-            "assetpack_hd_textures",
-            "assetpack_dungeons",
-            "assetpack_vfx",
-            "assetpack_voice"
-        )
+        val productionPackNames: List<String>
+            get() = ContentDownloadPlan.requiredPackNames
     }
 
     private val manager: AssetPackManager = AssetPackManagerFactory.getInstance(context.applicationContext)
@@ -80,6 +70,17 @@ class AssetPackCatalog(context: Context) {
      * resumable delivery, storage, and pack updates independently.
      */
     fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) {
+        if (productionContentReady()) {
+            onProgress(
+                ProductionProgress(
+                    status = AssetPackStatus.COMPLETED,
+                    percent = 100,
+                    bytesDownloaded = ContentDownloadPlan.totalMiB.toLong() * 1024L * 1024L,
+                    totalBytes = ContentDownloadPlan.totalMiB.toLong() * 1024L * 1024L
+                )
+            )
+            return
+        }
         listener?.let(manager::unregisterListener)
         val states = mutableMapOf<String, Progress>()
         val updateListener = AssetPackStateUpdateListener { state: AssetPackState ->
@@ -146,6 +147,8 @@ class AssetPackCatalog(context: Context) {
     }
 
     fun isReady(packName: String): Boolean = manager.getPackLocation(packName) != null
+
+    fun productionContentReady(): Boolean = productionPackNames.all(::isReady)
 
     fun assetPath(packName: String, relativePath: String): String? {
         val location = manager.getPackLocation(packName) ?: return null
