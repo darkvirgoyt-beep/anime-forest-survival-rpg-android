@@ -6,7 +6,9 @@
 #include "ForestSliceHealthComponent.h"
 #include "ForestSliceGroundPlanningComponent.h"
 #include "ForestSliceInteractionComponent.h"
+#include "ForestSliceInventoryComponent.h"
 #include "ForestSliceQuickSlotComponent.h"
+#include "ForestSliceResourceNodeComponent.h"
 #include "ForestSliceSurvivalComponent.h"
 #include "ForestSliceWeaponComponent.h"
 
@@ -32,6 +34,7 @@ AForestSliceCharacter::AForestSliceCharacter()
     GroundPlanningComponent = CreateDefaultSubobject<UForestSliceGroundPlanningComponent>(TEXT("GroundPlanningComponent"));
     InteractionComponent = CreateDefaultSubobject<UForestSliceInteractionComponent>(TEXT("InteractionComponent"));
     QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
+    InventoryComponent = CreateDefaultSubobject<UForestSliceInventoryComponent>(TEXT("InventoryComponent"));
     HealthComponent = CreateDefaultSubobject<UForestSliceHealthComponent>(TEXT("HealthComponent"));
     ProgressionComponent = CreateDefaultSubobject<UForestSliceProgressionComponent>(TEXT("ProgressionComponent"));
     CharacterProfileComponent = CreateDefaultSubobject<UForestSliceCharacterProfileComponent>(TEXT("CharacterProfileComponent"));
@@ -268,6 +271,36 @@ bool AForestSliceCharacter::TriggerVirtualCreateFarmContour()
 bool AForestSliceCharacter::TriggerVirtualPlantSeed()
 {
     return GroundPlanningComponent && GroundPlanningComponent->PlantSeed();
+}
+
+bool AForestSliceCharacter::TriggerVirtualCollect()
+{
+    if (!HasAuthority()) {
+        ServerTriggerVirtualCollect();
+        return true;
+    }
+    return TryCollectFromView();
+}
+
+void AForestSliceCharacter::ServerTriggerVirtualCollect_Implementation()
+{
+    TryCollectFromView();
+}
+
+bool AForestSliceCharacter::TryCollectFromView()
+{
+    if (!GetWorld()) return false;
+
+    const FVector Start = GetActorLocation() + FVector(0.0f, 0.0f, 70.0f);
+    const FVector End = Start + GetActorForwardVector() * 260.0f;
+    FHitResult Hit;
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ForestSliceCollect), false, this);
+    if (!GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams)) return false;
+
+    if (UForestSliceResourceNodeComponent* ResourceNode = Hit.GetActor()->FindComponentByClass<UForestSliceResourceNodeComponent>()) {
+        return ResourceNode->TryCollect(this);
+    }
+    return false;
 }
 
 void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)

@@ -58,6 +58,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
     void PlantSeedPressed();
 
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Gathering")
+    void GatherPressed();
+
     UFUNCTION(BlueprintCallable, Category = "Mobile|Input")
     void WeaponSwitchPressed(int32 SlotIndex);
 

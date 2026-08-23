@@ -89,6 +89,11 @@ void UForestSliceMobileHUD::PlantSeedPressed()
     if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualPlantSeed();
 }
 
+void UForestSliceMobileHUD::GatherPressed()
+{
+    if (ControlledCharacter.IsValid()) ControlledCharacter->TriggerVirtualCollect();
+}
+
 void UForestSliceMobileHUD::WeaponSwitchPressed(int32 SlotIndex)
 {
     if (ControlledCharacter.IsValid()) {

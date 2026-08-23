@@ -130,6 +130,12 @@ jobs:
           grep -q 'GetChunkPresentationAlpha' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
           grep -q 'InitializeMapLayout' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
           grep -q 'GetBiomeAtWorldLocation' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
+          grep -q 'UForestSliceInventoryComponent' Unreal/Source/ForestSlice/Public/ForestSliceInventoryComponent.h
+          grep -q 'HasCapacityFor' Unreal/Source/ForestSlice/Private/ForestSliceInventoryComponent.cpp
+          grep -q 'UForestSliceResourceNodeComponent' Unreal/Source/ForestSlice/Public/ForestSliceResourceNodeComponent.h
+          grep -q 'TryCollect' Unreal/Source/ForestSlice/Private/ForestSliceResourceNodeComponent.cpp
+          grep -q 'ServerTriggerVirtualCollect' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
+          grep -q 'GatherPressed' Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
 
   native-tests:
     runs-on: ubuntu-latest

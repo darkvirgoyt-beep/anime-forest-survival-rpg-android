@@ -11,7 +11,9 @@ class UForestSliceCharacterProfileComponent;
 class UForestSliceHealthComponent;
 class UForestSliceGroundPlanningComponent;
 class UForestSliceInteractionComponent;
+class UForestSliceInventoryComponent;
 class UForestSliceQuickSlotComponent;
+class UForestSliceResourceNodeComponent;
 class UForestSlicePresentationComponent;
 class UForestSliceProgressionComponent;
 class UForestSliceSurvivalComponent;
@@ -77,6 +79,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Mobile|Ground")
     bool TriggerVirtualPlantSeed();
 
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Gathering")
+    bool TriggerVirtualCollect();
+
+    UFUNCTION(Server, Reliable)
+    void ServerTriggerVirtualCollect();
+
     UFUNCTION(BlueprintPure, Category = "Ground")
     UForestSliceGroundPlanningComponent* GetGroundPlanningComponent() const { return GroundPlanningComponent; }
 
@@ -91,6 +99,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Systems")
     UForestSliceQuickSlotComponent* GetQuickSlotComponent() const { return QuickSlotComponent; }
+
+    UFUNCTION(BlueprintPure, Category = "Systems")
+    UForestSliceInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
     UFUNCTION(BlueprintPure, Category = "Systems")
     UForestSliceHealthComponent* GetHealthComponent() const { return HealthComponent; }
@@ -146,6 +157,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceQuickSlotComponent> QuickSlotComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceInventoryComponent> InventoryComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceHealthComponent> HealthComponent;
@@ -250,6 +264,7 @@ protected:
     void StartJump(const FInputActionValue& Value);
 
 private:
+    bool TryCollectFromView();
     bool bSprintHeld = false;
     EForestSliceTool ActiveGroundTool = EForestSliceTool::Shovel;
     float CameraOrbitDegrees = 0.0f;
