@@ -6,7 +6,7 @@
 
 ## Current milestone
 
-The current slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future online session wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
+The current slice renders a stylized forest scene through OpenGL ES 3, includes an original cel-shaded anime-fantasy hero with ink-like contours, hard shadow planes, expressive hair, outfit accents, and a short sword, plus animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future online session wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
 
 The intended player-facing product flow is now **online-only**: Google Play authentication, backend session exchange, server-region health/ping, cloud-save preflight, and co-op session validation must succeed before entering a production world. A developer-only guest path may exist in debug builds for automation, but it is hidden from release builds and is not a production account mode.
 
@@ -58,3 +58,11 @@ The next production slices should add a proper 3D camera, original rigged anime 
 ## Repository status
 
 This repository is now being developed in two explicit layers: a verified Android/Kotlin/C++ prototype for input and gameplay contracts, and a planned Unreal C++ production path for the real 3D open-world game. The prototype is intentionally not padded with fake data to reach 10–20 GB; content size will come from useful original assets, audio, animation, cinematics, language packs, and optional Android asset packs.
+
+## Contribution
+Contributors can propose improvements through feature branches and pull requests. Please describe gameplay, Android, or build changes clearly in each contribution. Configure Git with the email linked to your GitHub account so contribution credit is attributed correctly.
+
+For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.md`](docs/GOOGLE_PLAY_GAMES_SETUP.md). The real online multiplayer target is documented in [`docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md`](docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md). The first backend service is in [`server/README.md`](server/README.md).
+
+
+**Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android forest-survival RPG prototype.

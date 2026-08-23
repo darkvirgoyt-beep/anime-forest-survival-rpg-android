@@ -132,3 +132,42 @@ jobs:
         with:
           name: forest-slice-release-apk
           path: app/build/outputs/apk/release/app-release.apk
+
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Create v0.2.1 APK release')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: forest-slice-release-apk
+          path: release
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.1
+          name: Forest Slice v0.2.1 — Cel-Shaded Hero
+          body: |
+            Android release build for Aethelgard: Wild Horizons – Crafting.
+
+            This release includes the original cel-shaded playable hero with ink-like contours, hard shadow planes, expressive anime-fantasy hair, outfit accents, and a short sword.
+
+            The APK is signed with the repository's debug signing configuration for test distribution only. A protected production keystore is required for Google Play publishing.
+          files: release/app-release.apk
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+permissions:
+  contents: read
+  actions: read
+  checks: read

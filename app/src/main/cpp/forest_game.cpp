@@ -164,17 +164,83 @@ void drawRock(float x, float y, float size) {
 }
 
 void drawPlayer() {
-    drawCircle(gPlayerX + 0.012f, gPlayerY - 0.035f, 0.065f, 0.02f, 0.05f, 0.05f, 0.45f);
-    drawTriangle(gPlayerX, gPlayerY + 0.03f, 0.12f, 0.22f, 0.72f, 0.16f, 0.28f);
-    drawCircle(gPlayerX, gPlayerY + 0.13f, 0.07f, 0.96f, 0.75f, 0.57f);
-    drawCircle(gPlayerX + 0.028f, gPlayerY + 0.155f, 0.062f, 0.14f, 0.08f, 0.19f);
-    drawQuad(gPlayerX + 0.087f, gPlayerY + 0.02f, 0.015f, 0.16f, 0.94f, 0.77f, 0.35f);
+    // The hero is built from deliberately flat color planes. Drawing the ink silhouette
+    // first and the lit/shadow planes second gives the 2D prototype a mobile-safe cel look.
+    const float bob = std::sin(gTime * 4.0f) * 0.004f;
+    const float px = gPlayerX;
+    const float py = gPlayerY + bob;
+    const float inkR = 0.035f;
+    const float inkG = 0.022f;
+    const float inkB = 0.055f;
+
+    // Ground contact and boots.
+    drawCircle(px + 0.014f, py - 0.038f, 0.073f, inkR, inkG, inkB, 0.55f);
+    drawQuad(px - 0.028f, py - 0.025f, 0.040f, 0.086f, inkR, inkG, inkB);
+    drawQuad(px + 0.028f, py - 0.025f, 0.040f, 0.086f, inkR, inkG, inkB);
+    drawQuad(px - 0.028f, py - 0.024f, 0.024f, 0.068f, 0.15f, 0.10f, 0.22f);
+    drawQuad(px + 0.028f, py - 0.024f, 0.024f, 0.068f, 0.23f, 0.14f, 0.28f);
+    drawQuad(px - 0.035f, py - 0.066f, 0.052f, 0.018f, 0.08f, 0.05f, 0.13f);
+    drawQuad(px + 0.035f, py - 0.066f, 0.052f, 0.018f, 0.08f, 0.05f, 0.13f);
+
+    // Tunic silhouette, then a cool shadow plane and a single warm key plane.
+    drawTriangle(px, py + 0.040f, 0.154f, 0.215f, inkR, inkG, inkB);
+    drawTriangle(px, py + 0.043f, 0.128f, 0.190f, 0.43f, 0.12f, 0.29f);
+    drawTriangle(px - 0.029f, py + 0.052f, 0.058f, 0.158f, 0.25f, 0.07f, 0.20f);
+    drawTriangle(px + 0.018f, py + 0.073f, 0.044f, 0.112f, 0.68f, 0.18f, 0.34f);
+    drawQuad(px, py + 0.004f, 0.114f, 0.024f, inkR, inkG, inkB);
+    drawQuad(px, py + 0.009f, 0.096f, 0.012f, 0.06f, 0.38f, 0.38f);
+    drawQuad(px + 0.024f, py + 0.040f, 0.022f, 0.096f, 0.10f, 0.55f, 0.51f);
+
+    // Arms: clean dark contour, colored sleeve, then small skin hands.
+    drawQuad(px - 0.066f, py + 0.064f, 0.042f, 0.112f, inkR, inkG, inkB);
+    drawQuad(px - 0.066f, py + 0.064f, 0.026f, 0.092f, 0.36f, 0.10f, 0.25f);
+    drawCircle(px - 0.066f, py + 0.002f, 0.021f, 0.58f, 0.31f, 0.24f);
+    drawQuad(px + 0.066f, py + 0.064f, 0.042f, 0.112f, inkR, inkG, inkB);
+    drawQuad(px + 0.066f, py + 0.064f, 0.026f, 0.092f, 0.62f, 0.16f, 0.31f);
+    drawCircle(px + 0.067f, py + 0.002f, 0.021f, 0.88f, 0.53f, 0.36f);
+
+    // Neck, scarf and face with a hard diagonal light plane.
+    drawQuad(px, py + 0.105f, 0.042f, 0.050f, inkR, inkG, inkB);
+    drawQuad(px, py + 0.109f, 0.027f, 0.040f, 0.73f, 0.36f, 0.27f);
+    drawQuad(px, py + 0.092f, 0.070f, 0.022f, inkR, inkG, inkB);
+    drawQuad(px, py + 0.096f, 0.053f, 0.012f, 0.80f, 0.18f, 0.25f);
+    drawCircle(px, py + 0.142f, 0.079f, inkR, inkG, inkB);
+    drawCircle(px, py + 0.143f, 0.066f, 0.67f, 0.32f, 0.24f);
+    drawTriangle(px + 0.018f, py + 0.151f, 0.068f, 0.088f, 0.93f, 0.62f, 0.42f);
+    drawTriangle(px - 0.041f, py + 0.134f, 0.042f, 0.062f, 0.48f, 0.19f, 0.18f);
+
+    // Spiky violet hair silhouette, highlights and bangs.
+    drawCircle(px + 0.006f, py + 0.177f, 0.079f, inkR, inkG, inkB);
+    drawCircle(px + 0.010f, py + 0.181f, 0.068f, 0.12f, 0.06f, 0.22f);
+    drawTriangle(px - 0.050f, py + 0.215f, 0.048f, 0.082f, inkR, inkG, inkB);
+    drawTriangle(px - 0.050f, py + 0.215f, 0.030f, 0.061f, 0.17f, 0.08f, 0.30f);
+    drawTriangle(px - 0.014f, py + 0.226f, 0.046f, 0.092f, inkR, inkG, inkB);
+    drawTriangle(px - 0.014f, py + 0.226f, 0.027f, 0.070f, 0.20f, 0.10f, 0.35f);
+    drawTriangle(px + 0.030f, py + 0.220f, 0.052f, 0.082f, inkR, inkG, inkB);
+    drawTriangle(px + 0.030f, py + 0.220f, 0.032f, 0.061f, 0.17f, 0.08f, 0.29f);
+    drawTriangle(px + 0.035f, py + 0.191f, 0.042f, 0.075f, 0.29f, 0.15f, 0.43f);
+    drawTriangle(px - 0.021f, py + 0.170f, 0.035f, 0.055f, 0.09f, 0.04f, 0.17f);
+
+    // Eyes and mouth are kept high-contrast so the face reads at phone scale.
+    drawQuad(px - 0.029f, py + 0.143f, 0.018f, 0.010f, 0.035f, 0.025f, 0.045f);
+    drawQuad(px + 0.029f, py + 0.143f, 0.018f, 0.010f, 0.035f, 0.025f, 0.045f);
+    drawCircle(px - 0.028f, py + 0.144f, 0.0035f, 0.98f, 0.78f, 0.38f);
+    drawCircle(px + 0.030f, py + 0.144f, 0.0035f, 0.98f, 0.78f, 0.38f);
+    drawQuad(px + 0.002f, py + 0.122f, 0.018f, 0.005f, 0.30f, 0.10f, 0.12f);
+
+    // Short blade: dark contour, steel face, and gold guard.
+    drawQuad(px + 0.094f, py + 0.030f, 0.024f, 0.170f, inkR, inkG, inkB);
+    drawQuad(px + 0.094f, py + 0.034f, 0.010f, 0.144f, 0.78f, 0.83f, 0.84f);
+    drawQuad(px + 0.094f, py + 0.103f, 0.054f, 0.012f, 0.98f, 0.72f, 0.24f);
+    drawQuad(px + 0.094f, py - 0.062f, 0.024f, 0.032f, inkR, inkG, inkB);
+    drawQuad(px + 0.094f, py - 0.062f, 0.010f, 0.025f, 0.78f, 0.47f, 0.17f);
+
     if (gAttackPulse > 0) {
-        drawCircle(gPlayerX + 0.14f, gPlayerY + 0.03f, 0.06f, 0.97f, 0.85f, 0.42f, 0.70f);
+        drawCircle(px + 0.145f, py + 0.035f, 0.062f, 0.97f, 0.85f, 0.42f, 0.70f);
         --gAttackPulse;
     }
     if (gDodgePulse > 0) {
-        drawCircle(gPlayerX, gPlayerY + 0.03f, 0.13f, 0.40f, 0.85f, 0.95f, 0.22f);
+        drawCircle(px, py + 0.035f, 0.13f, 0.40f, 0.85f, 0.95f, 0.22f);
         --gDodgePulse;
     }
 }

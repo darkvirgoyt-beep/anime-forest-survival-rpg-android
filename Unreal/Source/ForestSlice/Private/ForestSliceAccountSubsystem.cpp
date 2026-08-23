@@ -16,20 +16,33 @@ void UForestSliceAccountSubsystem::StartGooglePlaySignIn()
 #endif
 }
 
-void UForestSliceAccountSubsystem::HandleGooglePlayCredential(const FString& ProviderCredential)
+void UForestSliceAccountSubsystem::HandleGooglePlayCredential(const FString& BackendSessionToken)
 {
-    if (ProviderCredential.IsEmpty()) {
-        SetState(EForestSliceLoginState::Error, TEXT("Google Play credential was empty"));
+    if (BackendSessionToken.IsEmpty()) {
+        SetState(EForestSliceLoginState::Error, TEXT("Backend session token was empty"));
         return;
     }
 
-    // Send the short-lived credential to the backend session exchange here.
-    // Never treat a client-provided player ID as proof of ownership.
-    SetState(EForestSliceLoginState::Authenticated, TEXT("Backend session exchange accepted"));
+    // The Android bridge must exchange the single-use Play Games code with the
+    // backend first. Never treat a client-provided player ID or raw provider
+    // credential as proof of ownership inside Unreal.
+    PendingBackendSessionToken = BackendSessionToken;
+    SetState(EForestSliceLoginState::SigningIn, TEXT("Backend session accepted; requesting dedicated-server admission"));
+}
+
+void UForestSliceAccountSubsystem::HandleDedicatedServerAdmissionAccepted()
+{
+    if (PendingBackendSessionToken.IsEmpty()) {
+        SetState(EForestSliceLoginState::Error, TEXT("Dedicated-server admission requires an authenticated backend session"));
+        return;
+    }
+
+    SetState(EForestSliceLoginState::Authenticated, TEXT("Dedicated server admission accepted"));
 }
 
 void UForestSliceAccountSubsystem::SignOut()
 {
+    PendingBackendSessionToken.Reset();
     SetState(EForestSliceLoginState::SignedOut, TEXT("Signed out"));
 }
 

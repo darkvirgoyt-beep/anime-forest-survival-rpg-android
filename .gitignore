@@ -10,3 +10,12 @@
 app/build
 **/__pycache__/
 *.pyc
+
+# Backend secrets and local runtime artifacts
+server/.env
+server/node_modules/
+server/aethelgard_pgdata/
+server/*.log
+
+# Temporary assets downloaded for local inspection
+drive_game_components.png
