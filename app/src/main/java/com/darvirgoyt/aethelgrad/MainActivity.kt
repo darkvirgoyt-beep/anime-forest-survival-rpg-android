@@ -368,7 +368,7 @@ class MainActivity : Activity(), SensorEventListener {
             applyResourceTier(automaticTier)
         }
         val tier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.LOW
-        val legacyObbReady = standaloneExpansionFile.inspect(BuildConfig.VERSION_CODE).ready
+        val legacyObbReady = standaloneExpansionFile.inspect().ready
         if (legacyObbReady || assetPacks.productionContentReady(tier)) {
             markProductionContentReady()
             continuePendingWorldEntry()
@@ -2481,7 +2481,11 @@ class MainActivity : Activity(), SensorEventListener {
                             details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
                         event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
-                            status.text = "DOWNLOAD READY TO RESUME  •  GAME LOCKED"
+                            status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
+                                "WAITING FOR WI-FI  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
+                            } else {
+                                "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
+                            }
                             details.text = "Allow the ${resourceTier.storageLabel} Play download to continue over mobile data, or connect to Wi-Fi. Gameplay remains locked until every required pack is ready."
                             retry.visibility = View.VISIBLE
                             if (!confirmationInFlight) {

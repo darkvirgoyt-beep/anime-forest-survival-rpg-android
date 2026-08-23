@@ -21,7 +21,15 @@ class StandaloneExpansionFile(context: Context) {
 
     private val appContext = context.applicationContext
 
-    fun inspect(versionCode: Int = 3): State {
+    fun inspect(): State {
+        val versionCode = runCatching {
+            @Suppress("DEPRECATION")
+            appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionCode
+        }.getOrDefault(3)
+        return inspect(versionCode)
+    }
+
+    fun inspect(versionCode: Int): State {
         val file = File(appContext.obbDir, "main.$versionCode.${appContext.packageName}.obb")
         val bytes = if (file.isFile) file.length() else 0L
         return State(
