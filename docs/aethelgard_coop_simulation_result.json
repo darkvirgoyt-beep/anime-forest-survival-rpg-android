@@ -1,7 +1,7 @@
 {
   "ok": true,
-  "command": "cd server && npm test",
-  "generatedRoomCode": "94E19F",
+  "command": "cd server && npm run check && npm test",
+  "generatedRoomCode": "6C199B",
   "testCount": 9,
   "passed": 9,
   "failed": 0,
