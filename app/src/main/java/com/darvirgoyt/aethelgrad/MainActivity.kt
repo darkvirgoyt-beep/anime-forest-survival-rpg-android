@@ -339,6 +339,8 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(consent, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
         panel.addView(google, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(2) })
         panel.addView(characterStage, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        val artReference = cinematicButton("VIEW ART REFERENCES", false) { showArtReferenceDialog() }
+        panel.addView(artReference, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
         panel.addView(trustRow, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(12) })
 
         val scroll = ScrollView(this).apply {
@@ -349,6 +351,47 @@ class MainActivity : Activity(), SensorEventListener {
         }
         overlay.addView(scroll, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
         return overlay
+    }
+
+    private fun showArtReferenceDialog() {
+        val preview = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
+            setBackgroundColor(Color.rgb(18, 24, 29))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            setImageResource(R.drawable.reference_game_board)
+        }
+        val selector = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(8))
+        }
+        val references = listOf(
+            "BOARD" to R.drawable.reference_game_board,
+            "PLAYER" to R.drawable.reference_player_emotions,
+            "WORLD" to R.drawable.reference_environment_lighting,
+            "CREATURES" to R.drawable.reference_enemy_creatures,
+            "ASSETS" to R.drawable.reference_assets_weapons,
+            "UI" to R.drawable.reference_ui_gameplay
+        )
+        references.forEach { (label, resource) ->
+            selector.addView(cinematicButton(label, false) { preview.setImageResource(resource) }, LinearLayout.LayoutParams(0, dp(36), 1f).apply {
+                leftMargin = dp(2)
+                rightMargin = dp(2)
+            })
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(4), dp(12), 0)
+            addView(selector, LinearLayout.LayoutParams(-1, dp(46)))
+            addView(preview, LinearLayout.LayoutParams(-1, dp(420)))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("ART REFERENCE LIBRARY")
+            .setMessage("Style targets for player, expressions, environments, creatures, assets, weapons, monument, UI, skin tones, and time-of-day lighting.")
+            .setView(content)
+            .setPositiveButton("CLOSE", null)
+            .show()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
