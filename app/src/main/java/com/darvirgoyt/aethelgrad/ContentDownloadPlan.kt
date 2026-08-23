@@ -8,6 +8,41 @@ package com.darvirgoyt.aethelgrad
  * must replace them with real cooked Unreal .pak content.
  */
 object ContentDownloadPlan {
+    data class QualityEnvelope(
+        val id: String,
+        val textureLabel: String,
+        val foliageDensity: Int,
+        val effectScalePercent: Int,
+        val shadowQuality: String,
+        val waterQuality: String,
+        val requiresDownloadedContent: Boolean
+    )
+
+    private val lowQualityEnvelope = QualityEnvelope(
+        id = "mobile-balanced",
+        textureLabel = "balanced PBR",
+        foliageDensity = 55,
+        effectScalePercent = 70,
+        shadowQuality = "dynamic contact shadows",
+        waterQuality = "animated river surface",
+        requiresDownloadedContent = true
+    )
+
+    private val highQualityEnvelope = QualityEnvelope(
+        id = "cinematic-high",
+        textureLabel = "high-resolution PBR",
+        foliageDensity = 100,
+        effectScalePercent = 140,
+        shadowQuality = "full mobile dynamic shadows",
+        waterQuality = "layered river, foam, and reflection accents",
+        requiresDownloadedContent = true
+    )
+
+    fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope = when (tier) {
+        ResourceTier.LOW -> lowQualityEnvelope
+        ResourceTier.HIGH -> highQualityEnvelope
+    }
+
     enum class ResourceTier(
         val storageLabel: String,
         val graphicsTierIndex: Int,

@@ -64,6 +64,13 @@ int gLevelPulse = 0;
 int gQuestPulse = 0;
 float gJumpBufferSeconds = 0.0f;
 int gGraphicsQuality = 2; // 0=Low, 1=Medium, 2=High, 3=Ultra, 4=Max
+bool gContentTierReady = false;
+
+int effectiveGraphicsQuality() {
+    // Never show high-end effects against missing streamed content. The small
+    // fallback scene remains readable until the selected PAD tier is mounted.
+    return gContentTierReady ? gGraphicsQuality : std::min(gGraphicsQuality, 1);
+}
 float gHunger = 0.82f;
 double gPhysicsAccumulator = 0.0;
 constexpr float kPhysicsStep = 1.0f / 60.0f;
@@ -958,7 +965,7 @@ void draw3DVegetationDetails(const Mat4& viewProjection, float daylight) {
         {5.30f, -0.62f, 0.15f, 0.08f}, {2.55f, 1.55f, 0.13f, 0.02f},
         {-1.75f, 1.25f, 0.14f, 0.12f}, {1.90f, 3.20f, 0.12f, 0.04f}
     };
-    const int visible = std::min(8, 3 + gGraphicsQuality * 2);
+    const int visible = std::min(8, 3 + effectiveGraphicsQuality() * 2);
     for (int i = 0; i < visible; ++i) {
         const float x = details[i][0];
         const float z = details[i][1];
@@ -981,7 +988,7 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
     const float depth = stream.bounds.halfExtents.y * 8.0f;
     draw3DBox(viewProjection, x, stream.surfaceY + 0.026f, z, width, 0.024f, depth,
               0.04f, 0.30f, 0.42f, 0.78f);
-    const int waves = std::min(7, 3 + gGraphicsQuality);
+    const int waves = std::min(7, 3 + effectiveGraphicsQuality());
     for (int i = 0; i < waves; ++i) {
         const float waveX = x - width * 0.36f + static_cast<float>(i) * width * 0.12f;
         const float waveZ = z + std::sin(gTime * 2.4f + static_cast<float>(i)) * depth * 0.23f;
@@ -993,7 +1000,7 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
 void draw3DWeather(const Mat4& viewProjection) {
     const float intensity = rainIntensity();
     if (intensity <= 0.0f) return;
-    const int drops = 20 + gGraphicsQuality * 8;
+    const int drops = 20 + effectiveGraphicsQuality() * 8;
     for (int i = 0; i < drops; ++i) {
         const float seed = static_cast<float>(i) * 0.371f;
         const float x = -8.0f + std::fmod(seed * 13.0f + gTime * 1.9f, 16.0f);
@@ -1120,7 +1127,7 @@ void draw3DWorld() {
     if (currentTimePhase() == TimePhase::Night) {
         gSceneFogR *= 0.42f; gSceneFogG *= 0.46f; gSceneFogB *= 0.72f;
     }
-    gSceneFogAmount = 0.10f + 0.045f * static_cast<float>(gGraphicsQuality);
+    gSceneFogAmount = 0.10f + 0.045f * static_cast<float>(effectiveGraphicsQuality());
     if (currentWeather() == WeatherState::Rain) gSceneFogAmount += 0.08f;
     if (currentWeather() == WeatherState::Thunderstorm) gSceneFogAmount += 0.14f;
     const float skyR = 0.028f + 0.085f * daylight;
@@ -1156,7 +1163,7 @@ void draw3DWorld() {
     draw3DRock(viewProjection, -2.5f, 0.9f, 0.78f, 0.28f, 0.38f, 0.32f);
     draw3DRock(viewProjection, 2.2f, 2.2f, 0.90f, 0.56f, 0.38f, 0.20f);
     draw3DRock(viewProjection, 5.0f, -2.0f, 1.10f, 0.48f, 0.64f, 0.72f);
-    if (gGraphicsQuality >= 1) {
+    if (effectiveGraphicsQuality() >= 1) {
         draw3DGrassTuft(viewProjection, -4.1f, -1.9f, 0.90f, 0.12f, 0.42f, 0.18f);
         draw3DGrassTuft(viewProjection, -2.0f, 1.9f, 0.68f, 0.16f, 0.50f, 0.20f);
         draw3DGrassTuft(viewProjection, 2.7f, -2.0f, 0.74f, 0.48f, 0.36f, 0.12f);
@@ -1301,7 +1308,7 @@ void drawNightStars() {
         {-0.10f, 0.57f, 0.008f}, {0.11f, 0.50f, 0.005f}, {0.43f, 0.54f, 0.007f},
         {0.67f, 0.46f, 0.005f}
     };
-    const int visibleStars = std::min(16, 5 + gGraphicsQuality * 3);
+    const int visibleStars = std::min(16, 5 + effectiveGraphicsQuality() * 3);
     for (int i = 0; i < visibleStars; ++i) {
         const auto& star = stars[i];
         drawCircle(star[0], star[1], star[2], 0.82f, 0.93f, 1.0f, 0.80f);
@@ -1310,7 +1317,7 @@ void drawNightStars() {
 
 void drawRain(float intensity) {
     if (intensity <= 0.0f) return;
-    const int rainDrops = 8 + gGraphicsQuality * 5;
+    const int rainDrops = 8 + effectiveGraphicsQuality() * 5;
     for (int i = 0; i < rainDrops; ++i) {
         const float seed = static_cast<float>(i) * 0.173f;
         const float x = -0.96f + std::fmod(seed + gTime * (0.07f + 0.004f * static_cast<float>(i)), 1.92f);
@@ -1809,8 +1816,8 @@ void drawWorld() {
     drawResourceCache(-0.56f, -0.28f, 0.30f, 0.48f, 0.22f);
     drawResourceCache(-0.40f, -0.18f, 0.22f, 0.52f, 0.46f);
     drawResourceCache(-0.24f, -0.28f, 0.52f, 0.34f, 0.18f);
-    drawRain(currentRain * (0.65f + static_cast<float>(gGraphicsQuality) * 0.10f));
-    drawLightning(lightningIntensity() * (0.70f + static_cast<float>(gGraphicsQuality) * 0.075f));
+    drawRain(currentRain * (0.65f + static_cast<float>(effectiveGraphicsQuality()) * 0.10f));
+    drawLightning(lightningIntensity() * (0.70f + static_cast<float>(effectiveGraphicsQuality()) * 0.075f));
 
     // Water is drawn before the hero so the body remains readable while ripples and
     // surface highlights communicate depth and movement on the small prototype screen.
@@ -1861,6 +1868,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gLevelPulse = 0;
     gQuestPulse = 0;
     gGraphicsQuality = 2;
+    gContentTierReady = false;
     gController.body.position = {-0.55f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
     gController.body.verticalPosition = 0.0f;
@@ -2033,6 +2041,12 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGyro(JNIEnv*, jobject, jfloat
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality(JNIEnv*, jobject, jint level) {
     gGraphicsQuality = std::clamp(static_cast<int>(level), 0, 4);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setContentTierReady(JNIEnv*, jobject, jboolean ready, jint tier) {
+    gContentTierReady = ready == JNI_TRUE;
+    gGraphicsQuality = std::clamp(static_cast<int>(tier), 0, 4);
 }
 
 extern "C" JNIEXPORT void JNICALL

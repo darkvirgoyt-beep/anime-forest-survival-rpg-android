@@ -68,9 +68,10 @@ jobs:
           test -f app/src/main/res/drawable/aethelgard_profile_gold.xml
           test -f assets/asset_budget.json
           test -f tools/validate_asset_budget.py
+          test -f tools/test_graphics_tier_contract.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'installedAndroidOAuthIdentity' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
@@ -89,6 +90,7 @@ jobs:
           test -f assetpack_animation_sets/build.gradle.kts
           python3 tools/validate_asset_budget.py
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
+          python3 tools/test_graphics_tier_contract.py
           grep -q 'ACCOUNT LINK' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'SIGN IN WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt

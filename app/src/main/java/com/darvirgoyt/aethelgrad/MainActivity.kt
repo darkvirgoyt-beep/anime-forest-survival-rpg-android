@@ -83,6 +83,7 @@ object NativeGameBridge {
     external fun interactEmberling()
     external fun getHudState(): String
     external fun setGraphicsQuality(level: Int)
+    external fun setContentTierReady(ready: Boolean, tier: Int)
     external fun getCloudState(): String
     external fun loadCloudState(state: String): Boolean
 }
@@ -387,6 +388,9 @@ class MainActivity : Activity(), SensorEventListener {
         selectedResourceTier = tier
         graphicsPreferences.edit().putString("resource_tier", tier.name).apply()
         applyGraphicsTier(tier.graphicsTierIndex)
+        if (::gameView.isInitialized) {
+            gameView.queueEvent { NativeGameBridge.setContentTierReady(false, tier.graphicsTierIndex) }
+        }
     }
 
     private fun graphicsTierName(value: Int): String = listOf("LOW", "MEDIUM", "HIGH", "ULTRA", "MAX")[value.coerceIn(0, 4)]
@@ -1762,6 +1766,11 @@ class MainActivity : Activity(), SensorEventListener {
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
                 resourcePreparationComplete = true
+                val readyTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
+                applyGraphicsTier(readyTier.graphicsTierIndex)
+                if (::gameView.isInitialized) {
+                    gameView.queueEvent { NativeGameBridge.setContentTierReady(true, readyTier.graphicsTierIndex) }
+                }
                 onReady()
                 pendingWorldEntry?.let { continuation ->
                     pendingWorldEntry = null
@@ -1812,8 +1821,9 @@ class MainActivity : Activity(), SensorEventListener {
                         val total = event.totalBytes / (1024 * 1024)
                         when {
                             event.complete -> {
-                                status.text = "Compiled graphics and shaders ready"
-                                details.text = "${resourceTier.storageLabel} of ${resourceTier.name.lowercase()} compiled resources are mounted. Starting the game…"
+                                val envelope = ContentDownloadPlan.qualityEnvelopeFor(resourceTier)
+                                status.text = "${envelope.id.uppercase()} CONTENT READY"
+                                details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                             }
                             event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
                                 status.text = "Waiting for Wi-Fi"
