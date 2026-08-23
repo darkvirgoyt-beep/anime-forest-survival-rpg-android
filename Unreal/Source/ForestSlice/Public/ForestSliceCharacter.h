@@ -76,6 +76,18 @@ public:
     UFUNCTION(BlueprintPure, Category = "Survival")
     bool HasGyroscopeSupport() const { return bDeviceHasGyroscope; }
 
+    UFUNCTION(BlueprintPure, Category = "Movement")
+    bool IsInWater() const { return bInWater; }
+
+    UFUNCTION(BlueprintPure, Category = "Movement")
+    float GetWetnessAlpha() const { return WetnessAlpha; }
+
+    UFUNCTION(BlueprintPure, Category = "Movement")
+    FVector GetHairMotionOffset() const { return HairMotionOffset; }
+
+    UFUNCTION(BlueprintPure, Category = "Movement")
+    FVector GetClothMotionOffset() const { return ClothMotionOffset; }
+
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceCombatComponent> CombatComponent;
@@ -140,6 +152,15 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float DodgeImpulse = 1050.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Water")
+    float SwimSpeed = 260.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Water")
+    float WaterSpeedMultiplier = 0.58f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Water")
+    float WaterDrag = 2.8f;
+
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Mobile|Aim")
     bool bDeviceHasGyroscope = false;
 
@@ -172,8 +193,14 @@ protected:
 
 private:
     bool bSprintHeld = false;
+    bool bInWater = false;
+    float WetnessAlpha = 0.0f;
     float SlideCooldown = 0.0f;
     float DodgeCooldown = 0.0f;
+    FVector HairMotionOffset = FVector::ZeroVector;
+    FVector HairMotionVelocity = FVector::ZeroVector;
+    FVector ClothMotionOffset = FVector::ZeroVector;
+    FVector ClothMotionVelocity = FVector::ZeroVector;
 
     void ApplyMoveVector(FVector2D MoveVector);
     void ApplyLookVector(FVector2D LookVector);

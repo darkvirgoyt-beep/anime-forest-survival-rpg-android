@@ -6,8 +6,10 @@
 
 using forest::physics::Aabb;
 using forest::physics::CharacterBody;
+using forest::physics::SecondaryMotion;
 using forest::physics::StaticObstacle;
 using forest::physics::Vec2;
+using forest::physics::WaterVolume;
 
 int main() {
     CharacterBody body;
@@ -33,6 +35,30 @@ int main() {
     const Aabb a{{0.0f, 0.0f}, {0.1f, 0.1f}};
     const Aabb b{{0.15f, 0.0f}, {0.1f, 0.1f}};
     assert(a.overlaps(b));
+
+    const WaterVolume stream{{{0.0f, -0.28f}, {0.40f, 0.28f}}, -0.20f, {0.05f, 0.0f}, 0.80f, 3.0f};
+    CharacterBody swimmer;
+    swimmer.position = {0.0f, -0.20f};
+    swimmer.grounded = false;
+    swimmer.velocity = {0.6f, -0.2f};
+    swimmer.step({0.0f, 0.0f}, 1.0f / 60.0f, nullptr, 0, &stream, 1);
+    assert(swimmer.water.overlapping);
+    assert(swimmer.water.depth > 0.45f);
+    assert(swimmer.velocity.x < 0.6f);
+    assert(swimmer.velocity.y > -0.2f);
+
+    swimmer.applyImpulse({2.0f, 0.0f}, 1.0f);
+    assert(std::sqrt(swimmer.velocity.x * swimmer.velocity.x + swimmer.velocity.y * swimmer.velocity.y) <= 1.001f);
+
+    SecondaryMotion motion;
+    motion.step({0.8f, 0.0f}, {0.02f, 0.0f}, 1.0f / 60.0f, false);
+    for (int i = 0; i < 120; ++i) motion.step({0.8f, 0.0f}, {0.02f, 0.0f}, 1.0f / 60.0f, false);
+    assert(std::abs(motion.hairOffset.x) > 0.001f);
+    assert(std::abs(motion.clothOffset.x) > 0.001f);
+    assert(motion.wetness < 0.1f);
+    motion.step({0.0f, 0.0f}, {0.0f, 0.0f}, 1.0f / 60.0f, true);
+    assert(motion.wetness > 0.0f);
+
     std::cout << "physics_test: PASS\n";
     return 0;
 }

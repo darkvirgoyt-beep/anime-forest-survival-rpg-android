@@ -503,10 +503,12 @@ class MainActivity : Activity(), SensorEventListener {
         val biome = values.getOrNull(12)?.ifBlank { "UNKNOWN" } ?: "UNKNOWN"
         val phase = values.getOrNull(13)?.ifBlank { "DAY" } ?: "DAY"
         val daysPlayed = values.getOrNull(14)?.toIntOrNull()?.coerceAtLeast(1) ?: 1
-        val objective = values.drop(15).joinToString("|")
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  HP $health  |  STA $stamina  |  HUN $hunger  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
+        val objective = values.getOrNull(15)?.ifBlank { "Explore the wilds" } ?: "Explore the wilds"
+        val water = values.getOrNull(16)?.ifBlank { "DRY" } ?: "DRY"
+        val locomotion = values.getOrNull(17)?.ifBlank { "IDLE" } ?: "IDLE"
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  HP $health  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(if (levelPulse) Color.rgb(255, 236, 157) else Color.WHITE)
-        questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  SNOW PREDATOR HP $warden/100" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME"
+        questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $water"
         questLabel.setTextColor(if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 

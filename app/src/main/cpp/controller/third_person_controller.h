@@ -10,6 +10,7 @@ enum class LocomotionState {
     Sprint,
     Jump,
     Fall,
+    Swim,
     Dodge,
     Slide,
     Attack,
@@ -39,6 +40,7 @@ struct CameraState {
 class ThirdPersonController {
 public:
     physics::CharacterBody body{};
+    physics::SecondaryMotion secondaryMotion{};
     CameraState camera{};
     LocomotionState state = LocomotionState::Idle;
     float facingRadians = 0.0f;
@@ -50,7 +52,8 @@ public:
     float hitstunSeconds = 0.0f;
 
     void tick(const InputFrame& input, float deltaSeconds,
-              const physics::StaticObstacle* obstacles, int obstacleCount);
+              const physics::StaticObstacle* obstacles, int obstacleCount,
+              const physics::WaterVolume* waterVolumes = nullptr, int waterCount = 0);
     bool jump();
     bool dodge();
     bool slide();
@@ -61,7 +64,9 @@ public:
 private:
     float dodgeSeconds = 0.0f;
     float slideSeconds = 0.0f;
+    float motionTime = 0.0f;
     physics::Vec2 dodgeVelocity{};
+    physics::Vec2 lastMoveDirection{1.0f, 0.0f};
 };
 
 } // namespace forest::controller

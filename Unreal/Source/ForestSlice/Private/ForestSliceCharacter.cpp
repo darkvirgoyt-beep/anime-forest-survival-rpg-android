@@ -14,6 +14,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "PhysicsEngine/PhysicsVolume.h"
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
 
@@ -69,14 +70,44 @@ void AForestSliceCharacter::BeginPlay()
 void AForestSliceCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-    SlideCooldown = FMath::Max(0.0f, SlideCooldown - DeltaSeconds);
-    DodgeCooldown = FMath::Max(0.0f, DodgeCooldown - DeltaSeconds);
+    const float Dt = FMath::Clamp(DeltaSeconds, 0.0f, 0.10f);
+    SlideCooldown = FMath::Max(0.0f, SlideCooldown - Dt);
+    DodgeCooldown = FMath::Max(0.0f, DodgeCooldown - Dt);
 
-    if (bSprintHeld && GetVelocity().SizeSquared2D() > 100.0f && SurvivalComponent) {
-        if (!SurvivalComponent->ConsumeStamina(18.0f * FMath::Clamp(DeltaSeconds, 0.0f, 0.1f))) {
+    const APhysicsVolume* PhysicsVolume = GetWorld() ? GetWorld()->GetPhysicsVolume(GetActorLocation()) : nullptr;
+    const bool WasInWater = bInWater;
+    bInWater = PhysicsVolume && PhysicsVolume->bWaterVolume;
+    if (bInWater != WasInWater) {
+        if (bInWater) {
+            GetCharacterMovement()->SetMovementMode(MOVE_Swimming);
+            GetCharacterMovement()->MaxWalkSpeed = SwimSpeed;
+        } else {
+            GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+            GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SprintSpeed : WalkSpeed;
+        }
+    }
+    if (bInWater) {
+        GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SwimSpeed * 1.10f : SwimSpeed;
+        GetCharacterMovement()->BrakingDecelerationSwimming = WaterDrag * 100.0f;
+    }
+
+    if (bSprintHeld && !bInWater && GetVelocity().SizeSquared2D() > 100.0f && SurvivalComponent) {
+        if (!SurvivalComponent->ConsumeStamina(18.0f * Dt)) {
             StopSprint(FInputActionValue());
         }
     }
+
+    const FVector Velocity = GetVelocity();
+    const FVector Wind(0.0f, 22.0f * FMath::Sin(GetWorld() ? GetWorld()->GetTimeSeconds() * 0.7f : 0.0f), 0.0f);
+    const FVector HairTarget = FVector(-Velocity.X * 0.012f, -Velocity.Y * 0.010f, FMath::Abs(Velocity.Size2D()) * 0.003f) + Wind * 0.0015f;
+    const FVector ClothTarget = FVector(-Velocity.X * 0.018f, -Velocity.Y * 0.014f, -FMath::Abs(Velocity.Size2D()) * 0.004f);
+    const float HairFrequency = bInWater ? 5.0f : 8.0f;
+    const float ClothFrequency = bInWater ? 3.2f : 5.0f;
+    HairMotionVelocity += (HairTarget - HairMotionOffset) * HairFrequency * HairFrequency * Dt - HairMotionVelocity * 2.0f * HairFrequency * Dt;
+    HairMotionOffset += HairMotionVelocity * Dt;
+    ClothMotionVelocity += (ClothTarget - ClothMotionOffset) * ClothFrequency * ClothFrequency * Dt - ClothMotionVelocity * 2.0f * ClothFrequency * Dt;
+    ClothMotionOffset += ClothMotionVelocity * Dt;
+    WetnessAlpha = FMath::FInterpTo(WetnessAlpha, bInWater ? 1.0f : 0.0f, Dt, bInWater ? 3.5f : 0.45f);
 }
 
 void AForestSliceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -165,8 +196,8 @@ void AForestSliceCharacter::TriggerVirtualJump()
 
 void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)
 {
-    bSprintHeld = SurvivalComponent && SurvivalComponent->GetState().Stamina > 0.0f;
-    GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SprintSpeed : WalkSpeed;
+    bSprintHeld = !bInWater && SurvivalComponent && SurvivalComponent->GetState().Stamina > 0.0f;
+    GetCharacterMovement()->MaxWalkSpeed = bInWater ? SwimSpeed : (bSprintHeld ? SprintSpeed : WalkSpeed);
 }
 
 void AForestSliceCharacter::StopSprint(const FInputActionValue& Value)
@@ -179,16 +210,18 @@ void AForestSliceCharacter::StopSprint(const FInputActionValue& Value)
 
 void AForestSliceCharacter::StartSlide(const FInputActionValue& Value)
 {
-    if (!GetCharacterMovement()->IsMovingOnGround() || SlideCooldown > 0.0f || !SurvivalComponent || !SurvivalComponent->ConsumeStamina(18.0f)) return;
+    if (bInWater || !GetCharacterMovement()->IsMovingOnGround() || SlideCooldown > 0.0f || !SurvivalComponent || !SurvivalComponent->ConsumeStamina(18.0f)) return;
     SlideCooldown = 0.65f;
-    LaunchCharacter(GetActorForwardVector() * SlideImpulse + FVector(0.0f, 0.0f, 35.0f), true, false);
+    const FVector SlideDirection = GetLastMovementInputVector().IsNearlyZero() ? GetActorForwardVector() : GetLastMovementInputVector().GetSafeNormal2D();
+    LaunchCharacter(SlideDirection * SlideImpulse + FVector(0.0f, 0.0f, 35.0f), true, false);
 }
 
 void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
 {
     if (DodgeCooldown > 0.0f || !SurvivalComponent || !SurvivalComponent->ConsumeStamina(25.0f)) return;
     DodgeCooldown = 0.85f;
-    LaunchCharacter(GetActorForwardVector() * DodgeImpulse, true, false);
+    const FVector DodgeDirection = GetLastMovementInputVector().IsNearlyZero() ? GetActorForwardVector() : GetLastMovementInputVector().GetSafeNormal2D();
+    LaunchCharacter(DodgeDirection * (bInWater ? DodgeImpulse * 0.60f : DodgeImpulse), true, false);
     // Gameplay Ability System will own the authoritative invulnerability tag in the next slice.
 }
 

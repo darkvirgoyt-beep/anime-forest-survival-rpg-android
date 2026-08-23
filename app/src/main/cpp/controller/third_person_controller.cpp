@@ -21,8 +21,8 @@ constexpr float kHitstunDuration = 0.18f;
 void CameraState::orbit(float deltaYaw, float deltaPitch) {
     yaw += deltaYaw;
     pitch = std::clamp(pitch + deltaPitch, -1.10f, 0.25f);
-    if (yaw > PI) yaw -= PI * 2.0f;
-    if (yaw < -PI) yaw += PI * 2.0f;
+    while (yaw > PI) yaw -= PI * 2.0f;
+    while (yaw < -PI) yaw += PI * 2.0f;
 }
 
 void CameraState::resolveObstruction(float measuredDistance, float deltaSeconds) {
@@ -32,39 +32,46 @@ void CameraState::resolveObstruction(float measuredDistance, float deltaSeconds)
 }
 
 void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
-                                 const physics::StaticObstacle* obstacles, int obstacleCount) {
+                                 const physics::StaticObstacle* obstacles, int obstacleCount,
+                                 const physics::WaterVolume* waterVolumes, int waterCount) {
     const float dt = std::clamp(deltaSeconds, 0.0f, 0.05f);
+    motionTime += dt;
     invulnerabilitySeconds = std::max(0.0f, invulnerabilitySeconds - dt);
     hitstunSeconds = std::max(0.0f, hitstunSeconds - dt);
 
     if (!isAlive()) {
         state = LocomotionState::Dead;
+        secondaryMotion.step(body.velocity, {0.0f, 0.0f}, dt, body.water.overlapping);
         return;
     }
     if (hitstunSeconds > 0.0f) {
         state = LocomotionState::Hitstun;
-        body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount);
+        const physics::Vec2 reducedInput{input.moveX * 0.15f, input.moveY * 0.15f};
+        body.step(reducedInput, dt, obstacles, obstacleCount, waterVolumes, waterCount);
+        secondaryMotion.step(body.velocity, {0.015f * std::sin(motionTime * 0.7f), 0.0f}, dt, body.water.overlapping);
         return;
     }
 
     if (dodgeSeconds > 0.0f) {
         dodgeSeconds = std::max(0.0f, dodgeSeconds - dt);
         body.velocity = dodgeVelocity;
-        body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount);
+        body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount, waterVolumes, waterCount);
+        secondaryMotion.step(body.velocity, {0.015f * std::sin(motionTime * 0.7f), 0.0f}, dt, body.water.overlapping);
         state = dodgeSeconds > 0.0f ? LocomotionState::Dodge : LocomotionState::Idle;
         return;
     }
     if (slideSeconds > 0.0f) {
         slideSeconds = std::max(0.0f, slideSeconds - dt);
         body.velocity = dodgeVelocity;
-        body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount);
+        body.step({0.0f, 0.0f}, dt, obstacles, obstacleCount, waterVolumes, waterCount);
+        secondaryMotion.step(body.velocity, {0.015f * std::sin(motionTime * 0.7f), 0.0f}, dt, body.water.overlapping);
         state = slideSeconds > 0.0f ? LocomotionState::Slide : LocomotionState::Idle;
         return;
     }
 
     const float inputMagnitude = std::sqrt(input.moveX * input.moveX + input.moveY * input.moveY);
     const bool moving = inputMagnitude > 0.08f;
-    const bool sprinting = moving && input.sprintHeld && stamina > 0.01f;
+    const bool sprinting = moving && input.sprintHeld && stamina > 0.01f && !body.water.submerged;
     body.maxSpeed = sprinting ? kSprintSpeed : 0.55f;
     if (sprinting) stamina = std::max(0.0f, stamina - kSprintStaminaPerSecond * dt);
     else stamina = std::min(maxStamina, stamina + kStaminaRecoveryPerSecond * dt);
@@ -75,10 +82,18 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
         input.moveX * cosYaw - input.moveY * sinYaw,
         input.moveX * sinYaw + input.moveY * cosYaw
     };
-    if (moving) facingRadians = std::atan2(cameraRelative.y, cameraRelative.x);
-    body.step(cameraRelative, dt, obstacles, obstacleCount);
+    if (moving) {
+        const float directionLength = std::sqrt(cameraRelative.x * cameraRelative.x + cameraRelative.y * cameraRelative.y);
+        if (directionLength > 0.001f) {
+            lastMoveDirection = cameraRelative * (1.0f / directionLength);
+            facingRadians = std::atan2(cameraRelative.y, cameraRelative.x);
+        }
+    }
+    body.step(cameraRelative, dt, obstacles, obstacleCount, waterVolumes, waterCount);
+    secondaryMotion.step(body.velocity, {0.018f * std::sin(motionTime * 0.7f), 0.004f * std::cos(motionTime * 0.43f)}, dt, body.water.overlapping);
 
-    if (!body.grounded) state = body.velocity.y > 0.0f ? LocomotionState::Jump : LocomotionState::Fall;
+    if (body.water.submerged) state = LocomotionState::Swim;
+    else if (!body.grounded) state = body.velocity.y > 0.0f ? LocomotionState::Jump : LocomotionState::Fall;
     else if (sprinting) state = LocomotionState::Sprint;
     else if (moving) state = LocomotionState::Walk;
     else state = LocomotionState::Idle;
@@ -86,7 +101,7 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
 
 bool ThirdPersonController::jump() {
     if (!isAlive() || dodgeSeconds > 0.0f || stamina < 0.12f) return false;
-    if (!body.grounded) return false;
+    if (!body.grounded && !body.water.submerged) return false;
     stamina -= 0.12f;
     body.jump();
     state = LocomotionState::Jump;
@@ -98,20 +113,19 @@ bool ThirdPersonController::dodge() {
     stamina -= kDodgeCost;
     dodgeSeconds = kDodgeDuration;
     invulnerabilitySeconds = kInvulnerabilityDuration;
-    const float direction = body.velocity.x >= 0.0f ? 1.0f : -1.0f;
-    dodgeVelocity = {direction * 0.90f, 0.0f};
+    const float speed = body.water.overlapping ? 0.58f : 0.90f;
+    dodgeVelocity = lastMoveDirection * speed;
     body.velocity = dodgeVelocity;
     state = LocomotionState::Dodge;
     return true;
 }
 
 bool ThirdPersonController::slide() {
-    if (!isAlive() || !body.grounded || dodgeSeconds > 0.0f || slideSeconds > 0.0f || stamina < kSlideCost) return false;
+    if (!isAlive() || !body.grounded || body.water.overlapping || dodgeSeconds > 0.0f || slideSeconds > 0.0f || stamina < kSlideCost) return false;
     stamina -= kSlideCost;
     slideSeconds = kSlideDuration;
     invulnerabilitySeconds = 0.12f;
-    const float direction = body.velocity.x >= 0.0f ? 1.0f : -1.0f;
-    dodgeVelocity = {direction * 0.72f, 0.0f};
+    dodgeVelocity = lastMoveDirection * 0.72f;
     body.velocity = dodgeVelocity;
     state = LocomotionState::Slide;
     return true;
@@ -120,7 +134,7 @@ bool ThirdPersonController::slide() {
 bool ThirdPersonController::takeDamage(float amount, const physics::Vec2& knockback) {
     if (!isAlive() || isInvulnerable()) return false;
     health = std::max(0.0f, health - std::max(0.0f, amount));
-    body.velocity += knockback;
+    body.applyImpulse(knockback);
     hitstunSeconds = kHitstunDuration;
     state = health > 0.0f ? LocomotionState::Hitstun : LocomotionState::Dead;
     return true;

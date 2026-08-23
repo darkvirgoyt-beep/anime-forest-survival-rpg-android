@@ -10,6 +10,7 @@ struct Vec2 {
     Vec2 operator-(const Vec2& other) const { return {x - other.x, y - other.y}; }
     Vec2 operator*(float scalar) const { return {x * scalar, y * scalar}; }
     Vec2& operator+=(const Vec2& other) { x += other.x; y += other.y; return *this; }
+    Vec2& operator-=(const Vec2& other) { x -= other.x; y -= other.y; return *this; }
 };
 
 struct Aabb {
@@ -23,6 +24,34 @@ struct StaticObstacle {
     Aabb bounds{};
 };
 
+struct WaterVolume {
+    Aabb bounds{};
+    float surfaceY = 0.0f;
+    Vec2 current{};
+    float buoyancy = 0.72f;
+    float drag = 2.8f;
+};
+
+struct WaterState {
+    bool overlapping = false;
+    bool submerged = false;
+    float depth = 0.0f;
+    float surfaceY = 0.0f;
+    Vec2 current{};
+    float buoyancy = 0.0f;
+    float drag = 0.0f;
+};
+
+struct SecondaryMotion {
+    Vec2 hairOffset{};
+    Vec2 hairVelocity{};
+    Vec2 clothOffset{};
+    Vec2 clothVelocity{};
+    float wetness = 0.0f;
+
+    void step(const Vec2& bodyVelocity, const Vec2& wind, float deltaSeconds, bool inWater);
+};
+
 struct CharacterBody {
     Vec2 position{};
     Vec2 velocity{};
@@ -32,13 +61,20 @@ struct CharacterBody {
     float friction = 7.0f;
     float gravity = -1.5f;
     float jumpVelocity = 0.72f;
+    float waterSpeedMultiplier = 0.52f;
+    float waterJumpMultiplier = 0.68f;
     bool grounded = true;
+    WaterState water{};
 
-    void step(const Vec2& input, float deltaSeconds, const StaticObstacle* obstacles, int obstacleCount);
+    void step(const Vec2& input, float deltaSeconds,
+              const StaticObstacle* obstacles, int obstacleCount,
+              const WaterVolume* waterVolumes = nullptr, int waterCount = 0);
     void jump();
+    void applyImpulse(const Vec2& impulse, float maxSpeed = 1.75f);
 };
 
 float approach(float current, float target, float maxDelta);
 void resolveCollision(CharacterBody& body, const StaticObstacle& obstacle);
+WaterState sampleWater(const CharacterBody& body, const WaterVolume* volumes, int volumeCount);
 
 } // namespace forest::physics

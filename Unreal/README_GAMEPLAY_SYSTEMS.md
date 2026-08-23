@@ -47,3 +47,22 @@ The gyro toggle must bind to `SetGyroSensorSupport`. If false, set `GYRO: UNSUPP
 ## Current verification boundary
 
 The repository CI can validate the project descriptor, required source layout, Android prototype build, and native prototype tests. It cannot compile Unreal C++ without the Unreal Engine editor/toolchain and generated headers. Use a real Unreal 5.6+ runner to generate project files, compile the module, create input/UMG assets, cook content, and run device tests.
+
+
+## Movement, water, and physical reactions
+
+The native prototype now uses a water-volume contract with surface height, current, buoyancy, and drag. Bodies sample overlapping volumes at the fixed 60 Hz step, reduce acceleration and top speed while wading or swimming, receive an upward buoyancy response, inherit current motion, and apply velocity drag. Sprinting is disabled while submerged, sliding is rejected in water, and dodge direction follows the last meaningful camera-relative movement vector instead of always moving along world X.
+
+The controller also exposes a `Swim` locomotion state and applies partial input during hitstun rather than freezing the character. Knockback is applied through a clamped impulse path to avoid unbounded velocity. Existing callers remain source-compatible because water arrays are optional arguments to the native body and controller step functions.
+
+## Secondary motion
+
+`forest::physics::SecondaryMotion` provides deterministic spring-damped offsets for hair and cloth. The target offsets respond to body velocity and wind, while water increases wetness and lowers the spring frequency so hair settles more heavily. The Android prototype uses these offsets to move the hero’s hair planes and tunic planes and renders water ripples and a wetness cue. The Unreal character mirrors the same behavior through `GetHairMotionOffset`, `GetClothMotionOffset`, `GetWetnessAlpha`, and `IsInWater`, allowing an Animation Blueprint, Control Rig, or material graph to consume the values without owning gameplay state.
+
+## Unreal water boundary
+
+The production character reads the active `APhysicsVolume` and switches to `MOVE_Swimming` when `bWaterVolume` is true. It uses separate swim speed and water drag tuning, disables sprint slide while swimming, and preserves directional dodge input. The final production pass should place authored water physics volumes in each river, lake, and ocean region and tune buoyancy, swim depth, camera behavior, underwater post-processing, audio, and animation transitions per biome.
+
+## Verification boundary
+
+The expanded native test covers water overlap and depth, drag and buoyancy response, impulse clamping, directional secondary motion, and wetness ramp-up. The sandbox does not contain a C++ compiler or Unreal Engine 5.6 generated build environment, so Android native compilation and Unreal compilation still require the repository’s Android CI runner and a real Unreal runner respectively.

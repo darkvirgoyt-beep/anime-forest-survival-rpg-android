@@ -134,6 +134,36 @@ const forest::physics::StaticObstacle gObstacles[] = {
     {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
 };
 
+// A shallow stream in the prototype demonstrates the same gameplay contract that
+// production water volumes will use: surface height, current, buoyancy, and drag.
+const forest::physics::WaterVolume gWaterVolumes[] = {
+    {{{0.04f, -0.36f}, {0.20f, 0.11f}}, -0.28f, {0.025f, 0.0f}, 0.78f, 3.2f}
+};
+
+const char* waterStateName() {
+    if (gController.body.water.submerged) return "SWIMMING";
+    if (gController.body.water.overlapping) return "WADING";
+    return "DRY";
+}
+
+const char* locomotionStateName() {
+    using forest::controller::LocomotionState;
+    switch (gController.state) {
+        case LocomotionState::Idle: return "IDLE";
+        case LocomotionState::Walk: return "WALK";
+        case LocomotionState::Sprint: return "SPRINT";
+        case LocomotionState::Jump: return "JUMP";
+        case LocomotionState::Fall: return "FALL";
+        case LocomotionState::Swim: return "SWIM";
+        case LocomotionState::Dodge: return "DODGE";
+        case LocomotionState::Slide: return "SLIDE";
+        case LocomotionState::Attack: return "ATTACK";
+        case LocomotionState::Hitstun: return "HITSTUN";
+        case LocomotionState::Dead: return "DEAD";
+    }
+    return "IDLE";
+}
+
 const char* kVertexShader = R"GLSL(
 #version 300 es
 layout(location = 0) in vec2 aPosition;
@@ -291,6 +321,10 @@ void drawPlayer() {
     const float bob = std::sin(gTime * 4.0f) * 0.004f;
     const float px = gPlayerX;
     const float py = gPlayerY + bob;
+    const float hairSway = gController.secondaryMotion.hairOffset.x;
+    const float hairLift = gController.secondaryMotion.hairOffset.y;
+    const float clothSway = gController.secondaryMotion.clothOffset.x;
+    const float wetness = gController.secondaryMotion.wetness;
     const float inkR = 0.035f;
     const float inkG = 0.022f;
     const float inkB = 0.055f;
@@ -305,13 +339,13 @@ void drawPlayer() {
     drawQuad(px + 0.035f, py - 0.066f, 0.052f, 0.018f, 0.08f, 0.05f, 0.13f);
 
     // Tunic silhouette, then a cool shadow plane and a single warm key plane.
-    drawTriangle(px, py + 0.040f, 0.154f, 0.215f, inkR, inkG, inkB);
-    drawTriangle(px, py + 0.043f, 0.128f, 0.190f, 0.43f, 0.12f, 0.29f);
-    drawTriangle(px - 0.029f, py + 0.052f, 0.058f, 0.158f, 0.25f, 0.07f, 0.20f);
-    drawTriangle(px + 0.018f, py + 0.073f, 0.044f, 0.112f, 0.68f, 0.18f, 0.34f);
-    drawQuad(px, py + 0.004f, 0.114f, 0.024f, inkR, inkG, inkB);
-    drawQuad(px, py + 0.009f, 0.096f, 0.012f, 0.06f, 0.38f, 0.38f);
-    drawQuad(px + 0.024f, py + 0.040f, 0.022f, 0.096f, 0.10f, 0.55f, 0.51f);
+    drawTriangle(px + clothSway * 0.40f, py + 0.040f, 0.154f, 0.215f, inkR, inkG, inkB);
+    drawTriangle(px + clothSway * 0.40f, py + 0.043f, 0.128f, 0.190f, 0.43f, 0.12f, 0.29f);
+    drawTriangle(px - 0.029f + clothSway * 0.24f, py + 0.052f, 0.058f, 0.158f, 0.25f, 0.07f, 0.20f);
+    drawTriangle(px + 0.018f + clothSway * 0.52f, py + 0.073f, 0.044f, 0.112f, 0.68f, 0.18f, 0.34f);
+    drawQuad(px + clothSway * 0.55f, py + 0.004f, 0.114f, 0.024f, inkR, inkG, inkB);
+    drawQuad(px + clothSway * 0.55f, py + 0.009f, 0.096f, 0.012f, 0.06f, 0.38f, 0.38f);
+    drawQuad(px + 0.024f + clothSway * 0.75f, py + 0.040f, 0.022f, 0.096f, 0.10f, 0.55f, 0.51f);
 
     // Arms: clean dark contour, colored sleeve, then small skin hands.
     drawQuad(px - 0.066f, py + 0.064f, 0.042f, 0.112f, inkR, inkG, inkB);
@@ -332,16 +366,19 @@ void drawPlayer() {
     drawTriangle(px - 0.041f, py + 0.134f, 0.042f, 0.062f, 0.48f, 0.19f, 0.18f);
 
     // Spiky violet hair silhouette, highlights and bangs.
-    drawCircle(px + 0.006f, py + 0.177f, 0.079f, inkR, inkG, inkB);
-    drawCircle(px + 0.010f, py + 0.181f, 0.068f, 0.12f, 0.06f, 0.22f);
-    drawTriangle(px - 0.050f, py + 0.215f, 0.048f, 0.082f, inkR, inkG, inkB);
-    drawTriangle(px - 0.050f, py + 0.215f, 0.030f, 0.061f, 0.17f, 0.08f, 0.30f);
-    drawTriangle(px - 0.014f, py + 0.226f, 0.046f, 0.092f, inkR, inkG, inkB);
-    drawTriangle(px - 0.014f, py + 0.226f, 0.027f, 0.070f, 0.20f, 0.10f, 0.35f);
-    drawTriangle(px + 0.030f, py + 0.220f, 0.052f, 0.082f, inkR, inkG, inkB);
-    drawTriangle(px + 0.030f, py + 0.220f, 0.032f, 0.061f, 0.17f, 0.08f, 0.29f);
-    drawTriangle(px + 0.035f, py + 0.191f, 0.042f, 0.075f, 0.29f, 0.15f, 0.43f);
-    drawTriangle(px - 0.021f, py + 0.170f, 0.035f, 0.055f, 0.09f, 0.04f, 0.17f);
+    drawCircle(px + 0.006f + hairSway, py + 0.177f + hairLift, 0.079f, inkR, inkG, inkB);
+    drawCircle(px + 0.010f + hairSway, py + 0.181f + hairLift, 0.068f, 0.12f, 0.06f, 0.22f);
+    drawTriangle(px - 0.050f + hairSway * 1.08f, py + 0.215f + hairLift, 0.048f, 0.082f, inkR, inkG, inkB);
+    drawTriangle(px - 0.050f + hairSway * 1.08f, py + 0.215f + hairLift, 0.030f, 0.061f, 0.17f, 0.08f, 0.30f);
+    drawTriangle(px - 0.014f + hairSway * 1.12f, py + 0.226f + hairLift, 0.046f, 0.092f, inkR, inkG, inkB);
+    drawTriangle(px - 0.014f + hairSway * 1.12f, py + 0.226f + hairLift, 0.027f, 0.070f, 0.20f, 0.10f, 0.35f);
+    drawTriangle(px + 0.030f + hairSway * 1.16f, py + 0.220f + hairLift, 0.052f, 0.082f, inkR, inkG, inkB);
+    drawTriangle(px + 0.030f + hairSway * 1.16f, py + 0.220f + hairLift, 0.032f, 0.061f, 0.17f, 0.08f, 0.29f);
+    drawTriangle(px + 0.035f + hairSway * 1.22f, py + 0.191f + hairLift, 0.042f, 0.075f, 0.29f, 0.15f, 0.43f);
+    drawTriangle(px - 0.021f + hairSway * 1.28f, py + 0.170f + hairLift, 0.035f, 0.055f, 0.09f, 0.04f, 0.17f);
+    if (wetness > 0.05f) {
+        drawCircle(px + 0.052f + hairSway, py + 0.170f + hairLift, 0.006f + wetness * 0.004f, 0.40f, 0.75f, 0.86f, wetness * 0.75f);
+    }
 
     // Eyes and mouth are kept high-contrast so the face reads at phone scale.
     drawQuad(px - 0.029f, py + 0.143f, 0.018f, 0.010f, 0.035f, 0.025f, 0.045f);
@@ -477,7 +514,8 @@ void simulatePhysicsStep() {
     updateCalendar();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
     const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
-    gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
+    gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
+                      gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
     gCombat.tick(kPhysicsStep);
     gEnemyHitFlash = std::max(0.0f, gEnemyHitFlash - kPhysicsStep);
     gEnemyDefeatTimer = std::max(0.0f, gEnemyDefeatTimer - kPhysicsStep);
@@ -620,6 +658,21 @@ void drawWorld() {
         const float sunGlow = 0.08f + 0.04f * std::sin(phaseProgress * PI);
         drawCircle(0.72f, 0.58f, 0.12f, 1.0f, 0.84f, 0.42f, sunGlow);
         drawCircle(0.72f, 0.58f, 0.072f, 1.0f, 0.70f, 0.28f, 0.90f);
+    }
+    // Water is drawn before the hero so the body remains readable while ripples and
+    // surface highlights communicate depth and movement on the small prototype screen.
+    const auto& stream = gWaterVolumes[0];
+    drawQuad(stream.bounds.center.x, stream.bounds.center.y, stream.bounds.halfExtents.x * 2.0f,
+             stream.bounds.halfExtents.y * 2.0f, 0.06f, 0.34f, 0.47f, 0.82f);
+    for (int i = 0; i < 5; ++i) {
+        const float waveX = stream.bounds.center.x - 0.14f + static_cast<float>(i) * 0.07f;
+        const float waveY = stream.surfaceY + 0.008f * std::sin(gTime * 2.6f + static_cast<float>(i));
+        drawQuad(waveX, waveY, 0.045f, 0.006f, 0.34f, 0.84f, 0.90f, 0.58f);
+    }
+    if (gController.body.water.overlapping) {
+        const float ripple = 0.045f + 0.012f * std::sin(gTime * 7.0f);
+        drawCircle(gPlayerX, stream.surfaceY, ripple, 0.45f, 0.90f, 0.94f, 0.34f);
+        drawCircle(gPlayerX, stream.surfaceY, ripple * 0.58f, 0.11f, 0.50f, 0.63f, 0.25f);
     }
     drawPlayer();
 }
@@ -781,7 +834,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << biomeName() << '|'
           << timePhaseName() << '|'
           << gDaysPlayed << '|'
-          << gProgression.questObjective();
+          << gProgression.questObjective() << '|'
+          << waterStateName() << '|'
+          << locomotionStateName();
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }
