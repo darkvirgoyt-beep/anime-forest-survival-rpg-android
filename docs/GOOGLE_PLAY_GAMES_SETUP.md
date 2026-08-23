@@ -8,7 +8,7 @@ In [Google Play Console](https://play.google.com/console/), create or open the g
 
 | Setting | Value |
 |---|---|
-| Android package name | `com.darkvirgoyt.forestslice` |
+| Android package name | `com.darvirgoyt.aethelgrad` |
 | Game services project ID | The numeric ID shown by Play Console |
 | Minimum Android version | API 26 |
 | Supported architectures | `arm64-v8a`, `x86_64` |
