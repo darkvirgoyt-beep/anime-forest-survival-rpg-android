@@ -50,6 +50,7 @@ public:
     float maxHealth = 1.0f;
     float invulnerabilitySeconds = 0.0f;
     float hitstunSeconds = 0.0f;
+    float groundedGraceSeconds = 0.0f;
 
     void tick(const InputFrame& input, float deltaSeconds,
               const physics::StaticObstacle* obstacles, int obstacleCount,

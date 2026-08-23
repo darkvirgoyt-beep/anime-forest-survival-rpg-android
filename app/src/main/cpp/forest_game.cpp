@@ -937,6 +937,59 @@ void draw3DEmberling(const Mat4& viewProjection) {
     draw3DGlowOrb(viewProjection, px, 0.78f + bob, pz + 0.07f, 0.075f, 1.0f, 0.38f, 0.08f, glow);
 }
 
+void draw3DSkyOrb(const Mat4& viewProjection, float px, float pz, float yaw, float daylight) {
+    const bool night = currentTimePhase() == TimePhase::Night;
+    const float orbX = px + std::sin(yaw) * 22.0f;
+    const float orbZ = pz + std::cos(yaw) * 22.0f;
+    if (night) {
+        draw3DSphere(viewProjection, orbX, 8.0f, orbZ, 1.45f, 0.78f, 0.86f, 1.0f, 0.92f);
+        draw3DSphere(viewProjection, orbX + 0.30f, 8.12f, orbZ - 0.08f, 1.42f, 0.015f, 0.035f, 0.11f, 0.92f);
+    } else {
+        const float warmth = 0.86f + daylight * 0.14f;
+        draw3DSphere(viewProjection, orbX, 8.0f, orbZ, 1.30f, 1.0f, warmth, 0.42f, 0.92f);
+        draw3DSphere(viewProjection, orbX, 8.0f, orbZ, 1.75f, 1.0f, 0.66f, 0.20f, 0.12f);
+    }
+}
+
+void draw3DVegetationDetails(const Mat4& viewProjection, float daylight) {
+    constexpr float details[][4] = {
+        {-6.0f, -0.30f, 0.22f, 0.00f}, {-5.0f, 2.15f, 0.17f, 0.10f},
+        {-3.4f, 3.05f, 0.20f, 0.05f}, {3.95f, 2.10f, 0.18f, 0.16f},
+        {5.30f, -0.62f, 0.15f, 0.08f}, {2.55f, 1.55f, 0.13f, 0.02f},
+        {-1.75f, 1.25f, 0.14f, 0.12f}, {1.90f, 3.20f, 0.12f, 0.04f}
+    };
+    const int visible = std::min(8, 3 + gGraphicsQuality * 2);
+    for (int i = 0; i < visible; ++i) {
+        const float x = details[i][0];
+        const float z = details[i][1];
+        const float size = details[i][2];
+        const float sway = std::sin(gTime * 2.2f + static_cast<float>(i)) * 0.012f;
+        draw3DBox(viewProjection, x, 0.10f, z, size * 0.18f, 0.20f, size * 0.12f,
+                  0.07f * daylight, 0.25f * daylight, 0.16f * daylight, 0.92f);
+        draw3DBox(viewProjection, x + sway, 0.24f, z, size * 0.10f, 0.30f, size * 0.08f,
+                  0.18f * daylight, 0.52f * daylight, 0.25f * daylight, 0.88f);
+        draw3DBox(viewProjection, x - sway, 0.22f, z + 0.015f, size * 0.08f, 0.26f, size * 0.08f,
+                  0.28f * daylight, 0.66f * daylight, 0.30f * daylight, 0.82f);
+    }
+}
+
+void draw3DWaterSurface(const Mat4& viewProjection) {
+    const auto& stream = gWaterVolumes[0];
+    const float x = stream.bounds.center.x * 4.3f;
+    const float z = -stream.bounds.center.y * 4.0f;
+    const float width = stream.bounds.halfExtents.x * 8.6f;
+    const float depth = stream.bounds.halfExtents.y * 8.0f;
+    draw3DBox(viewProjection, x, stream.surfaceY + 0.026f, z, width, 0.024f, depth,
+              0.04f, 0.30f, 0.42f, 0.78f);
+    const int waves = std::min(7, 3 + gGraphicsQuality);
+    for (int i = 0; i < waves; ++i) {
+        const float waveX = x - width * 0.36f + static_cast<float>(i) * width * 0.12f;
+        const float waveZ = z + std::sin(gTime * 2.4f + static_cast<float>(i)) * depth * 0.23f;
+        draw3DBox(viewProjection, waveX, stream.surfaceY + 0.045f, waveZ, width * 0.08f, 0.010f, 0.035f,
+                  0.30f, 0.82f, 0.88f, 0.72f);
+    }
+}
+
 void draw3DWeather(const Mat4& viewProjection) {
     const float intensity = rainIntensity();
     if (intensity <= 0.0f) return;
@@ -1076,8 +1129,13 @@ void draw3DWorld() {
     glClearColor(skyR, skyG, skyB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
+    glUseProgram(g3DProgram);
+    glUniform1f(g3DLightLevel, gSceneLightLevel);
+    glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
+    glUniform1f(g3DFogAmount, gSceneFogAmount);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
+    draw3DSkyOrb(viewProjection, px, pz, yaw, daylight);
     drawPrototypeTerrainChunks(viewProjection, daylight);
     draw3DBox(viewProjection, -4.4f, 0.055f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
     draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
@@ -1104,6 +1162,7 @@ void draw3DWorld() {
         draw3DGrassTuft(viewProjection, 2.7f, -2.0f, 0.74f, 0.48f, 0.36f, 0.12f);
         draw3DGrassTuft(viewProjection, 4.0f, 1.1f, 0.86f, 0.56f, 0.78f, 0.80f);
     }
+    draw3DVegetationDetails(viewProjection, daylight);
     draw3DBox(viewProjection, 3.8f, 0.10f, -1.2f, 1.2f, 0.20f, 0.8f, 0.78f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 3.8f, 0.28f, -1.2f, 0.75f, 0.18f, 0.52f, 0.92f, 0.65f, 0.22f);
     drawTeleportationTower(viewProjection);
@@ -1114,6 +1173,7 @@ void draw3DWorld() {
     draw3DMobs(viewProjection);
     for (const CoOpPeer& peer : gCoOpPeers) draw3DPeer(viewProjection, peer, static_cast<int>(&peer - gCoOpPeers));
     draw3DEmberling(viewProjection);
+    draw3DWaterSurface(viewProjection);
     draw3DPlayer(viewProjection, firstPerson);
     draw3DWeather(viewProjection);
     glDisable(GL_CULL_FACE);

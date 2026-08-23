@@ -93,6 +93,7 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
         }
     }
     body.step(cameraRelative, dt, obstacles, obstacleCount, waterVolumes, waterCount);
+    groundedGraceSeconds = body.grounded ? 0.11f : std::max(0.0f, groundedGraceSeconds - dt);
     secondaryMotion.step(body.velocity, {0.018f * std::sin(motionTime * 0.7f), 0.004f * std::cos(motionTime * 0.43f)}, dt, body.water.overlapping);
 
     if (body.water.submerged) state = LocomotionState::Swim;
@@ -104,9 +105,10 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
 
 bool ThirdPersonController::jump() {
     if (!isAlive() || dodgeSeconds > 0.0f || stamina < 0.12f) return false;
-    if (!body.grounded && !body.water.submerged) return false;
+    if (!body.grounded && groundedGraceSeconds <= 0.0f && !body.water.submerged) return false;
     stamina -= 0.12f;
-    body.jump();
+    body.jump(groundedGraceSeconds > 0.0f);
+    groundedGraceSeconds = 0.0f;
     state = LocomotionState::Jump;
     return true;
 }

@@ -99,13 +99,17 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
     const float locomotionMultiplier = water.overlapping ? waterSpeedMultiplier : 1.0f;
     const float targetX = direction.x * maxSpeed * locomotionMultiplier;
     const float targetY = direction.y * maxSpeed * locomotionMultiplier;
-    const float blend = acceleration * (water.overlapping ? 0.72f : 1.0f) * dt;
+    const float controlScale = grounded ? 1.0f : 0.42f;
+    const float response = 1.0f - std::exp(-acceleration * controlScale * (water.overlapping ? 0.72f : 1.0f) * dt);
 
-    velocity.x = approach(velocity.x, targetX, blend);
-    velocity.y = approach(velocity.y, targetY, blend);
+    // Exponential response reaches the requested speed smoothly and remains
+    // stable when a device drops a frame, unlike a frame-sized linear step.
+    velocity.x += (targetX - velocity.x) * response;
+    velocity.y += (targetY - velocity.y) * response;
     if (inputLength < 0.05f) {
-        velocity.x = approach(velocity.x, water.current.x, friction * dt);
-        velocity.y = approach(velocity.y, water.current.y, friction * dt);
+        const float damping = std::exp(-friction * (grounded ? 1.0f : 0.38f) * dt);
+        velocity.x = water.current.x + (velocity.x - water.current.x) * damping;
+        velocity.y = water.current.y + (velocity.y - water.current.y) * damping;
     }
 
     // Vertical motion is independent from the X/Z walkable plane. This keeps
@@ -115,7 +119,7 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
         const float depth = water.depth;
         const float buoyancyForce = -gravity * water.buoyancy * depth;
         verticalVelocity += buoyancyForce * dt;
-        const float dragFactor = std::max(0.0f, 1.0f - water.drag * depth * dt);
+        const float dragFactor = std::exp(-water.drag * (0.72f + depth * 0.88f) * dt);
         velocity.x = velocity.x * dragFactor + water.current.x * dt;
         velocity.y = velocity.y * dragFactor + water.current.y * dt;
         if (depth > 0.82f && verticalVelocity < 0.0f) verticalVelocity *= 0.35f;
@@ -139,8 +143,8 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
     water = sampleWater(*this, waterVolumes, waterCount);
 }
 
-void CharacterBody::jump() {
-    if (!grounded) return;
+void CharacterBody::jump(bool allowGrace) {
+    if (!grounded && !allowGrace) return;
     verticalVelocity = jumpVelocity * (water.overlapping ? waterJumpMultiplier : 1.0f);
     verticalPosition = 0.001f;
     grounded = false;

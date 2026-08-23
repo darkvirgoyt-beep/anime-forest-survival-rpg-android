@@ -60,11 +60,11 @@ struct CharacterBody {
     Vec2 halfExtents{0.045f, 0.08f};
     float verticalPosition = 0.0f;
     float verticalVelocity = 0.0f;
-    float acceleration = 5.8f;
+    float acceleration = 7.2f;
     float maxSpeed = 0.55f;
-    float friction = 7.0f;
-    float gravity = -1.5f;
-    float jumpVelocity = 0.72f;
+    float friction = 8.5f;
+    float gravity = -2.35f;
+    float jumpVelocity = 1.08f;
     float waterSpeedMultiplier = 0.52f;
     float waterJumpMultiplier = 0.68f;
     bool grounded = true;
@@ -73,7 +73,7 @@ struct CharacterBody {
     void step(const Vec2& input, float deltaSeconds,
               const StaticObstacle* obstacles, int obstacleCount,
               const WaterVolume* waterVolumes = nullptr, int waterCount = 0);
-    void jump();
+    void jump(bool allowGrace = false);
     void applyImpulse(const Vec2& impulse, float maxSpeed = 1.75f);
 };
 
