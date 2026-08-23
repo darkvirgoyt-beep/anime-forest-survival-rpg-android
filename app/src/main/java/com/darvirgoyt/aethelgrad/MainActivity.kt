@@ -155,12 +155,18 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
-        // Forest is fast-follow content in production; this call is safe to repeat
-        // and lets Play resume or verify the pack after an update.
-        assetPacks.request("assetpack_forest")
+        // Production requests the fast-follow forest pack. The prototype variant stays
+        // offline and uses the built-in native slice so it is playable immediately.
+        if (!BuildConfig.PROTOTYPE_MODE) {
+            assetPacks.request("assetpack_forest")
+        } else {
+            onboardingOverlay.visibility = View.GONE
+        }
         updateGyroButton()
         registerGyro()
-        accountSession.initialize(this, ::applyAccountSnapshot)
+        if (!BuildConfig.PROTOTYPE_MODE) {
+            accountSession.initialize(this, ::applyAccountSnapshot)
+        }
     }
 
     private fun detectSupportedTargetFps(): List<Int> {
@@ -763,7 +769,11 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(dp(28), dp(16), dp(28), 0)
         }
         val title = TextView(this).apply {
-            text = "AETHELGARD  •  DAY 1  •  DAY"
+            text = if (BuildConfig.PROTOTYPE_MODE) {
+                "AETHEL GARD  •  PROTOTYPE  •  OFFLINE"
+            } else {
+                "AETHEL GARD  •  DAY 1  •  DAY"
+            }
             textSize = 15f
             setTextColor(Color.rgb(244, 218, 155))
             typeface = android.graphics.Typeface.DEFAULT_BOLD

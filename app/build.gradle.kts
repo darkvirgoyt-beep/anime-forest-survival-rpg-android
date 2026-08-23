@@ -7,6 +7,10 @@ android {
     namespace = "com.darvirgoyt.aethelgrad"
     compileSdk = 35
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.darvirgoyt.aethelgrad"
         minSdk = 26
@@ -26,8 +30,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "PROTOTYPE_MODE", "true")
+        }
+        create("prototype") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".prototype"
+            versionNameSuffix = "-prototype"
+            buildConfigField("boolean", "PROTOTYPE_MODE", "true")
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = false
+            buildConfigField("boolean", "PROTOTYPE_MODE", "false")
             // Test-distribution signing only. Replace with a protected release keystore for Play Store publishing.
             signingConfig = signingConfigs.getByName("debug")
             proguardFiles(

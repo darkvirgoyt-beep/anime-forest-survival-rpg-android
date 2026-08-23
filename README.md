@@ -66,3 +66,8 @@ For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.m
 
 
 **Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android forest-survival RPG prototype.
+
+
+## First playable prototype
+
+The first playable milestone is documented in [`docs/FIRST_PLAYABLE_PROTOTYPE.md`](docs/FIRST_PLAYABLE_PROTOTYPE.md). It is an offline development build that starts directly in the native forest slice without Google login or remote asset packs. Build it with `gradle assemblePrototype`; the APK is written to `app/build/outputs/apk/prototype/app-prototype.apk` and uses the `.prototype` application-id suffix so it can coexist with the release build. The release build remains online-only and continues to use the production session boundary.
