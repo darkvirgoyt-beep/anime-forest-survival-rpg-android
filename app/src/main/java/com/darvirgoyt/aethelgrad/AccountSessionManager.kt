@@ -113,6 +113,7 @@ class AccountSessionManager {
     private var credentialManager: CredentialManager? = null
     private var stateListener: ((SessionSnapshot) -> Unit)? = null
     private var googleWebClientId: String = ""
+    private var apiBaseUrl: String = ""
     private var authExchangeUrl: String = ""
     private var guestAuthUrl: String = ""
     private var authRefreshUrl: String = ""
@@ -125,8 +126,9 @@ class AccountSessionManager {
         this.activity = activity
         stateListener = onStateChanged
         googleWebClientId = activity.getString(R.string.google_web_client_id)
+        apiBaseUrl = activity.getString(R.string.api_base_url).trimEnd('/')
         authExchangeUrl = activity.getString(R.string.auth_exchange_url)
-        guestAuthUrl = authExchangeUrl.substringBeforeLast("/exchange") + "/guest"
+        guestAuthUrl = activity.getString(R.string.auth_guest_url)
         authRefreshUrl = activity.getString(R.string.auth_refresh_url)
         guestKey = activity.getSharedPreferences("aethelgard_guest_identity", Activity.MODE_PRIVATE)
             .getString("guest_key", null)
@@ -153,9 +155,14 @@ class AccountSessionManager {
         networkExecutor.execute {
             try {
                 val response = postJson(guestAuthUrl, JSONObject().put("guestKey", key).toString())
-                val bundle = parseSessionBundle(response)
-                if (response.statusCode !in 200..299 || bundle == null) {
-                    publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Online guest service is unavailable. Check your connection and try again.", isGuest = true))
+                val bundle = if (response.isJson()) parseSessionBundle(response) else null
+                if (!response.isJson() || response.statusCode !in 200..299 || bundle == null) {
+                    val message = if (!response.isJson()) {
+                        "Online service returned an invalid response. Verify the game backend deployment and try again."
+                    } else {
+                        "Online guest service is unavailable. Check your connection and try again."
+                    }
+                    publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = message, isGuest = true))
                     return@execute
                 }
                 accessSessionToken = bundle.accessToken
@@ -252,6 +259,10 @@ class AccountSessionManager {
         networkExecutor.execute {
             try {
                 val response = postJson(authExchangeUrl, "{\"idToken\":\"${escapeJson(idToken)}\"}")
+                if (!response.isJson()) {
+                    publishFromNetwork(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Game backend returned a web page instead of an authentication response. Verify the backend URL and try again."))
+                    return@execute
+                }
                 if (response.statusCode !in 200..299) {
                     publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server rejected the Google login (${response.statusCode})."))
                     return@execute
@@ -470,7 +481,7 @@ class AccountSessionManager {
                     publishSnapshotResult(onComplete, null, "Cloud world did not return a snapshot location.")
                     return@execute
                 }
-                val absoluteUrl = if (downloadUrl.startsWith("https://")) downloadUrl else authExchangeUrl.substringBefore("/api/game-auth") + downloadUrl
+                val absoluteUrl = if (downloadUrl.startsWith("https://")) downloadUrl else "$apiBaseUrl/${downloadUrl.trimStart('/')}"
                 // The backend already authenticated ownership before minting this short-lived object URL.
                 // Do not expose the game access token to the storage host.
                 val snapshot = requestJson("GET", absoluteUrl, null, null)
@@ -695,7 +706,7 @@ class AccountSessionManager {
         } else null
     }
 
-    private fun cloudEndpoint(path: String): String = authExchangeUrl.substringBeforeLast("/exchange") + path
+    private fun cloudEndpoint(path: String): String = "$apiBaseUrl/${path.trimStart('/')}"
 
     private fun publish(next: SessionSnapshot): SessionSnapshot {
         snapshot = next
@@ -730,7 +741,7 @@ class AccountSessionManager {
             ?.use { it.readText() }
             .orEmpty()
         connection.disconnect()
-        return HttpResponse(statusCode, body)
+        return HttpResponse(statusCode, body, connection.contentType.orEmpty())
     }
 
     private fun parseWorldManifests(json: String): List<CloudWorldManifest> {
@@ -781,5 +792,7 @@ class AccountSessionManager {
     }
 
     private data class SessionBundle(val accessToken: String, val refreshToken: String, val accountId: String, val expiresAt: Long)
-    private data class HttpResponse(val statusCode: Int, val body: String)
+    private data class HttpResponse(val statusCode: Int, val body: String, val contentType: String) {
+        fun isJson(): Boolean = contentType.lowercase(Locale.US).contains("application/json") || body.trimStart().startsWith("{")
+    }
 }

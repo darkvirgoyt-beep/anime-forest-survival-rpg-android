@@ -254,8 +254,13 @@ class MainActivity : Activity(), SensorEventListener {
         loadHeroineCharacterTexture()
         updateGyroButton()
         registerGyro()
-        networkProbeHost = Uri.parse(getString(R.string.auth_exchange_url)).host.orEmpty()
+        networkProbeHost = Uri.parse(getString(R.string.api_base_url)).host.orEmpty()
         networkMonitor = NetworkConnectivityMonitor(this)
+        if (!BuildConfig.PROTOTYPE_MODE) {
+            // Initialize the session boundary before starting connectivity callbacks;
+            // the monitor can report immediately on a warm network.
+            accountSession.initialize(this, ::applyAccountSnapshot)
+        }
         networkMonitor.start(::applyConnectivitySnapshot)
         if (BuildConfig.PROTOTYPE_MODE) {
             // The .prototype application id is an offline development harness.
@@ -263,12 +268,10 @@ class MainActivity : Activity(), SensorEventListener {
             // Google credential whose Android OAuth package deliberately differs.
             onboardingOverlay.visibility = View.GONE
         } else {
-            // The release package remains online-only, but entry is guest-first:
-            // it connects silently and never opens a Gmail account picker.
+            // The release package remains online-only and requires an explicit
+            // Google account sign-in before entering the production world.
             onboardingOverlay.visibility = View.VISIBLE
-            accountSession.initialize(this, ::applyAccountSnapshot)
             if (networkOnline) {
-                requestOnlineGuestSession()
                 when {
                     selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
                         applyResourceTier(chosenTier)
@@ -311,9 +314,8 @@ class MainActivity : Activity(), SensorEventListener {
             networkStatusLabel.text = "NETWORK: ${snapshot.message}  •  PING: —"
             networkStatusLabel.setTextColor(Color.rgb(164, 231, 190))
         }
-        if (!BuildConfig.PROTOTYPE_MODE && accountSession.snapshot.state != SessionState.AUTHENTICATED) {
-            guestSignInAttempted = false
-            requestOnlineGuestSession()
+        if (!BuildConfig.PROTOTYPE_MODE && accountSession.snapshot.state != SessionState.AUTHENTICATED && ::onboardingStatus.isInitialized) {
+            onboardingStatus.text = "ONLINE READY  •  SIGN IN WITH GOOGLE TO CONTINUE"
         }
         refreshSelectedServerPing()
     }
@@ -607,7 +609,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "Connecting automatically as a guest. No Gmail required."
+            text = "Sign in with Google to protect your cloud world and continue online."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
@@ -631,12 +633,8 @@ class MainActivity : Activity(), SensorEventListener {
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.rgb(220, 182, 101))
             isChecked = false
         }
-        val google = cinematicButton("✦  OPTIONAL GOOGLE LINK", true) {
+        val google = cinematicButton("✦  SIGN IN WITH GOOGLE", true) {
             accountSession.requestGoogleSignIn()
-        }.apply {
-            visibility = View.GONE
-            isEnabled = false
-            alpha = 0.5f
         }
         consent.visibility = View.GONE
         consent.setOnCheckedChangeListener { _, checked ->
@@ -771,7 +769,7 @@ class MainActivity : Activity(), SensorEventListener {
         )
     }
 
-    /** Guest mode skips account setup and opens the online world immediately. */
+    /** Developer-only guest mode skips account setup and opens the online world immediately. */
     private fun enterGuestOnlineWorld() {
         if (!requireOnline("ONLINE WORLD")) return
         onboardingOverlay.visibility = View.GONE
@@ -793,7 +791,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    /** The login panel remains available only for optional account linking; guest launch never reaches it. */
+    /** Restores the signed-in account’s profile and cloud-world setup after Google authentication. */
     private fun showCharacterSetup(accountId: String?, recoveredProfile: PlayerProfile? = null, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
         runOnUiThread {
             setPlayerName(recoveredProfile?.username)
@@ -1676,6 +1674,7 @@ class MainActivity : Activity(), SensorEventListener {
                 activeCloudWorld = null
                 currentPlayerProfile = null
                 authenticationTransitionStarted = false
+                guestSignInAttempted = false
                 cloudRecoveryNotice = null
                 hudHandler.removeCallbacks(cloudSaveUpdater)
                 hudHandler.removeCallbacks(coOpUpdater)
