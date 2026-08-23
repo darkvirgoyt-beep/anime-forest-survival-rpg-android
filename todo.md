@@ -31,4 +31,5 @@
 - [x] Separate the offline `.prototype` harness from the online release at launch and document the matching Google OAuth package/artifact path; physical release-device sign-in validation remains required.
 - [x] Add authenticated logout and character/inventory access controls, and repair reversed horizontal joystick direction in the mobile gameplay HUD.
 - [x] Add a centered aim crosshair, repair jump activation, replace the sprint box with a touch-first hold control, move the profile to the top-right, and add a circular top-left mini-map.
+- [x] Add a premium top-right health bar and stamina meter beside the profile icon, driven by the existing live native HUD state.
 - [x] Design and implement the Emberling companion-bond milestone with original creature interaction, visible follow/stay behavior, cloud-state persistence, native regression coverage, and explicit mobile/online authority boundaries.

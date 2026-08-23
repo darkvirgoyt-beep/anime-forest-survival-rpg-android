@@ -118,8 +118,12 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var joystickView: JoystickView
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
+<<<<<<< HEAD
     private var hudPlayerTitle: TextView? = null
     private var currentPlayerName = "PLAYER NAME"
+=======
+    private lateinit var vitalMeter: VitalMeterView
+>>>>>>> 30fc7c7 (Add profile health and stamina meters)
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
@@ -1887,7 +1891,7 @@ class MainActivity : Activity(), SensorEventListener {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(126), dp(9), dp(158), dp(0))
+            setPadding(dp(126), dp(9), dp(356), dp(0))
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 intArrayOf(Color.argb(188, 8, 18, 23), Color.argb(132, 10, 22, 26), Color.argb(22, 8, 18, 23))
@@ -1965,6 +1969,11 @@ class MainActivity : Activity(), SensorEventListener {
         overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(10)
             rightMargin = dp(18)
+        })
+        vitalMeter = VitalMeterView(this)
+        overlay.addView(vitalMeter, FrameLayout.LayoutParams(dp(206), dp(58), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(10)
+            rightMargin = dp(84)
         })
 
         var firstPerson = false
@@ -2167,6 +2176,7 @@ class MainActivity : Activity(), SensorEventListener {
         val campState = values.getOrNull(25)?.replace('_', ' ')?.ifBlank { "NO CAMP" } ?: "NO CAMP"
         val discoveredSectors = number(26)
         requestDiscoveredSectorContent(discoveredSectors)
+        if (::vitalMeter.isInitialized) vitalMeter.updateVitals(health, stamina)
         stateLabel.text = "$biome  •  DAY $daysPlayed  •  $phase  •  $weather  •  $viewMode  •  TARGET $target  •  HP $health  •  STA $stamina  •  LV $level"
         stateLabel.setTextColor(
             when {
