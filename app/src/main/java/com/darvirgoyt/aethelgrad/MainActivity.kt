@@ -2,6 +2,7 @@ package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -120,6 +121,9 @@ class MainActivity : Activity(), SensorEventListener {
     private var cloudRecoveryNotice: String? = null
     private var activeCoOpRoom: CoOpRoomSnapshot? = null
     private var coOpHeartbeatInFlight = false
+    private var coOpReconnectInFlight = false
+    private var coOpReconnectAttempts = 0
+    private var coOpNextReconnectAtMs = 0L
     private var guestRoomConnectInFlight = false
     private var lastCoOpTowerRevision = 0
     private var coOpRequestCounter = 0L
@@ -167,7 +171,14 @@ class MainActivity : Activity(), SensorEventListener {
                     runOnUiThread {
                         accountSession.heartbeatCoOpRoom(room.code, x, y, atTower, towerRevision) { snapshot, error ->
                             coOpHeartbeatInFlight = false
-                            if (snapshot != null) applyCoOpSnapshot(snapshot) else if (error != null && ::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+                            if (snapshot != null) {
+                                coOpReconnectAttempts = 0
+                                coOpNextReconnectAtMs = 0L
+                                applyCoOpSnapshot(snapshot)
+                            } else if (error != null && ::coOpStatusLabel.isInitialized) {
+                                coOpStatusLabel.text = "CO-OP ${room.code}  •  CONNECTION LOST  •  RECONNECTING"
+                                requestCoOpReconnect(room.code)
+                            }
                         }
                     }
                 }
@@ -1074,6 +1085,38 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    private fun requestCoOpReconnect(roomCode: String) {
+        if (coOpReconnectInFlight) return
+        val now = System.currentTimeMillis()
+        if (now < coOpNextReconnectAtMs) return
+        coOpReconnectInFlight = true
+        coOpReconnectAttempts += 1
+        accountSession.reconnectCoOpRoom(roomCode) { snapshot, error ->
+            coOpReconnectInFlight = false
+            if (snapshot != null) {
+                coOpReconnectAttempts = 0
+                coOpNextReconnectAtMs = 0L
+                applyCoOpSnapshot(snapshot)
+                if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP ${snapshot.code}  •  RECONNECTED  •  ${snapshot.participants.size}/${snapshot.maxPlayers}"
+            } else {
+                val delay = (1_000L shl coOpReconnectAttempts.coerceIn(0, 3)).coerceAtMost(8_000L)
+                coOpNextReconnectAtMs = System.currentTimeMillis() + delay
+                if (::coOpStatusLabel.isInitialized) {
+                    coOpStatusLabel.text = if (coOpReconnectAttempts >= 4) {
+                        "CO-OP $roomCode  •  RECONNECT FAILED  •  OPEN CO-OP ROOM"
+                    } else {
+                        "CO-OP $roomCode  •  RETRYING CONNECTION ${coOpReconnectAttempts}/4"
+                    }
+                }
+                if (error == "Your membership has expired." || error == "Tower room is no longer available.") {
+                    activeCoOpRoom = null
+                    hudHandler.removeCallbacks(coOpUpdater)
+                    if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP OFFLINE  •  $error"
+                }
+            }
+        }
+    }
+
     private fun applyCoOpSnapshot(snapshot: CoOpRoomSnapshot) {
         activeCoOpRoom = snapshot
         if (!::coOpStatusLabel.isInitialized) return
@@ -1098,6 +1141,9 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun startCoOpRoom(snapshot: CoOpRoomSnapshot) {
         activeCoOpRoom = snapshot
+        coOpReconnectInFlight = false
+        coOpReconnectAttempts = 0
+        coOpNextReconnectAtMs = 0L
         lastCoOpTowerRevision = 0
         gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
         applyCoOpSnapshot(snapshot)
@@ -1184,6 +1230,14 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(create, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         panel.addView(join, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
         if (activeCoOpRoom != null) {
+            val share = actionButton("SHARE ROOM INVITE") {
+                val room = activeCoOpRoom ?: return@actionButton
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, "Join my AETHELGRAD co-op tower room ${room.code} in ${room.region}. Up to ${room.maxPlayers} players.")
+                }, "Share AETHELGRAD invite"))
+            }
+            panel.addView(share, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
             val leave = actionButton("LEAVE CURRENT ROOM") {
                 activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
                 activeCoOpRoom = null

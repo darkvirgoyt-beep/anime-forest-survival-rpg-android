@@ -246,6 +246,20 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     res.json(room);
   });
 
+  app.post("/v1/coop/rooms/:code/reconnect", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const roomResult = await pool.query("SELECT id FROM coop_rooms WHERE code = $1", [code]);
+    if (roomResult.rowCount !== 1) return res.status(404).json({ error: "room_not_found" });
+    const roomId = roomResult.rows[0].id;
+    const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
+    if (membership.rowCount !== 1) return res.status(403).json({ error: "room_membership_required" });
+    await pool.query("UPDATE coop_members SET last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
+    const room = await getCoOpRoom(pool, code, req.accountId);
+    if (!room) return res.status(404).json({ error: "room_not_found" });
+    res.json(room);
+  });
+
   app.post("/v1/coop/rooms/:code/heartbeat", requireSession, async (req, res) => {
     const code = normalizeRoomCode(req.params.code);
     if (!code) return res.status(400).json({ error: "invalid_room_code" });

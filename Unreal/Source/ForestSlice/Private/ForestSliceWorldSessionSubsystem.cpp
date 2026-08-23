@@ -1,5 +1,21 @@
 #include "ForestSliceWorldSessionSubsystem.h"
 
+namespace
+{
+    bool IsValidInviteCode(const FString& InviteCode)
+    {
+        const FString CleanCode = InviteCode.TrimStartAndEnd();
+        if (CleanCode.Len() != 6) return false;
+        for (const TCHAR Character : CleanCode)
+        {
+            const bool bUppercaseLetter = Character >= TCHAR('A') && Character <= TCHAR('Z');
+            const bool bDigit = Character >= TCHAR('0') && Character <= TCHAR('9');
+            if (!bUppercaseLetter && !bDigit) return false;
+        }
+        return true;
+    }
+}
+
 bool UForestSliceWorldSessionSubsystem::CreateWorld(FName InWorldId, int32 InWorldSeed, EForestSliceWorldPrivacy InPrivacy)
 {
     if (InWorldId.IsNone()) return false;
@@ -19,7 +35,7 @@ bool UForestSliceWorldSessionSubsystem::CreateWorld(FName InWorldId, int32 InWor
 
 bool UForestSliceWorldSessionSubsystem::JoinWorld(FName InWorldId, const FString& InviteCode)
 {
-    if (InWorldId.IsNone() || InviteCode.TrimStartAndEnd().IsEmpty() || WorldId != InWorldId) return false;
+    if (InWorldId.IsNone() || !IsValidInviteCode(InviteCode) || WorldId != InWorldId) return false;
     SessionChanged.Broadcast(TEXT("WorldJoined"));
     return true;
 }
@@ -67,4 +83,51 @@ bool UForestSliceWorldSessionSubsystem::SetMemberReady(const FString& PlayerId, 
         return true;
     }
     return false;
+}
+
+bool UForestSliceWorldSessionSubsystem::AddOrReconnectMember(const FForestSliceCoopMember& InMember)
+{
+    const FString CleanPlayerId = InMember.PlayerId.TrimStartAndEnd();
+    if (CleanPlayerId.IsEmpty()) return false;
+
+    for (FForestSliceCoopMember& Member : Members)
+    {
+        if (Member.PlayerId != CleanPlayerId) continue;
+        Member.DisplayName = InMember.DisplayName;
+        Member.PingMilliseconds = FMath::Max(-1, InMember.PingMilliseconds);
+        Member.bReady = InMember.bReady;
+        SessionChanged.Broadcast(TEXT("PartyMemberReconnected"));
+        return true;
+    }
+
+    if (Members.Num() >= MaxCoopMembers) return false;
+    FForestSliceCoopMember NewMember = InMember;
+    NewMember.PlayerId = CleanPlayerId;
+    NewMember.PingMilliseconds = FMath::Max(-1, InMember.PingMilliseconds);
+    Members.Add(MoveTemp(NewMember));
+    SessionChanged.Broadcast(TEXT("PartyMemberJoined"));
+    return true;
+}
+
+bool UForestSliceWorldSessionSubsystem::RemoveMember(const FString& PlayerId)
+{
+    const FString CleanPlayerId = PlayerId.TrimStartAndEnd();
+    if (CleanPlayerId.IsEmpty()) return false;
+    const int32 Removed = Members.RemoveAll([&CleanPlayerId](const FForestSliceCoopMember& Member)
+    {
+        return Member.PlayerId == CleanPlayerId;
+    });
+    if (Removed == 0) return false;
+    SessionChanged.Broadcast(TEXT("PartyMemberLeft"));
+    return true;
+}
+
+bool UForestSliceWorldSessionSubsystem::CanStartCoopSession() const
+{
+    if (Members.Num() == 0) return false;
+    for (const FForestSliceCoopMember& Member : Members)
+    {
+        if (!Member.bReady) return false;
+    }
+    return true;
 }

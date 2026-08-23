@@ -34,7 +34,7 @@ function createMemoryPool() {
   async function query(sql, params = []) {
     const normalized = sql.replace(/\s+/g, " ").trim();
     if (normalized.includes("FROM sessions") && normalized.includes("token_hash")) {
-      const accountId = Number(params[0]) === 2 ? "account-b" : "account-a";
+      const accountId = ["account-a", "account-b", "account-c", "account-d", "account-e"][Math.max(0, Number(params[0]) - 1)] || "account-a";
       return { rowCount: 1, rows: [{ id: Number(params[0]), account_id: accountId }] };
     }
     if (normalized.startsWith("UPDATE sessions SET last_seen_at")) return { rowCount: 1, rows: [] };
@@ -78,6 +78,11 @@ function createMemoryPool() {
     }
     if (normalized.startsWith("SELECT 1 FROM coop_members")) {
       return memberFor(params[0], params[1]) ? { rowCount: 1, rows: [{}] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("UPDATE coop_members SET last_seen_at")) {
+      const member = memberFor(params[0], params[1]);
+      if (member) member.lastSeenAt = Date.now();
+      return { rowCount: 1, rows: [] };
     }
     if (normalized.startsWith("UPDATE coop_rooms SET world_time")) {
       const room = rooms.get(params[0]);
@@ -180,6 +185,9 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const baseUrl = `http://127.0.0.1:${server.address().port}`;
 const tokenA = issueAccessToken({ accountId: "account-a", sessionId: 1, secret: config.sessionSecret, now: Date.now(), ttlSeconds: 900 }).token;
 const tokenB = issueAccessToken({ accountId: "account-b", sessionId: 2, secret: config.sessionSecret, now: Date.now(), ttlSeconds: 900 }).token;
+const tokenC = issueAccessToken({ accountId: "account-c", sessionId: 3, secret: config.sessionSecret, now: Date.now(), ttlSeconds: 900 }).token;
+const tokenD = issueAccessToken({ accountId: "account-d", sessionId: 4, secret: config.sessionSecret, now: Date.now(), ttlSeconds: 900 }).token;
+const tokenE = issueAccessToken({ accountId: "account-e", sessionId: 5, secret: config.sessionSecret, now: Date.now(), ttlSeconds: 900 }).token;
 
 try {
   const created = await request(baseUrl, tokenA, "/v1/coop/rooms", "POST", { region: "asia" });
@@ -191,11 +199,23 @@ try {
   const joined = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/join`, "POST", {});
   assert.equal(joined.status, 200);
   assert.equal(joined.payload.participants.length, 2);
+  const joinedC = await request(baseUrl, tokenC, `/v1/coop/rooms/${code}/join`, "POST", {});
+  const joinedD = await request(baseUrl, tokenD, `/v1/coop/rooms/${code}/join`, "POST", {});
+  assert.equal(joinedC.status, 200);
+  assert.equal(joinedD.status, 200);
+  assert.equal(joinedD.payload.room.maxPlayers, 4);
+  assert.equal(joinedD.payload.participants.length, 4);
+  const full = await request(baseUrl, tokenE, `/v1/coop/rooms/${code}/join`, "POST", {});
+  assert.equal(full.status, 409);
 
   const tower = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/heartbeat`, "POST", { playerX: -0.06, playerY: 0.28, atTower: true, towerRevision: 1 });
   assert.equal(tower.status, 200);
   assert.equal(tower.payload.room.towerRevision, 1);
   assert.ok(tower.payload.participants.some(participant => participant.accountId === "account-a" && participant.atTower));
+
+  const reconnect = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/reconnect`, "POST", {});
+  assert.equal(reconnect.status, 200);
+  assert.equal(reconnect.payload.room.maxPlayers, 4);
 
   const friendView = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}`, "GET");
   assert.equal(friendView.status, 200);
@@ -228,7 +248,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     roomCode: code,
-    checks: ["room_created", "friend_joined", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated"]
+    checks: ["room_created", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated"]
   }, null, 2));
 } finally {
   await new Promise(resolve => server.close(resolve));

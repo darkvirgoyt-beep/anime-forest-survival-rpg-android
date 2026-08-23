@@ -530,6 +530,28 @@ class AccountSessionManager {
         }
     }
 
+    /** Reconnects to an existing room after a transient heartbeat/network interruption. */
+    fun reconnectCoOpRoom(roomCode: String, onComplete: (CoOpRoomSnapshot?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your co-op session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/reconnect"), token, "{}")
+                if (response.statusCode !in 200..299) {
+                    publishCoOpResult(onComplete, null, if (response.statusCode == 404) "Tower room is no longer available." else if (response.statusCode == 403) "Your membership has expired." else "Reconnect rejected (${response.statusCode}).")
+                    return@execute
+                }
+                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+            } catch (_: Exception) {
+                publishCoOpResult(onComplete, null, "Reconnect server unavailable.")
+            }
+        }
+    }
+
     fun heartbeatCoOpRoom(roomCode: String, playerX: Float, playerY: Float, atTower: Boolean, towerRevision: Int, onComplete: (CoOpRoomSnapshot?, String?) -> Unit = { _, _ -> }) {
         val token = currentAccessToken()
         val normalized = roomCode.trim().uppercase()

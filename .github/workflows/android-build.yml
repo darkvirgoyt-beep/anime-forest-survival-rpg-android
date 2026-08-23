@@ -151,6 +151,15 @@ jobs:
           grep -q 'WAITING_FOR_WIFI' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
           grep -q 'REQUIRES_USER_CONFIRMATION' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
           grep -q 'requestProductionContent' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'reconnectCoOpRoom' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'RECONNECTING' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'reconnect' server/src/server.mjs
+          grep -q 'room_full' server/src/server.mjs
+          grep -q 'max_players INTEGER NOT NULL DEFAULT 4' server/sql/003_coop_rendezvous.sql
+          grep -q 'MaxCoopMembers = 4' Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
+          grep -q 'AddOrReconnectMember' Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
+          grep -q 'CanStartCoopSession' Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
+          test -f docs/MULTIPLAYER_WORKFLOW.md
 
   native-tests:
     runs-on: ubuntu-latest
@@ -208,6 +217,7 @@ jobs:
           npm ci
           npm run check
           npm test
+          node --test test/coop_room_simulation.test.mjs
           test -f sql/002_hardened_sessions.sql
           grep -q 'GOOGLE_GAME_SERVER_CLIENT_SECRET' .env.example
           grep -q 'GAME_ACCESS_TOKEN_TTL_SECONDS' .env.example

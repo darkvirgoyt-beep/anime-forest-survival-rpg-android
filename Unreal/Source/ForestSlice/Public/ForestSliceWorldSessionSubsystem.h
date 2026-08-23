@@ -107,6 +107,8 @@ class FORESTSLICE_API UForestSliceWorldSessionSubsystem : public UGameInstanceSu
     GENERATED_BODY()
 
 public:
+    static constexpr int32 MaxCoopMembers = 4;
+
     UFUNCTION(BlueprintCallable, Category = "World")
     bool CreateWorld(FName WorldId, int32 WorldSeed, EForestSliceWorldPrivacy Privacy);
 
@@ -124,6 +126,15 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Coop")
     bool SetMemberReady(const FString& PlayerId, bool bReady);
+
+    UFUNCTION(BlueprintCallable, Category = "Coop")
+    bool AddOrReconnectMember(const FForestSliceCoopMember& Member);
+
+    UFUNCTION(BlueprintCallable, Category = "Coop")
+    bool RemoveMember(const FString& PlayerId);
+
+    UFUNCTION(BlueprintPure, Category = "Coop")
+    bool CanStartCoopSession() const;
 
     UFUNCTION(BlueprintPure, Category = "World")
     FForestSliceCloudSaveHeader GetSaveHeader() const { return SaveHeader; }
