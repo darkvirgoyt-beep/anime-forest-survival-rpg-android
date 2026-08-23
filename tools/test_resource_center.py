@@ -113,7 +113,7 @@ def assert_source_contract(repo: Path) -> None:
         ("resource-center title", "PREPARE ${resourceTier.name} GRAPHICS", main),
         ("resource-tier chooser", "SELECT GRAPHICS QUALITY", main),
         ("low-resource option", "LOW GRAPHICS", main),
-        ("compiled graphics copy", "compiled graphics, shaders, world sectors", main),
+        ("download content description", "resourceTier.description", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
         ("tier pack selection", "packNamesFor(tier)", catalog),
         ("production readiness gate", "productionContentReady", catalog),
