@@ -7,7 +7,8 @@
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:icon="@drawable/aethelgard_icon"
+        android:icon="@drawable/aethelgard_profile_gold"
+        android:roundIcon="@drawable/aethelgard_profile_gold"
         android:supportsRtl="true"
         android:name=".ForestSliceApplication"
         android:theme="@style/Theme.ForestSlice">

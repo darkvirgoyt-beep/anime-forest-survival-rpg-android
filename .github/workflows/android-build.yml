@@ -55,6 +55,7 @@ jobs:
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/ServerDirectory.kt
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/CharacterCreationModel.kt
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
+          test -f app/src/main/res/drawable/aethelgard_profile_gold.xml
           test -f assets/asset_budget.json
           test -f tools/validate_asset_budget.py
           test -f assetpack_core/build.gradle.kts
@@ -83,6 +84,9 @@ jobs:
           grep -q 'RequestSleep' Unreal/Source/ForestSlice/Private/ForestSliceWorldClock.cpp
           grep -q 'SetGyroSensorSupport' Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
           grep -q 'StartGooglePlaySignIn' Unreal/Source/ForestSlice/Public/ForestSliceAccountSubsystem.h
+          grep -q 'toggleViewMode' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'teleportToTower' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'drawTeleportationTower' app/src/main/cpp/forest_game.cpp
 
   native-tests:
     runs-on: ubuntu-latest

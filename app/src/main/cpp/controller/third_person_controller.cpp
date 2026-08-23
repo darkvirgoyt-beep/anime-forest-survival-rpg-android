@@ -20,7 +20,7 @@ constexpr float kHitstunDuration = 0.18f;
 
 void CameraState::orbit(float deltaYaw, float deltaPitch) {
     yaw += deltaYaw;
-    pitch = std::clamp(pitch + deltaPitch, -1.10f, 0.25f);
+    pitch = std::clamp(pitch + deltaPitch, -1.20f, 1.05f);
     while (yaw > PI) yaw -= PI * 2.0f;
     while (yaw < -PI) yaw += PI * 2.0f;
 }

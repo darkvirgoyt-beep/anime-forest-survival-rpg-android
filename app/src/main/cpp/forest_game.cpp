@@ -17,10 +17,14 @@
 namespace {
 constexpr float PI = 3.14159265359f;
 GLuint gProgram = 0;
+GLuint g3DProgram = 0;
 GLint gPosition = -1;
 GLint gColor = -1;
 GLint gScale = -1;
 GLint gOffset = -1;
+GLint g3DPosition = -1;
+GLint g3DColor = -1;
+GLint g3DMvp = -1;
 float gWidth = 1.0f;
 float gHeight = 1.0f;
 float gTime = 0.0f;
@@ -55,6 +59,15 @@ float gEnemyHitFlash = 0.0f;
 float gEnemyDefeatTimer = 0.0f;
 float gEnemyX = -0.18f;
 float gEnemyY = -0.08f;
+
+enum class ViewMode {
+    ThirdPerson,
+    FirstPerson
+};
+ViewMode gViewMode = ViewMode::ThirdPerson;
+bool gWorldMapVisible = false;
+float gTowerGlow = 0.0f;
+float gTowerCooldown = 0.0f;
 
 enum class Biome {
     Forest,
@@ -247,6 +260,236 @@ uniform vec4 uColor;
 out vec4 fragColor;
 void main() { fragColor = uColor; }
 )GLSL";
+
+const char* k3DVertexShader = R"GLSL(
+#version 300 es
+layout(location = 0) in vec3 aPosition;
+uniform mat4 uMvp;
+uniform vec4 uColor;
+out vec4 vColor;
+void main() {
+    gl_Position = uMvp * vec4(aPosition, 1.0);
+    vColor = uColor;
+}
+)GLSL";
+
+const char* k3DFragmentShader = R"GLSL(
+#version 300 es
+precision mediump float;
+in vec4 vColor;
+out vec4 fragColor;
+void main() { fragColor = vColor; }
+)GLSL";
+
+struct Mat4 {
+    float v[16]{};
+};
+
+Mat4 identityMatrix() {
+    Mat4 result{};
+    result.v[0] = result.v[5] = result.v[10] = result.v[15] = 1.0f;
+    return result;
+}
+
+Mat4 multiplyMatrix(const Mat4& a, const Mat4& b) {
+    Mat4 result{};
+    for (int column = 0; column < 4; ++column) {
+        for (int row = 0; row < 4; ++row) {
+            for (int k = 0; k < 4; ++k) result.v[column * 4 + row] += a.v[k * 4 + row] * b.v[column * 4 + k];
+        }
+    }
+    return result;
+}
+
+Mat4 perspectiveMatrix(float fovRadians, float aspect, float nearPlane, float farPlane) {
+    Mat4 result{};
+    const float f = 1.0f / std::tan(fovRadians * 0.5f);
+    result.v[0] = f / std::max(0.1f, aspect);
+    result.v[5] = f;
+    result.v[10] = (farPlane + nearPlane) / (nearPlane - farPlane);
+    result.v[11] = -1.0f;
+    result.v[14] = (2.0f * farPlane * nearPlane) / (nearPlane - farPlane);
+    return result;
+}
+
+struct Vec3 {
+    float x;
+    float y;
+    float z;
+};
+
+Vec3 subtractVec3(const Vec3& a, const Vec3& b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
+Vec3 crossVec3(const Vec3& a, const Vec3& b) { return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}; }
+Vec3 normalizeVec3(const Vec3& value) {
+    const float length = std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
+    if (length < 0.0001f) return {0.0f, 0.0f, -1.0f};
+    return {value.x / length, value.y / length, value.z / length};
+}
+
+Mat4 lookAtMatrix(const Vec3& eye, const Vec3& center) {
+    const Vec3 forward = normalizeVec3(subtractVec3(center, eye));
+    const Vec3 side = normalizeVec3(crossVec3(forward, {0.0f, 1.0f, 0.0f}));
+    const Vec3 up = crossVec3(side, forward);
+    Mat4 result = identityMatrix();
+    result.v[0] = side.x; result.v[4] = side.y; result.v[8] = side.z;
+    result.v[1] = up.x; result.v[5] = up.y; result.v[9] = up.z;
+    result.v[2] = -forward.x; result.v[6] = -forward.y; result.v[10] = -forward.z;
+    result.v[12] = -(side.x * eye.x + side.y * eye.y + side.z * eye.z);
+    result.v[13] = -(up.x * eye.x + up.y * eye.y + up.z * eye.z);
+    result.v[14] = forward.x * eye.x + forward.y * eye.y + forward.z * eye.z;
+    return result;
+}
+
+Mat4 modelMatrix(float x, float y, float z, float width, float height, float depth) {
+    Mat4 result = identityMatrix();
+    result.v[0] = width;
+    result.v[5] = height;
+    result.v[10] = depth;
+    result.v[12] = x;
+    result.v[13] = y;
+    result.v[14] = z;
+    return result;
+}
+
+GLuint compileShader(GLenum type, const char* source);
+
+void create3DProgram() {
+    const GLuint vertex = compileShader(GL_VERTEX_SHADER, k3DVertexShader);
+    const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, k3DFragmentShader);
+    g3DProgram = glCreateProgram();
+    glAttachShader(g3DProgram, vertex);
+    glAttachShader(g3DProgram, fragment);
+    glLinkProgram(g3DProgram);
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    g3DPosition = glGetAttribLocation(g3DProgram, "aPosition");
+    g3DColor = glGetUniformLocation(g3DProgram, "uColor");
+    g3DMvp = glGetUniformLocation(g3DProgram, "uMvp");
+}
+
+void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float width, float height, float depth,
+              float r, float g, float b, float a = 1.0f) {
+    static const GLfloat cube[] = {
+        -0.5f,-0.5f, 0.5f,  0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f,
+        -0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
+         0.5f,-0.5f,-0.5f, -0.5f,-0.5f,-0.5f, -0.5f, 0.5f,-0.5f,
+         0.5f,-0.5f,-0.5f, -0.5f, 0.5f,-0.5f,  0.5f, 0.5f,-0.5f,
+        -0.5f,-0.5f,-0.5f, -0.5f,-0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
+        -0.5f,-0.5f,-0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f,-0.5f,
+         0.5f,-0.5f, 0.5f,  0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f,
+         0.5f,-0.5f, 0.5f,  0.5f, 0.5f,-0.5f,  0.5f, 0.5f, 0.5f,
+        -0.5f, 0.5f, 0.5f,  0.5f, 0.5f, 0.5f,  0.5f, 0.5f,-0.5f,
+        -0.5f, 0.5f, 0.5f,  0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f,
+        -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f,-0.5f, 0.5f,
+        -0.5f,-0.5f,-0.5f,  0.5f,-0.5f, 0.5f, -0.5f,-0.5f, 0.5f
+    };
+    glUseProgram(g3DProgram);
+    const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
+    glUniformMatrix4fv(g3DMvp, 1, GL_FALSE, mvp.v);
+    glUniform4f(g3DColor, r, g, b, a);
+    glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, cube);
+    glEnableVertexAttribArray(g3DPosition);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+void draw3DTree(const Mat4& viewProjection, float x, float z, float scale, float tint) {
+    draw3DBox(viewProjection, x, 0.42f * scale, z, 0.20f * scale, 0.84f * scale, 0.20f * scale, 0.25f, 0.12f, 0.07f);
+    draw3DBox(viewProjection, x, 1.03f * scale, z, 0.92f * scale, 0.82f * scale, 0.92f * scale, 0.06f + tint, 0.24f + tint, 0.18f);
+    draw3DBox(viewProjection, x - 0.24f * scale, 0.87f * scale, z + 0.08f, 0.46f * scale, 0.50f * scale, 0.46f * scale, 0.04f + tint, 0.18f + tint, 0.14f);
+}
+
+void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
+    if (firstPerson) {
+        draw3DBox(viewProjection, 0.36f, -0.18f, -0.72f, 0.08f, 0.08f, 0.82f, 0.78f, 0.81f, 0.84f, 0.92f);
+        draw3DBox(viewProjection, 0.36f, -0.25f, -0.36f, 0.16f, 0.06f, 0.10f, 0.92f, 0.62f, 0.22f, 0.96f);
+        return;
+    }
+    const float px = gPlayerX * 4.3f;
+    const float pz = -gPlayerY * 4.0f;
+    const float bob = std::sin(gTime * 4.0f) * 0.025f;
+    draw3DBox(viewProjection, px, 0.12f + bob, pz, 0.42f, 0.24f, 0.28f, 0.13f, 0.05f, 0.16f);
+    draw3DBox(viewProjection, px, 0.58f + bob, pz, 0.34f, 0.82f, 0.24f, 0.45f, 0.10f, 0.28f);
+    draw3DBox(viewProjection, px, 1.18f + bob, pz, 0.42f, 0.42f, 0.42f, 0.73f, 0.37f, 0.26f);
+    draw3DBox(viewProjection, px, 1.42f + bob, pz, 0.48f, 0.18f, 0.48f, 0.10f, 0.04f, 0.18f);
+    draw3DBox(viewProjection, px + 0.32f, 0.62f + bob, pz, 0.08f, 0.66f, 0.08f, 0.88f, 0.67f, 0.22f);
+}
+
+void drawTeleportationTower(const Mat4& viewProjection) {
+    const float pulse = 0.72f + 0.18f * std::sin(gTime * 2.7f);
+    draw3DBox(viewProjection, 0.0f, 1.0f, -1.15f, 1.08f, 2.0f, 1.08f, 0.07f, 0.11f, 0.17f);
+    draw3DBox(viewProjection, 0.0f, 2.18f, -1.15f, 0.72f, 0.42f, 0.72f, 0.30f, 0.13f, 0.26f);
+    draw3DBox(viewProjection, 0.0f, 2.62f, -1.15f, 0.22f, 0.58f, 0.22f, 0.93f, 0.66f, 0.22f, pulse);
+    draw3DBox(viewProjection, -0.46f, 1.15f, -1.15f, 0.16f, 1.62f, 0.16f, 0.72f, 0.48f, 0.16f);
+    draw3DBox(viewProjection, 0.46f, 1.15f, -1.15f, 0.16f, 1.62f, 0.16f, 0.72f, 0.48f, 0.16f);
+    draw3DBox(viewProjection, 0.0f, 0.08f, -1.15f, 1.50f, 0.08f, 1.50f, 0.95f, 0.69f, 0.24f, 0.55f);
+    if (gTowerGlow > 0.0f) {
+        const float glow = std::clamp(gTowerGlow / 1.8f, 0.0f, 1.0f);
+        draw3DBox(viewProjection, 0.0f, 3.12f, -1.15f, 0.34f, 0.34f, 0.34f, 1.0f, 0.82f, 0.28f, glow);
+    }
+}
+
+void draw3DMapOverlay() {
+    glDisable(GL_DEPTH_TEST);
+    glUseProgram(gProgram);
+    drawQuad(-0.56f, 0.30f, 0.66f, 0.62f, 0.025f, 0.06f, 0.09f, 0.94f);
+    drawQuad(-0.56f, 0.30f, 0.58f, 0.54f, 0.11f, 0.19f, 0.18f, 0.96f);
+    drawQuad(-0.56f, 0.30f, 0.46f, 0.04f, 0.22f, 0.42f, 0.34f, 0.78f);
+    drawQuad(-0.56f, 0.30f, 0.04f, 0.46f, 0.20f, 0.34f, 0.29f, 0.70f);
+    drawCircle(-0.56f, 0.30f, 0.035f, 1.0f, 0.76f, 0.24f, 1.0f);
+    drawCircle(-0.56f, 0.30f, 0.014f, 0.10f, 0.12f, 0.15f, 1.0f);
+    drawCircle(-0.32f, 0.46f, 0.024f, 0.35f, 0.90f, 0.82f, 1.0f);
+    drawCircle(-0.76f, 0.12f, 0.020f, 0.88f, 0.37f, 0.23f, 1.0f);
+    drawTriangle(-0.56f, 0.63f, 0.08f, 0.12f, 0.91f, 0.68f, 0.24f, 0.96f);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void draw3DWorld() {
+    const float aspect = gWidth / std::max(1.0f, gHeight);
+    const float px = gPlayerX * 4.3f;
+    const float pz = -gPlayerY * 4.0f;
+    const float yaw = gController.camera.yaw;
+    const float pitch = gController.camera.pitch;
+    const bool firstPerson = gViewMode == ViewMode::FirstPerson;
+    const float horizontal = std::cos(pitch);
+    const float vertical = std::sin(pitch);
+    Vec3 eye{};
+    Vec3 target{};
+    if (firstPerson) {
+        eye = {px, 1.48f, pz};
+        target = {px + std::sin(yaw) * horizontal, 1.48f + vertical, pz + std::cos(yaw) * horizontal};
+    } else {
+        const float distance = 4.7f;
+        target = {px, 0.72f, pz};
+        eye = {px - std::sin(yaw) * horizontal * distance, 0.72f + vertical * distance + 1.0f, pz - std::cos(yaw) * horizontal * distance};
+    }
+    const Mat4 viewProjection = multiplyMatrix(perspectiveMatrix(1.03f, aspect, 0.05f, 60.0f), lookAtMatrix(eye, target));
+    const float sky = currentTimePhase() == TimePhase::Night ? 0.025f : 0.075f;
+    glClearColor(0.025f, sky, 0.10f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    draw3DBox(viewProjection, 0.0f, -0.16f, 0.0f, 18.0f, 0.20f, 18.0f, 0.07f, 0.19f, 0.15f);
+    draw3DBox(viewProjection, -4.4f, -0.02f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
+    draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
+    draw3DBox(viewProjection, 4.4f, 0.0f, 0.7f, 4.2f, 0.08f, 7.0f, 0.40f, 0.62f, 0.72f);
+    draw3DBox(viewProjection, 0.4f, -0.015f, 1.0f, 0.90f, 0.04f, 7.0f, 0.15f, 0.38f, 0.39f);
+    draw3DTree(viewProjection, -5.0f, -1.0f, 1.25f, 0.02f);
+    draw3DTree(viewProjection, -3.3f, 2.2f, 0.96f, 0.04f);
+    draw3DTree(viewProjection, -5.5f, 3.3f, 1.48f, 0.01f);
+    draw3DTree(viewProjection, 4.8f, 2.6f, 1.18f, 0.08f);
+    draw3DTree(viewProjection, 5.5f, -0.8f, 0.90f, 0.12f);
+    draw3DBox(viewProjection, 3.8f, 0.10f, -1.2f, 1.2f, 0.20f, 0.8f, 0.78f, 0.48f, 0.16f);
+    draw3DBox(viewProjection, 3.8f, 0.28f, -1.2f, 0.75f, 0.18f, 0.52f, 0.92f, 0.65f, 0.22f);
+    drawTeleportationTower(viewProjection);
+    if (gProgression.questStage == forest::rpg::QuestStage::DefeatWarden) {
+        draw3DBox(viewProjection, -1.4f, 0.48f, 1.6f, 0.72f, 0.96f, 0.72f, 0.20f, 0.12f, 0.32f);
+        draw3DBox(viewProjection, -1.4f, 1.18f, 1.6f, 0.88f, 0.18f, 0.88f, 0.58f, 0.28f, 0.77f);
+    }
+    draw3DPlayer(viewProjection, firstPerson);
+    glDisable(GL_CULL_FACE);
+    if (gWorldMapVisible) draw3DMapOverlay();
+}
 
 GLuint compileShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
@@ -655,6 +898,8 @@ void simulatePhysicsStep() {
     gCombat.tick(kPhysicsStep);
     gEnemyHitFlash = std::max(0.0f, gEnemyHitFlash - kPhysicsStep);
     gEnemyDefeatTimer = std::max(0.0f, gEnemyDefeatTimer - kPhysicsStep);
+    gTowerGlow = std::max(0.0f, gTowerGlow - kPhysicsStep);
+    gTowerCooldown = std::max(0.0f, gTowerCooldown - kPhysicsStep);
     const forest::combat::CombatEvent combatEvent = gCombat.consumeEvent();
     if (combatEvent.attackStarted) {
         gAttackPulse = combatEvent.heavyAttack ? 16 : 6 + combatEvent.comboIndex * 2;
@@ -693,6 +938,10 @@ void simulatePhysicsStep() {
 }
 
 void drawWorld() {
+    if (gViewMode == ViewMode::FirstPerson || gViewMode == ViewMode::ThirdPerson) {
+        draw3DWorld();
+        return;
+    }
     const float phaseTime = std::fmod(std::max(0.0f, gTime), kDayCycleSeconds);
     const float phaseStart = phaseTime < kDayPhaseSeconds ? 0.0f
         : phaseTime < kDayPhaseSeconds + kAfternoonPhaseSeconds ? kDayPhaseSeconds
@@ -839,6 +1088,10 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gHeight = static_cast<float>(std::max(1, height));
     gController = {};
     gCombat = {};
+    gViewMode = ViewMode::ThirdPerson;
+    gWorldMapVisible = false;
+    gTowerGlow = 0.0f;
+    gTowerCooldown = 0.0f;
     gProgression = {};
     gWood = 12;
     gFiber = 8;
@@ -853,6 +1106,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gController.body.position = {-0.55f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
+    if (g3DProgram == 0) create3DProgram();
     glViewport(0, 0, width, height);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -893,6 +1147,29 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setSprintHeld(JNIEnv*, jobject, 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_orbitCamera(JNIEnv*, jobject, jfloat deltaYaw, jfloat deltaPitch) {
     gController.camera.orbit(static_cast<float>(deltaYaw), static_cast<float>(deltaPitch));
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleViewMode(JNIEnv*, jobject) {
+    gViewMode = gViewMode == ViewMode::ThirdPerson ? ViewMode::FirstPerson : ViewMode::ThirdPerson;
+    gWorldMapVisible = false;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setWorldMapVisible(JNIEnv*, jobject, jboolean visible) {
+    gWorldMapVisible = visible == JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_teleportToTower(JNIEnv*, jobject) {
+    if (gTowerCooldown > 0.0f) return;
+    gController.body.position = {-0.06f, 0.28f};
+    gController.body.velocity = {0.0f, 0.0f};
+    gPlayerX = gController.body.position.x;
+    gPlayerY = gController.body.position.y;
+    gTowerGlow = 1.8f;
+    gTowerCooldown = 4.0f;
+    gQuestPulse = 120;
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -1002,7 +1279,10 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << gProgression.questObjective() << '|'
           << waterStateName() << '|'
           << locomotionStateName() << '|'
-          << weatherName();
+          << weatherName() << '|'
+          << (gViewMode == ViewMode::FirstPerson ? "FIRST_PERSON" : "THIRD_PERSON") << '|'
+          << (gWorldMapVisible ? "MAP_ON" : "MAP_OFF") << '|'
+          << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY");
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }

@@ -52,6 +52,9 @@ object NativeGameBridge {
     external fun setMove(x: Float, y: Float)
     external fun setSprintHeld(held: Boolean)
     external fun orbitCamera(deltaYaw: Float, deltaPitch: Float)
+    external fun toggleViewMode()
+    external fun setWorldMapVisible(visible: Boolean)
+    external fun teleportToTower()
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun attack()
@@ -548,6 +551,17 @@ class MainActivity : Activity(), SensorEventListener {
                     setStroke(dp(1), Color.rgb(150, 116, 62))
                 }
             }
+            panel.addView(ImageView(this).apply {
+                setImageResource(R.drawable.aethelgard_profile_gold)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = "AETHELGRAD gold profile photo"
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.rgb(226, 184, 101))
+                    setStroke(dp(2), Color.rgb(255, 235, 156))
+                }
+                clipToOutline = true
+            }, LinearLayout.LayoutParams(dp(76), dp(76)).apply { bottomMargin = dp(6) })
             panel.addView(TextView(this).apply {
                 text = "✦  AETHELGARD  ✦"
                 textSize = 15f
@@ -771,9 +785,9 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val title = TextView(this).apply {
             text = if (BuildConfig.PROTOTYPE_MODE) {
-                "WISTERIA FOREST  •  PROTOTYPE  •  OFFLINE"
+                "AETHELGRAD  •  PROTOTYPE  •  OFFLINE"
             } else {
-                "WISTERIA FOREST  •  DAY 1  •  DAY"
+                "AETHELGRAD  •  DAY 1  •  DAY"
             }
             textSize = 15f
             setTextColor(Color.rgb(244, 218, 155))
@@ -803,6 +817,64 @@ class MainActivity : Activity(), SensorEventListener {
         top.addView(gyroButton, LinearLayout.LayoutParams(dp(142), dp(44)).apply { leftMargin = dp(18) })
         overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
         overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply { topMargin = dp(54) })
+
+        val profileBadge = ImageView(this).apply {
+            setImageResource(R.drawable.aethelgard_profile_gold)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "AETHELGRAD gold profile photo"
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(226, 184, 101))
+                setStroke(dp(2), Color.rgb(255, 235, 156))
+            }
+            clipToOutline = true
+        }
+        overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(10)
+            rightMargin = dp(176)
+        })
+
+        var firstPerson = false
+        var worldMapVisible = false
+        val navigation = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val viewModeButton = actionButton("VIEW: THIRD PERSON") { }
+        viewModeButton.setOnClickListener {
+            firstPerson = !firstPerson
+            viewModeButton.text = if (firstPerson) "VIEW: FIRST PERSON" else "VIEW: THIRD PERSON"
+            gameView.queueEvent { NativeGameBridge.toggleViewMode() }
+        }
+        val mapButton = actionButton("WORLD MAP") { }
+        mapButton.setOnClickListener {
+            worldMapVisible = !worldMapVisible
+            mapButton.text = if (worldMapVisible) "MAP: CLOSE" else "WORLD MAP"
+            gameView.queueEvent { NativeGameBridge.setWorldMapVisible(worldMapVisible) }
+        }
+        val towerButton = actionButton("TOWER / TELEPORT") {
+            audio.playEffect("ui")
+            gameView.queueEvent { NativeGameBridge.teleportToTower() }
+        }
+        navigation.addView(viewModeButton, LinearLayout.LayoutParams(dp(156), dp(42)).apply { rightMargin = dp(6) })
+        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(112), dp(42)).apply { rightMargin = dp(6) })
+        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(156), dp(42)))
+        overlay.addView(navigation, FrameLayout.LayoutParams(-1, dp(46), Gravity.TOP).apply {
+            topMargin = dp(96)
+            leftMargin = dp(20)
+            rightMargin = dp(210)
+        })
+        val orbitHint = TextView(this).apply {
+            text = "SWIPE RIGHT TO ORBIT 360°  •  GYRO OPTIONAL"
+            textSize = 10f
+            letterSpacing = 0.08f
+            setTextColor(Color.rgb(229, 211, 167))
+            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+        }
+        overlay.addView(orbitHint, FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP).apply {
+            topMargin = dp(142)
+            leftMargin = dp(24)
+        })
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -865,7 +937,10 @@ class MainActivity : Activity(), SensorEventListener {
         val water = values.getOrNull(16)?.ifBlank { "DRY" } ?: "DRY"
         val locomotion = values.getOrNull(17)?.ifBlank { "IDLE" } ?: "IDLE"
         val weather = values.getOrNull(18)?.ifBlank { "CLEAR" } ?: "CLEAR"
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  HP $health  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
+        val viewMode = values.getOrNull(19)?.replace('_', ' ')?.ifBlank { "THIRD PERSON" } ?: "THIRD PERSON"
+        val mapState = values.getOrNull(20)?.ifBlank { "MAP OFF" } ?: "MAP OFF"
+        val towerState = values.getOrNull(21)?.replace('_', ' ')?.ifBlank { "TOWER READY" } ?: "TOWER READY"
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  HP $health  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(
             when {
                 levelPulse -> Color.rgb(255, 236, 157)
