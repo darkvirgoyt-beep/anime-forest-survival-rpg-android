@@ -42,3 +42,23 @@ The production graphics and delivery plan is documented in [REALISTIC_GRAPHICS_A
 The repository does not create dummy files or claim that empty asset directories are finished 10 GiB content. Populate each pack with original or properly licensed models, textures, animations, audio, cinematics, voice, VFX, and cooked Unreal chunks. Run `python3 tools/validate_asset_budget.py` before release; it reports actual bytes and rejects over-budget packs without generating padding.
 
 The Unreal graphics baseline is in `Unreal/Config/DefaultEngine.ini`. It enables a mobile-realistic PBR/HDR baseline with controlled lights, shadows, atmosphere, virtual-texture support, and streaming while leaving desktop-only ray-traced features disabled for the Android profile. Final AAA presentation still requires authored assets, Unreal material and animation graphs, LODs, quality tiers, and device profiling.
+
+## Aurora Vale 3D presentation integration
+
+The Unreal presentation layer is implemented in `Unreal/Source/ForestSlice/Public/ForestSlicePresentationComponent.h` and `Private/ForestSlicePresentationComponent.cpp`. Assign original or properly licensed Unreal assets to the component’s soft-reference cue set on the Aurora character Blueprint.
+
+| Cue | Unreal asset target | Runtime use |
+|---|---|---|
+| Light attack montage | `/Game/Characters/Aurora/Animations/AM_Aurora_LightCombo` | `Light_01`, `Light_02`, and `Light_03` sections selected from combat event IDs |
+| Heavy attack montage | `/Game/Characters/Aurora/Animations/AM_Aurora_HeavyFinisher` | `Heavy_01` section and authoritative heavy-attack event |
+| Dodge / slide / jump montages | `/Game/Characters/Aurora/Animations/AM_Aurora_Dodge`, `AM_Aurora_Slide`, `AM_Aurora_Jump` | Mobile and Enhanced Input movement actions |
+| Sword trail | `/Game/VFX/Aurora/NS_Aurora_SwordTrail` | Short-lived Niagara system attached to `hand_r_socket` during attack presentation |
+| Hit burst | `/Game/VFX/Aurora/NS_Aurora_SwordHitBurst` | Local presentation burst on `HitConfirmed`; damage remains server-authoritative |
+| Weapon switch burst | `/Game/VFX/Aurora/NS_Aurora_WeaponSwitchBurst` | Niagara burst and magic pulse on weapon change |
+| Sword whoosh | `/Game/Audio/SFX/sfx_attack_sword` | Attack start cue; source file is `assets/audio/sfx_attack_sword.wav` |
+| Footstep | `/Game/Audio/SFX/sfx_footsteps_forest` | Locomotion notify cue; source file is `assets/audio/sfx_footsteps_forest.wav` |
+| Dodge whoosh | `/Game/Audio/SFX/sfx_slide` | Dodge and slide presentation cue; source file is `assets/audio/sfx_slide.wav` |
+| Magic pulse | `/Game/Audio/SFX/sfx_aurora_magic_pulse` | Original or licensed crystalline/magical cue for weapon/VFX transitions |
+| Sword hit | `/Game/Audio/SFX/sfx_aurora_sword_hit` | Original or licensed impact cue for confirmed hit presentation |
+
+The runtime component intentionally uses `TSoftObjectPtr` references and does not embed third-party or copied game assets. Asset import, socket verification, animation-notify authoring, Niagara parameter binding, LOD setup, and device profiling remain required content steps before a production release.

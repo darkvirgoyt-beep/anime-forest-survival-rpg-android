@@ -95,6 +95,7 @@ void UForestSliceCombatComponent::SwitchWeapon(int32 NewWeaponIndex)
     CombatPhase = EForestSliceCombatPhase::None;
     ComboBufferTimer = 0.0f;
     ComboIndex = 0;
+    CurrentAttackId = NAME_None;
     EquippedWeaponIndex = NewWeaponIndex;
     CombatEvent.Broadcast(TEXT("WeaponSwitched"), ComboIndex, 0.0f, EquippedWeaponIndex);
 }
@@ -121,6 +122,7 @@ void UForestSliceCombatComponent::BeginAttack(bool bHeavy)
     }
     CombatPhase = EForestSliceCombatPhase::Startup;
     PhaseTimer = Attack->StartupSeconds;
+    CurrentAttackId = Attack->AttackId;
     CombatEvent.Broadcast(Attack->AttackId, ComboIndex, 0.0f, EquippedWeaponIndex);
 }
 
@@ -165,6 +167,7 @@ void UForestSliceCombatComponent::ResolveActiveHit()
 void UForestSliceCombatComponent::FinishAttack()
 {
     CombatPhase = EForestSliceCombatPhase::None;
+    CurrentAttackId = NAME_None;
     if (!bQueuedAttack && ComboBufferTimer <= 0.0f) ComboIndex = 0;
     CombatEvent.Broadcast(TEXT("AttackFinished"), ComboIndex, 0.0f, EquippedWeaponIndex);
 }
@@ -179,6 +182,13 @@ void UForestSliceCombatComponent::OnRep_CombatPhase()
     CombatEvent.Broadcast(TEXT("CombatPhaseChanged"), ComboIndex, 0.0f, EquippedWeaponIndex);
 }
 
+void UForestSliceCombatComponent::OnRep_AttackPresentation()
+{
+    if (CurrentAttackId != NAME_None) {
+        CombatEvent.Broadcast(CurrentAttackId, ComboIndex, 0.0f, EquippedWeaponIndex);
+    }
+}
+
 void UForestSliceCombatComponent::OnRep_EquippedWeapon()
 {
     CombatEvent.Broadcast(TEXT("WeaponChanged"), ComboIndex, 0.0f, EquippedWeaponIndex);
@@ -189,5 +199,6 @@ void UForestSliceCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimePro
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(UForestSliceCombatComponent, CombatPhase);
     DOREPLIFETIME(UForestSliceCombatComponent, ComboIndex);
+    DOREPLIFETIME(UForestSliceCombatComponent, CurrentAttackId);
     DOREPLIFETIME(UForestSliceCombatComponent, EquippedWeaponIndex);
 }

@@ -1,6 +1,7 @@
 #include "ForestSliceCharacter.h"
 #include "ForestSliceCharacterProfileComponent.h"
 #include "ForestSliceCombatComponent.h"
+#include "ForestSlicePresentationComponent.h"
 #include "ForestSliceHealthComponent.h"
 #include "ForestSliceInteractionComponent.h"
 #include "ForestSliceQuickSlotComponent.h"
@@ -30,6 +31,7 @@ AForestSliceCharacter::AForestSliceCharacter()
     QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
     HealthComponent = CreateDefaultSubobject<UForestSliceHealthComponent>(TEXT("HealthComponent"));
     CharacterProfileComponent = CreateDefaultSubobject<UForestSliceCharacterProfileComponent>(TEXT("CharacterProfileComponent"));
+    PresentationComponent = CreateDefaultSubobject<UForestSlicePresentationComponent>(TEXT("PresentationComponent"));
     bUseControllerRotationYaw = false;
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 620.0f, 0.0f);
@@ -108,6 +110,14 @@ void AForestSliceCharacter::Tick(float DeltaSeconds)
     ClothMotionVelocity += (ClothTarget - ClothMotionOffset) * ClothFrequency * ClothFrequency * Dt - ClothMotionVelocity * 2.0f * ClothFrequency * Dt;
     ClothMotionOffset += ClothMotionVelocity * Dt;
     WetnessAlpha = FMath::FInterpTo(WetnessAlpha, bInWater ? 1.0f : 0.0f, Dt, bInWater ? 3.5f : 0.45f);
+    if (PresentationComponent) {
+        const float SpeedNormalized = FMath::Clamp(GetVelocity().Size2D() / FMath::Max(SprintSpeed, 1.0f), 0.0f, 1.0f);
+        PresentationComponent->UpdateLocomotionState(
+            SpeedNormalized,
+            bSprintHeld,
+            GetCharacterMovement()->IsFalling()
+        );
+    }
 }
 
 void AForestSliceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -214,6 +224,7 @@ void AForestSliceCharacter::StartSlide(const FInputActionValue& Value)
     SlideCooldown = 0.65f;
     const FVector SlideDirection = GetLastMovementInputVector().IsNearlyZero() ? GetActorForwardVector() : GetLastMovementInputVector().GetSafeNormal2D();
     LaunchCharacter(SlideDirection * SlideImpulse + FVector(0.0f, 0.0f, 35.0f), true, false);
+    if (PresentationComponent) PresentationComponent->PlayMovementAnimation(EForestSliceMovementAnimation::Slide);
 }
 
 void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
@@ -222,6 +233,7 @@ void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
     DodgeCooldown = 0.85f;
     const FVector DodgeDirection = GetLastMovementInputVector().IsNearlyZero() ? GetActorForwardVector() : GetLastMovementInputVector().GetSafeNormal2D();
     LaunchCharacter(DodgeDirection * (bInWater ? DodgeImpulse * 0.60f : DodgeImpulse), true, false);
+    if (PresentationComponent) PresentationComponent->PlayMovementAnimation(EForestSliceMovementAnimation::Dodge);
     // Gameplay Ability System will own the authoritative invulnerability tag in the next slice.
 }
 
@@ -233,6 +245,7 @@ void AForestSliceCharacter::StartLightAttack(const FInputActionValue& Value)
 void AForestSliceCharacter::StartJump(const FInputActionValue& Value)
 {
     Jump();
+    if (PresentationComponent) PresentationComponent->PlayMovementAnimation(EForestSliceMovementAnimation::Jump);
 }
 
 bool AForestSliceCharacter::DetectGyroscopeSupport() const

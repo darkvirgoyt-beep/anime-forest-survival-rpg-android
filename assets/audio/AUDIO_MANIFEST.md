@@ -15,7 +15,9 @@ The audio bank is organized by runtime bus rather than by screen. `Music` contai
 | `sfx_animal_companion_call.wav` | Ambience | Original procedural fallback | Companion call seed. |
 | `sfx_boss_roar.wav` | Effects | Original procedural fallback | Boss encounter cue seed. |
 | `sfx_ui_click.wav` | Effects | Original procedural fallback | Menu and HUD feedback. |
+| `sfx_aurora_magic_pulse.mp3` | Effects | Original generated one-shot via ElevenLabs sound generation | Crystalline violet magic pulse for weapon-switch and sword VFX. |
+| `sfx_aurora_sword_hit.mp3` | Effects | Original generated one-shot via ElevenLabs sound generation | Confirmed sword impact with metallic crack and magic tail. |
 
 The Android harness routes the current bank through `GameAudio` and persists Master, Music, Effects, Ambience, and Mute settings. The Unreal production path uses `UForestSliceAudioSubsystem` as the settings boundary. Final production content should replace procedural fallback sounds with recorded or licensed Foley, authored creature vocalizations, layered ambience, dynamic music states, and platform-compressed assets. Keep source WAVs outside shipping packages when the runtime only needs compressed derivatives.
 
-The ElevenLabs generation route was attempted but unavailable in the current environment because the service redirected to a regional-access page. The forest music was generated successfully through the built-in music route. The icon is a deterministic original fallback because the built-in image quota was exhausted and the configured image connector had insufficient balance. These limitations are recorded so they are not confused with final AAA art or audio.
+The Aurora magic-pulse and sword-hit one-shots were generated as original game sound effects and stored in this directory. The forest music and existing combat bank remain available as separate runtime assets. Final production audio should still be mixed, normalized, loop-tested, and device-profiled before release.

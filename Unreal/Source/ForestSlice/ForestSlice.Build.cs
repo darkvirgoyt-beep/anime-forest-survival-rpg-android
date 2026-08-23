@@ -11,6 +11,7 @@ public class ForestSlice : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "Niagara",
             "InputCore",
             "EnhancedInput",
             "GameplayAbilities",

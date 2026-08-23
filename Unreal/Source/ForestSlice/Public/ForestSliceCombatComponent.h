@@ -106,6 +106,9 @@ protected:
     UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
     int32 ComboIndex = 0;
 
+    UPROPERTY(ReplicatedUsing = OnRep_AttackPresentation, VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
+    FName CurrentAttackId = NAME_None;
+
     UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon, VisibleInstanceOnly, BlueprintReadOnly, Category = "Combat")
     int32 EquippedWeaponIndex = 0;
 
@@ -114,6 +117,9 @@ protected:
 
     UFUNCTION()
     void OnRep_CombatPhase();
+
+    UFUNCTION()
+    void OnRep_AttackPresentation();
 
     UFUNCTION()
     void OnRep_EquippedWeapon();
