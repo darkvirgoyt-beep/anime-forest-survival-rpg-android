@@ -363,13 +363,13 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(dp(28), dp(16), dp(28), 0)
         }
         val title = TextView(this).apply {
-            text = "AETHELGARD  •  DAY 01"
+            text = "AETHELGARD  •  DAY 1  •  DAY"
             textSize = 15f
             setTextColor(Color.rgb(244, 218, 155))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
         stateLabel = TextView(this).apply {
-            text = "HP 100  |  STA 100  |  HUN 82  |  LV 1  |  XP 0/100  |  W 12  F 08  S 04"
+            text = "SAND  |  DAY 1  |  HP 100  |  STA 100  |  HUN 82  |  LV 1  |  XP 0/100  |  W 12  F 08  S 04"
             textSize = 13f
             setTextColor(Color.WHITE)
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -431,7 +431,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun applyHudSnapshot(snapshot: String) {
         val values = snapshot.split('|')
-        if (values.size < 13 || !::stateLabel.isInitialized || !::questLabel.isInitialized) return
+        if (values.size < 16 || !::stateLabel.isInitialized || !::questLabel.isInitialized) return
         fun number(index: Int): Int = values.getOrNull(index)?.toIntOrNull() ?: 0
         val level = number(0)
         val xp = number(1)
@@ -445,10 +445,13 @@ class MainActivity : Activity(), SensorEventListener {
         val warden = number(9).coerceIn(0, 100)
         val levelPulse = number(10) > 0
         val questPulse = number(11) > 0
-        val objective = values.drop(12).joinToString("|")
-        stateLabel.text = "HP $health  |  STA $stamina  |  HUN $hunger  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
+        val biome = values.getOrNull(12)?.ifBlank { "UNKNOWN" } ?: "UNKNOWN"
+        val phase = values.getOrNull(13)?.ifBlank { "DAY" } ?: "DAY"
+        val daysPlayed = values.getOrNull(14)?.toIntOrNull()?.coerceAtLeast(1) ?: 1
+        val objective = values.drop(15).joinToString("|")
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  HP $health  |  STA $stamina  |  HUN $hunger  |  LV $level  |  XP $xp/$next  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(if (levelPulse) Color.rgb(255, 236, 157) else Color.WHITE)
-        questLabel.text = if (warden in 1..99) "$objective  •  WARDEN HP $warden%" else objective
+        questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  SNOW PREDATOR HP $warden/100" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME"
         questLabel.setTextColor(if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 

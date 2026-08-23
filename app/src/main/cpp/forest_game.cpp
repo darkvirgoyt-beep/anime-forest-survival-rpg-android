@@ -23,6 +23,7 @@ GLint gOffset = -1;
 float gWidth = 1.0f;
 float gHeight = 1.0f;
 float gTime = 0.0f;
+int gDaysPlayed = 1;
 float gPlayerX = 0.0f;
 float gPlayerY = -0.08f;
 float gMoveX = 0.0f;
@@ -46,11 +47,66 @@ forest::controller::ThirdPersonController gController{};
 forest::combat::CombatSystem gCombat{};
 forest::rpg::Progression gProgression{};
 bool gHitRegistered = false;
-float gEnemyHealth = 1.0f;
+constexpr float kSnowPredatorMaxHealth = 100.0f;
+float gEnemyHealth = kSnowPredatorMaxHealth;
 float gEnemyHitFlash = 0.0f;
 float gEnemyDefeatTimer = 0.0f;
-float gEnemyX = 0.36f;
-float gEnemyY = 0.03f;
+float gEnemyX = 0.62f;
+float gEnemyY = -0.08f;
+
+enum class Biome {
+    Forest,
+    Sand,
+    Snow
+};
+
+Biome currentBiome() {
+    if (gPlayerX < -0.30f) return Biome::Forest;
+    if (gPlayerX < 0.30f) return Biome::Sand;
+    return Biome::Snow;
+}
+
+const char* biomeName() {
+    switch (currentBiome()) {
+        case Biome::Forest: return "FOREST";
+        case Biome::Sand: return "SAND";
+        case Biome::Snow: return "SNOW";
+    }
+    return "SAND";
+}
+
+constexpr float kDayCycleSeconds = 240.0f;
+constexpr float kTimePhaseSeconds = kDayCycleSeconds / 4.0f;
+
+enum class TimePhase {
+    Day,
+    Afternoon,
+    Evening,
+    Night
+};
+
+TimePhase currentTimePhase() {
+    const float phaseTime = std::fmod(std::max(0.0f, gTime), kDayCycleSeconds);
+    if (phaseTime < kTimePhaseSeconds) return TimePhase::Day;
+    if (phaseTime < kTimePhaseSeconds * 2.0f) return TimePhase::Afternoon;
+    if (phaseTime < kTimePhaseSeconds * 3.0f) return TimePhase::Evening;
+    return TimePhase::Night;
+}
+
+const char* timePhaseName() {
+    switch (currentTimePhase()) {
+        case TimePhase::Day: return "DAY";
+        case TimePhase::Afternoon: return "AFTERNOON";
+        case TimePhase::Evening: return "EVENING";
+        case TimePhase::Night: return "NIGHT";
+    }
+    return "DAY";
+}
+
+void updateCalendar() {
+    gDaysPlayed = static_cast<int>(std::floor(std::max(0.0f, gTime) / kDayCycleSeconds)) + 1;
+}
+
 const forest::physics::StaticObstacle gObstacles[] = {
     {{{-0.30f, -0.28f}, {0.07f, 0.04f}}},
     {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
@@ -260,26 +316,99 @@ void awardExperience(int amount) {
     if (gProgression.level > previousLevel) gLevelPulse = 120;
 }
 
-void drawWarden() {
-    if (gEnemyDefeatTimer > 0.0f) {
+void drawPerson(float x, float y, float skinR, float clothR, float clothG, float clothB) {
+    const float inkR = 0.035f;
+    const float inkG = 0.022f;
+    const float inkB = 0.055f;
+    drawCircle(x + 0.008f, y - 0.020f, 0.040f, inkR, inkG, inkB, 0.45f);
+    drawQuad(x, y + 0.018f, 0.048f, 0.092f, inkR, inkG, inkB);
+    drawQuad(x, y + 0.020f, 0.031f, 0.074f, clothR, clothG, clothB);
+    drawQuad(x - 0.028f, y + 0.028f, 0.016f, 0.064f, inkR, inkG, inkB);
+    drawQuad(x + 0.028f, y + 0.028f, 0.016f, 0.064f, inkR, inkG, inkB);
+    drawCircle(x, y + 0.086f, 0.032f, inkR, inkG, inkB);
+    drawCircle(x, y + 0.086f, 0.025f, skinR, skinR * 0.64f, skinR * 0.46f);
+    drawTriangle(x + 0.010f, y + 0.110f, 0.037f, 0.042f, clothR * 0.55f, clothG * 0.55f, clothB * 0.55f);
+    drawQuad(x - 0.014f, y - 0.025f, 0.015f, 0.038f, inkR, inkG, inkB);
+    drawQuad(x + 0.014f, y - 0.025f, 0.015f, 0.038f, inkR, inkG, inkB);
+}
+
+void drawFarmPlot(float x, float y, float scale) {
+    drawQuad(x, y, 0.22f * scale, 0.09f * scale, 0.12f, 0.08f, 0.05f);
+    drawQuad(x, y + 0.014f * scale, 0.18f * scale, 0.038f * scale, 0.33f, 0.18f, 0.08f);
+    for (int i = -1; i <= 1; ++i) {
+        const float cropX = x + static_cast<float>(i) * 0.052f * scale;
+        drawQuad(cropX, y + 0.046f * scale, 0.012f * scale, 0.052f * scale, 0.10f, 0.30f, 0.12f);
+        drawCircle(cropX + 0.010f * scale, y + 0.074f * scale, 0.018f * scale, 0.32f, 0.66f, 0.22f);
+    }
+}
+
+void drawForestVillage() {
+    drawQuad(-0.68f, -0.02f, 0.24f, 0.18f, 0.18f, 0.11f, 0.09f);
+    drawTriangle(-0.68f, 0.12f, 0.30f, 0.18f, 0.40f, 0.13f, 0.16f);
+    drawQuad(-0.68f, -0.06f, 0.050f, 0.10f, 0.42f, 0.23f, 0.12f);
+    drawFarmPlot(-0.72f, -0.30f, 1.0f);
+    drawFarmPlot(-0.48f, -0.35f, 0.82f);
+    drawPerson(-0.80f, -0.22f, 0.83f, 0.17f, 0.40f, 0.24f);
+    drawPerson(-0.42f, -0.24f, 0.72f, 0.42f, 0.18f, 0.12f);
+}
+
+void drawSandSettlement() {
+    drawQuad(-0.03f, -0.02f, 0.23f, 0.20f, 0.54f, 0.28f, 0.13f);
+    drawTriangle(-0.03f, 0.16f, 0.29f, 0.20f, 0.78f, 0.43f, 0.17f);
+    drawQuad(-0.03f, -0.07f, 0.052f, 0.10f, 0.18f, 0.10f, 0.06f);
+    drawQuad(0.18f, -0.18f, 0.14f, 0.12f, 0.60f, 0.33f, 0.16f);
+    drawTriangle(0.18f, -0.08f, 0.18f, 0.14f, 0.80f, 0.50f, 0.18f);
+    drawQuad(-0.23f, -0.28f, 0.020f, 0.16f, 0.16f, 0.32f, 0.15f);
+    drawTriangle(-0.23f, -0.17f, 0.090f, 0.090f, 0.20f, 0.52f, 0.20f);
+    drawPerson(-0.11f, -0.25f, 0.76f, 0.52f, 0.26f, 0.10f);
+    drawPerson(0.20f, -0.28f, 0.88f, 0.16f, 0.28f, 0.46f);
+}
+
+void drawSnowPredator(float x, float y, float scale, bool combatTarget) {
+    if (combatTarget && gEnemyDefeatTimer > 0.0f) {
         const float fade = std::clamp(gEnemyDefeatTimer / 1.5f, 0.0f, 1.0f);
-        drawCircle(gEnemyX, gEnemyY + 0.04f, 0.14f, 0.74f, 0.22f, 0.25f, 0.10f * fade);
+        drawCircle(x, y + 0.035f * scale, 0.18f * scale, 0.42f, 0.72f, 0.88f, 0.12f * fade);
         return;
     }
-    const float flash = gEnemyHitFlash > 0.0f ? 0.28f : 0.0f;
-    drawCircle(gEnemyX + 0.012f, gEnemyY - 0.025f, 0.095f, 0.02f, 0.03f, 0.04f, 0.5f);
-    drawCircle(gEnemyX, gEnemyY, 0.10f, 0.30f + flash, 0.08f, 0.14f, 1.0f);
-    drawTriangle(gEnemyX - 0.055f, gEnemyY + 0.095f, 0.06f, 0.09f, 0.58f, 0.14f, 0.18f);
-    drawTriangle(gEnemyX + 0.055f, gEnemyY + 0.095f, 0.06f, 0.09f, 0.58f, 0.14f, 0.18f);
-    drawCircle(gEnemyX - 0.035f, gEnemyY + 0.025f, 0.012f, 1.0f, 0.76f, 0.28f);
-    drawCircle(gEnemyX + 0.035f, gEnemyY + 0.025f, 0.012f, 1.0f, 0.76f, 0.28f);
-    drawQuad(gEnemyX, gEnemyY + 0.18f, 0.24f, 0.018f, 0.08f, 0.03f, 0.05f, 0.9f);
-    drawQuad(gEnemyX - 0.12f + 0.12f * gEnemyHealth, gEnemyY + 0.18f,
-             0.24f * std::clamp(gEnemyHealth, 0.0f, 1.0f), 0.012f, 0.86f, 0.18f, 0.24f, 0.95f);
+    const float flash = combatTarget && gEnemyHitFlash > 0.0f ? 0.32f : 0.0f;
+    const float inkR = 0.025f;
+    const float inkG = 0.035f;
+    const float inkB = 0.070f;
+    const float bodyR = 0.24f + flash;
+    const float bodyG = 0.42f + flash * 0.35f;
+    const float bodyB = 0.58f + flash * 0.25f;
+
+    // Broad wolf-bear silhouette with icy blue lit planes and hard navy shadows.
+    drawCircle(x + 0.018f * scale, y - 0.055f * scale, 0.14f * scale, inkR, inkG, inkB, 0.55f);
+    drawQuad(x - 0.070f * scale, y - 0.020f * scale, 0.050f * scale, 0.15f * scale, inkR, inkG, inkB);
+    drawQuad(x + 0.070f * scale, y - 0.020f * scale, 0.050f * scale, 0.15f * scale, inkR, inkG, inkB);
+    drawQuad(x - 0.070f * scale, y - 0.018f * scale, 0.030f * scale, 0.12f * scale, bodyR * 0.60f, bodyG * 0.60f, bodyB * 0.68f);
+    drawQuad(x + 0.070f * scale, y - 0.018f * scale, 0.030f * scale, 0.12f * scale, bodyR, bodyG, bodyB);
+    drawCircle(x, y + 0.018f * scale, 0.115f * scale, inkR, inkG, inkB);
+    drawCircle(x, y + 0.020f * scale, 0.096f * scale, bodyR, bodyG, bodyB);
+    drawTriangle(x - 0.055f * scale, y + 0.125f * scale, 0.085f * scale, 0.13f * scale, inkR, inkG, inkB);
+    drawTriangle(x + 0.055f * scale, y + 0.125f * scale, 0.085f * scale, 0.13f * scale, inkR, inkG, inkB);
+    drawTriangle(x - 0.055f * scale, y + 0.123f * scale, 0.052f * scale, 0.095f * scale, bodyR * 0.70f, bodyG * 0.70f, bodyB * 0.78f);
+    drawTriangle(x + 0.055f * scale, y + 0.123f * scale, 0.052f * scale, 0.095f * scale, bodyR, bodyG, bodyB);
+    drawTriangle(x + 0.018f * scale, y + 0.030f * scale, 0.085f * scale, 0.090f * scale, 0.70f + flash, 0.86f, 0.94f);
+    drawTriangle(x - 0.042f * scale, y + 0.040f * scale, 0.060f * scale, 0.105f * scale, bodyR * 0.65f, bodyG * 0.62f, bodyB * 0.72f);
+    drawCircle(x - 0.035f * scale, y + 0.070f * scale, 0.014f * scale, 1.0f, 0.72f, 0.22f);
+    drawCircle(x + 0.035f * scale, y + 0.070f * scale, 0.014f * scale, 1.0f, 0.72f, 0.22f);
+    drawQuad(x, y - 0.005f * scale, 0.054f * scale, 0.012f * scale, 0.06f, 0.10f, 0.16f);
+    drawTriangle(x, y - 0.075f * scale, 0.070f * scale, 0.075f * scale, 0.50f, 0.72f, 0.84f);
+
+    if (combatTarget) {
+        const float healthRatio = std::clamp(gEnemyHealth / kSnowPredatorMaxHealth, 0.0f, 1.0f);
+        drawQuad(x, y + 0.235f * scale, 0.30f * scale, 0.020f * scale, 0.025f, 0.045f, 0.08f, 0.92f);
+        drawQuad(x - 0.15f * scale + 0.15f * scale * healthRatio, y + 0.235f * scale,
+                 0.30f * scale * healthRatio, 0.013f * scale, 0.28f, 0.84f, 0.98f, 0.98f);
+    }
 }
+
 
 void simulatePhysicsStep() {
     gTime += kPhysicsStep;
+    updateCalendar();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
     const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])));
@@ -301,9 +430,9 @@ void simulatePhysicsStep() {
             gController.body.position + hitbox.offset,
             hitbox.halfExtents
         };
-        const forest::physics::Aabb enemyBox{{gEnemyX, gEnemyY}, {0.07f, 0.06f}};
+        const forest::physics::Aabb enemyBox{{gEnemyX, gEnemyY}, {0.09f, 0.10f}};
         if (forest::combat::intersects(attackBox, enemyBox)) {
-            gEnemyHealth = std::max(0.0f, gEnemyHealth - hitbox.damage);
+            gEnemyHealth = std::max(0.0f, gEnemyHealth - hitbox.damage * 100.0f);
             gEnemyHitFlash = 0.12f;
             gHitRegistered = true;
             gCombat.confirmHit();
@@ -324,31 +453,89 @@ void simulatePhysicsStep() {
 }
 
 void drawWorld() {
-    const float night = 0.06f + 0.035f * (std::sin(gTime * 0.14f) * 0.5f + 0.5f);
-    glClearColor(0.025f + night, 0.09f + night, 0.105f + night, 1.0f);
+    const float phaseTime = std::fmod(std::max(0.0f, gTime), kDayCycleSeconds);
+    const float phaseProgress = std::fmod(phaseTime, kTimePhaseSeconds) / kTimePhaseSeconds;
+    float clearR = 0.025f;
+    float clearG = 0.09f;
+    float clearB = 0.105f;
+    float tintR = 0.0f;
+    float tintG = 0.0f;
+    float tintB = 0.0f;
+    float tintAlpha = 0.0f;
+    switch (currentTimePhase()) {
+        case TimePhase::Day:
+            clearR = 0.045f; clearG = 0.16f; clearB = 0.18f;
+            break;
+        case TimePhase::Afternoon:
+            clearR = 0.20f; clearG = 0.11f; clearB = 0.07f;
+            tintR = 0.95f; tintG = 0.42f; tintB = 0.12f; tintAlpha = 0.10f + phaseProgress * 0.05f;
+            break;
+        case TimePhase::Evening:
+            clearR = 0.18f; clearG = 0.055f; clearB = 0.13f;
+            tintR = 0.58f; tintG = 0.08f; tintB = 0.24f; tintAlpha = 0.16f + phaseProgress * 0.08f;
+            break;
+        case TimePhase::Night:
+            clearR = 0.010f; clearG = 0.025f; clearB = 0.075f;
+            tintR = 0.015f; tintG = 0.04f; tintB = 0.18f; tintAlpha = 0.34f + phaseProgress * 0.08f;
+            break;
+    }
+    glClearColor(clearR, clearG, clearB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(gProgram);
 
-    drawQuad(0.0f, 0.25f, 2.0f, 1.5f, 0.035f, 0.12f, 0.15f);
-    drawTriangle(-0.58f, 0.45f, 1.35f, 0.85f, 0.08f, 0.21f, 0.22f);
-    drawTriangle(0.48f, 0.46f, 1.50f, 0.92f, 0.065f, 0.17f, 0.20f);
-    drawQuad(0.0f, -0.53f, 2.0f, 0.95f, 0.075f, 0.23f, 0.19f);
-    drawQuad(-0.18f, -0.24f, 0.92f, 0.085f, 0.25f, 0.32f, 0.22f, 0.48f);
-    drawQuad(0.34f, -0.11f, 0.54f, 0.07f, 0.25f, 0.32f, 0.22f, 0.38f);
-    drawCircle(0.72f, 0.58f, 0.09f, 0.94f, 0.70f, 0.37f, 0.9f);
-    drawCircle(0.72f, 0.58f, 0.125f, 0.96f, 0.82f, 0.43f, 0.12f);
+    // Three side-by-side regions keep the prototype traversable while making the
+    // biome contrast immediately readable on a phone screen.
+    drawQuad(-0.60f, 0.18f, 0.60f, 1.42f, 0.035f, 0.17f, 0.14f);
+    drawQuad(0.00f, 0.18f, 0.60f, 1.42f, 0.34f, 0.20f, 0.09f);
+    drawQuad(0.60f, 0.18f, 0.60f, 1.42f, 0.70f, 0.82f, 0.88f);
+    drawQuad(-0.60f, -0.53f, 0.60f, 0.58f, 0.075f, 0.28f, 0.17f);
+    drawQuad(0.00f, -0.53f, 0.60f, 0.58f, 0.78f, 0.48f, 0.20f);
+    drawQuad(0.60f, -0.53f, 0.60f, 0.58f, 0.82f, 0.90f, 0.94f);
+    drawQuad(-0.30f, 0.05f, 0.012f, 1.10f, 0.07f, 0.10f, 0.09f, 0.70f);
+    drawQuad(0.30f, 0.05f, 0.012f, 1.10f, 0.20f, 0.25f, 0.28f, 0.70f);
 
-    drawTree(-0.72f, 0.08f, 0.22f);
-    drawTree(-0.47f, 0.28f, 0.18f);
-    drawTree(0.55f, 0.20f, 0.24f);
-    drawTree(0.82f, 0.02f, 0.18f);
-    drawTree(-0.12f, 0.43f, 0.15f);
-    drawRock(-0.30f, -0.28f, 0.13f);
-    drawRock(0.60f, -0.32f, 0.11f);
-    drawCircle(-0.05f, -0.30f, 0.035f, 0.81f, 0.66f, 0.25f);
-    drawCircle(-0.00f, -0.27f, 0.035f, 0.66f, 0.84f, 0.36f);
-    drawAnimal(-0.60f, -0.30f, 0.02f);
-    if (gEnemyHealth > 0.0f || gEnemyDefeatTimer > 0.0f) drawWarden();
+    // Forest biome: tree line, village hut, farms, crops, and local people.
+    drawTriangle(-0.72f, 0.43f, 0.50f, 0.40f, 0.08f, 0.28f, 0.20f);
+    drawTriangle(-0.43f, 0.37f, 0.42f, 0.34f, 0.06f, 0.22f, 0.17f);
+    drawTree(-0.82f, 0.08f, 0.20f);
+    drawTree(-0.48f, 0.27f, 0.18f);
+    drawForestVillage();
+    drawAnimal(-0.57f, -0.30f, 0.02f);
+    drawCircle(-0.56f, -0.28f, 0.028f, 0.82f, 0.68f, 0.24f);
+    drawCircle(-0.50f, -0.25f, 0.026f, 0.68f, 0.84f, 0.36f);
+
+    // Sand biome: warm settlement, awning, cactus, and two residents.
+    drawTriangle(-0.04f, 0.44f, 0.45f, 0.34f, 0.67f, 0.38f, 0.13f);
+    drawTriangle(0.19f, 0.30f, 0.24f, 0.25f, 0.72f, 0.42f, 0.16f);
+    drawSandSettlement();
+    drawCircle(0.27f, -0.36f, 0.035f, 0.92f, 0.66f, 0.23f);
+    drawQuad(0.27f, -0.28f, 0.012f, 0.15f, 0.18f, 0.42f, 0.16f);
+    drawTriangle(0.27f, -0.19f, 0.072f, 0.075f, 0.22f, 0.56f, 0.20f);
+
+    // Snow biome: ice peaks and drifting snow, with no human residents.
+    drawTriangle(0.46f, 0.43f, 0.52f, 0.48f, 0.43f, 0.60f, 0.70f);
+    drawTriangle(0.76f, 0.48f, 0.50f, 0.58f, 0.52f, 0.68f, 0.78f);
+    drawTriangle(0.46f, 0.51f, 0.16f, 0.16f, 0.90f, 0.96f, 1.0f);
+    drawTriangle(0.76f, 0.58f, 0.18f, 0.18f, 0.92f, 0.98f, 1.0f);
+    drawCircle(0.42f, 0.23f, 0.010f, 1.0f, 1.0f, 1.0f, 0.78f);
+    drawCircle(0.55f, 0.37f, 0.008f, 1.0f, 1.0f, 1.0f, 0.78f);
+    drawCircle(0.83f, 0.28f, 0.011f, 1.0f, 1.0f, 1.0f, 0.78f);
+    drawCircle(0.70f, 0.14f, 0.007f, 1.0f, 1.0f, 1.0f, 0.78f);
+    drawSnowPredator(gEnemyX, gEnemyY, 1.0f, true);
+
+    // A translucent full-scene wash makes the time phase readable even though the
+    // prototype uses flat 2D geometry rather than a dynamic skybox.
+    if (tintAlpha > 0.0f) {
+        drawQuad(0.0f, 0.18f, 2.0f, 1.42f, tintR, tintG, tintB, tintAlpha);
+    }
+    if (currentTimePhase() == TimePhase::Night) {
+        drawCircle(0.72f, 0.58f, 0.082f, 0.92f, 0.95f, 1.0f, 0.92f);
+        drawCircle(0.75f, 0.60f, 0.082f, 0.015f, 0.04f, 0.14f, 0.92f);
+    } else {
+        const float sunGlow = 0.08f + 0.04f * std::sin(phaseProgress * PI);
+        drawCircle(0.72f, 0.58f, 0.12f, 1.0f, 0.84f, 0.42f, sunGlow);
+        drawCircle(0.72f, 0.58f, 0.072f, 1.0f, 0.70f, 0.28f, 0.90f);
+    }
     drawPlayer();
 }
 }
@@ -356,6 +543,8 @@ void drawWorld() {
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint width, jint height) {
     gPhysicsAccumulator = 0.0;
+    gTime = 0.0f;
+    gDaysPlayed = 1;
     gWidth = static_cast<float>(std::max(1, width));
     gHeight = static_cast<float>(std::max(1, height));
     gController = {};
@@ -365,7 +554,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gFiber = 8;
     gStone = 4;
     gHunger = 0.82f;
-    gEnemyHealth = 1.0f;
+    gEnemyHealth = kSnowPredatorMaxHealth;
     gEnemyHitFlash = 0.0f;
     gEnemyDefeatTimer = 0.0f;
     gLevelPulse = 0;
@@ -450,13 +639,20 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_slide(JNIEnv*, jobject) {
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_gather(JNIEnv*, jobject) {
-    const float nearestResource = std::min(
-        std::abs(gPlayerX + 0.05f) + std::abs(gPlayerY + 0.30f),
-        std::abs(gPlayerX - 0.60f) + std::abs(gPlayerY + 0.32f)
-    );
+    const float forestCache = std::abs(gPlayerX + 0.56f) + std::abs(gPlayerY + 0.28f);
+    const float sandCache = std::abs(gPlayerX + 0.04f) + std::abs(gPlayerY + 0.29f);
+    const float snowCache = std::abs(gPlayerX - 0.70f) + std::abs(gPlayerY + 0.32f);
+    const float nearestResource = std::min(forestCache, std::min(sandCache, snowCache));
     if (nearestResource < 0.42f) {
-        gWood += 1;
-        gFiber += 1;
+        if (forestCache <= sandCache && forestCache <= snowCache) {
+            gWood += 1;
+            gFiber += 2;
+        } else if (sandCache <= snowCache) {
+            gWood += 1;
+            gFiber += 1;
+        } else {
+            gStone += 2;
+        }
         gProgression.recordGather();
         gQuestPulse = 90;
         gHunger = std::min(1.0f, gHunger + 0.003f);
@@ -494,9 +690,12 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << gWood << '|'
           << gFiber << '|'
           << gStone << '|'
-          << static_cast<int>(std::round(gEnemyHealth * 100.0f)) << '|'
+          << static_cast<int>(std::round(gEnemyHealth)) << '|'
           << gLevelPulse << '|'
           << gQuestPulse << '|'
+          << biomeName() << '|'
+          << timePhaseName() << '|'
+          << gDaysPlayed << '|'
           << gProgression.questObjective();
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
