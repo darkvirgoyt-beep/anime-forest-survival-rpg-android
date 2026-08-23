@@ -13,4 +13,4 @@
 - [x] Implement backend ID-token verification, game-account upsert, and secure rotating Aethelgard sessions
 - [x] Replace the Android Play Games-only login attempt with a standard Google Sign-In token exchange flow
 - [x] Document the required Android and Web OAuth clients, backend secrets, deployment, and Play Games upgrade path
-- [ ] Validate the standard Google Sign-In backend and Android release build through automated tests and CI
+- [x] Validate the standard Google Sign-In backend and Android release build through automated tests and CI
