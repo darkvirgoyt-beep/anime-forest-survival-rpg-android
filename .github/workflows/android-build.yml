@@ -170,39 +170,48 @@ jobs:
           python3 tools/validate_asset_budget.py
           gradle bundleRelease assembleRelease --stacktrace
 
-      - name: Upload release APK and Android App Bundle
+      - name: Upload direct APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: forest-slice-release-artifacts
-          path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/bundle/release/app-release.aab
+          name: forest-slice-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
 
-
+      - name: Upload direct AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forest-slice-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
   release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Create v0.2.1 APK release')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Publish v0.2.2 Direct Android release')
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download release Android artifacts
+      - name: Download direct APK artifact
         uses: actions/download-artifact@v4
         with:
-          name: forest-slice-release-artifacts
+          name: forest-slice-release-apk
+          path: release
+
+      - name: Download direct AAB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: forest-slice-release-aab
           path: release
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.1
-          name: Forest Slice v0.2.1 — Cel-Shaded Hero
+          tag_name: v0.2.2
+          name: AETHELGRAD v0.2.2 — Direct Android Downloads
           body: |
-            Android release build for Aethelgard: Wild Horizons – Crafting.
-
-            This release includes the original cel-shaded playable hero with ink-like contours, hard shadow planes, expressive anime-fantasy hair, outfit accents, and a short sword.
-
+            AETHELGRAD Android build with direct APK and Android App Bundle downloads.
+            Download `app-release.apk` for direct installation on a compatible Android device. Use `app-release.aab` for Google Play or bundle testing.
             The APK is signed with the repository's debug signing configuration for test distribution only. A protected production keystore is required for Google Play publishing.
+            The Actions build ZIP is only a CI container; use these release assets instead of opening the ZIP.
           files: |
             release/app-release.apk
             release/app-release.aab
