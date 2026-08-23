@@ -2,6 +2,7 @@ package com.darkvirgoyt.forestslice
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.hardware.Sensor
@@ -64,6 +65,8 @@ class MainActivity : Activity(), SensorEventListener {
     private val accountSession = AccountSessionManager()
     private val characterCreation = CharacterCreationState()
     private var selectedServer = ServerDirectory.regions.first()
+    private val isDeveloperBuild: Boolean
+        get() = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
         override fun run() {
@@ -210,7 +213,7 @@ class MainActivity : Activity(), SensorEventListener {
             onboardingStatus.text = snapshot.message
             onboardingStatus.setTextColor(Color.rgb(255, 205, 145))
         }
-        if (BuildConfig.DEBUG) {
+        if (isDeveloperBuild) {
             val guest = actionButton("DEV GUEST") {
                 val snapshot = accountSession.startGuest()
                 onboardingStatus.text = "DEV ONLY  •  ${snapshot.message}"
@@ -269,7 +272,7 @@ class MainActivity : Activity(), SensorEventListener {
             characterCreation.name = characterNameInput.text.toString()
             val error = characterCreation.validate()
             val authenticated = accountSession.snapshot.state == SessionState.AUTHENTICATED
-            val developerGuest = BuildConfig.DEBUG && accountSession.snapshot.state == SessionState.GUEST
+            val developerGuest = isDeveloperBuild && accountSession.snapshot.state == SessionState.GUEST
             val serverReady = selectedServer.status == "ONLINE" && selectedServer.pingMs != null
             if (!authenticated && !developerGuest) {
                 onboardingStatus.text = "Google Play sign-in is required before entering the online world."
