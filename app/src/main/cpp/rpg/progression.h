@@ -14,7 +14,7 @@ struct Progression {
 
     int level = 0;
     int experience = 0;
-    int experienceToNext = 10;
+    int experienceToNext = 991;
     int totalExperience = 0;
     int gatheringActions = 0;
     QuestStage questStage = QuestStage::GatherMaterials;

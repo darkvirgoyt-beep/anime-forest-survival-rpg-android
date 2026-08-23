@@ -1,15 +1,26 @@
 #include "progression.h"
 
 #include <algorithm>
+#include <cstdint>
 
 namespace forest::rpg {
 
 int Progression::experienceRequirementForLevel(int targetLevel) {
     const int safeLevel = std::clamp(targetLevel, 0, kMaxLevel);
     if (safeLevel >= kMaxLevel) return 0;
-    const int nextLevel = safeLevel + 1;
-    // Exact integer curve. The final transition, 99 -> 100, is exactly 100000 XP.
-    return 10 * nextLevel * nextLevel;
+    if (safeLevel == kMaxLevel - 1) return 100000;
+
+    // Deterministic integer hash jitter makes the thresholds difficult to guess
+    // while the 1000 XP level band guarantees strict ascending order.
+    std::uint32_t seed = static_cast<std::uint32_t>(safeLevel + 1) * 0x9E3779B9u + 0x7F4A7C15u;
+    seed ^= seed >> 16;
+    seed *= 0x85EBCA6Bu;
+    seed ^= seed >> 13;
+    seed *= 0xC2B2AE35u;
+    seed ^= seed >> 16;
+    const int jitter = static_cast<int>(seed % 701u) - 350;
+    const int fineOffset = static_cast<int>((seed >> 10) % 89u);
+    return (safeLevel + 1) * 1000 + jitter + fineOffset;
 }
 
 void Progression::awardExperience(int amount) {

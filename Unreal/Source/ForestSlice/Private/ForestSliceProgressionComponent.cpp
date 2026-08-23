@@ -25,10 +25,19 @@ int32 UForestSliceProgressionComponent::GetXPRequirementForLevel(int32 Level) co
 {
     const int32 SafeLevel = FMath::Clamp(Level, 0, MaxLevel);
     if (SafeLevel >= MaxLevel) return 0;
+    if (SafeLevel == MaxLevel - 1) return 100000;
 
-    // Exact integer curve: level L -> L+1 costs 10 * (L+1)^2.
-    const int32 NextLevel = SafeLevel + 1;
-    return 10 * NextLevel * NextLevel;
+    // Deterministic integer hash jitter makes the thresholds difficult to guess
+    // while the 1000 XP level band guarantees strict ascending order.
+    uint32 Seed = static_cast<uint32>(SafeLevel + 1) * 0x9E3779B9u + 0x7F4A7C15u;
+    Seed ^= Seed >> 16;
+    Seed *= 0x85EBCA6Bu;
+    Seed ^= Seed >> 13;
+    Seed *= 0xC2B2AE35u;
+    Seed ^= Seed >> 16;
+    const int32 Jitter = static_cast<int32>(Seed % 701u) - 350;
+    const int32 FineOffset = static_cast<int32>((Seed >> 10) % 89u);
+    return (SafeLevel + 1) * 1000 + Jitter + FineOffset;
 }
 
 int32 UForestSliceProgressionComponent::AwardExperience(int32 Amount)

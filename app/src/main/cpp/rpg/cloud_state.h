@@ -18,7 +18,7 @@ struct CloudState {
     int stone = 4;
     int experience = 0;
     int level = 0;
-    int experienceToNext = 10;
+    int experienceToNext = 991;
     int totalExperience = 0;
     int day = 1;
     float worldTime = 0.0f;

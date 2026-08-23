@@ -16,7 +16,7 @@ struct FForestSliceProgressionState
     int32 Experience = 0;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 ExperienceToNext = 10;
+    int32 ExperienceToNext = 991;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 TotalExperience = 0;
