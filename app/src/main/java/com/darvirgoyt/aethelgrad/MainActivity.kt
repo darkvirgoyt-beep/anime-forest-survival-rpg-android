@@ -44,6 +44,7 @@ import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.hypot
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 object NativeGameBridge {
@@ -89,13 +90,17 @@ class MainActivity : Activity(), SensorEventListener {
     private var sensorManager: SensorManager? = null
     private var gyroSensor: Sensor? = null
     private var gyroEnabled = false
-    private val gyroSensitivity = 1.0f
+    private var gyroSensitivity = 1.0f
+    private var lookSensitivity = 1.0f
+    private var joystickSensitivity = 1.0f
     private var selectedTargetFps = 60
     private var selectedGraphicsTier = 2
     private var selectedResourceTier: ContentDownloadPlan.ResourceTier? = null
     private var supportedTargetFps = listOf(60)
     private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
+    private val controlPreferences by lazy { getSharedPreferences("aethelgard_controls", MODE_PRIVATE) }
     private lateinit var audio: GameAudio
+    private lateinit var joystickView: JoystickView
     private lateinit var assetDelivery: AssetDeliveryManager
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
@@ -185,6 +190,9 @@ class MainActivity : Activity(), SensorEventListener {
         selectedTargetFps = graphicsPreferences.getInt("target_fps", supportedTargetFps.maxOrNull() ?: 60)
             .takeIf { it in supportedTargetFps } ?: (supportedTargetFps.maxOrNull() ?: 60)
         selectedGraphicsTier = graphicsPreferences.getInt("graphics_tier", 2).coerceIn(0, 4)
+        gyroSensitivity = controlPreferences.getFloat("gyro_sensitivity", 1.0f).coerceIn(0.25f, 2.5f)
+        lookSensitivity = controlPreferences.getFloat("look_sensitivity", 1.0f).coerceIn(0.25f, 2.5f)
+        joystickSensitivity = controlPreferences.getFloat("joystick_sensitivity", 1.0f).coerceIn(0.50f, 1.50f)
         selectedResourceTier = graphicsPreferences.getString("resource_tier", null)?.let { value ->
             runCatching { ContentDownloadPlan.ResourceTier.valueOf(value) }.getOrNull()
         }
@@ -199,12 +207,14 @@ class MainActivity : Activity(), SensorEventListener {
         gameView.applyGraphicsTier(selectedGraphicsTier)
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         rootContainer.addView(LookPadView(this) { dx, dy ->
-            gameView.queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f, dy * 0.0032f) }
+            gameView.queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f * lookSensitivity, dy * 0.0032f * lookSensitivity) }
         })
         rootContainer.addView(buildHud())
-        rootContainer.addView(JoystickView(this) { x, y ->
+        joystickView = JoystickView(this) { x, y ->
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
-        })
+        }
+        joystickView.setSensitivity(joystickSensitivity)
+        rootContainer.addView(joystickView)
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
@@ -397,7 +407,7 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(24)
         })
 
-        val settingsButton = cinematicButton("⚙  SETTINGS", false) { showAudioSettings() }
+        val settingsButton = cinematicButton("⚙  SETTINGS", false) { showControlSettings() }
         overlay.addView(settingsButton, FrameLayout.LayoutParams(dp(132), dp(38), Gravity.BOTTOM or Gravity.END).apply {
             bottomMargin = dp(16)
             rightMargin = dp(24)
@@ -1149,9 +1159,11 @@ class MainActivity : Activity(), SensorEventListener {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.teleportToTower() }
         }
+        val controlsButton = actionButton("CONTROLS") { showControlSettings() }
         navigation.addView(viewModeButton, LinearLayout.LayoutParams(dp(156), dp(42)).apply { rightMargin = dp(6) })
         navigation.addView(mapButton, LinearLayout.LayoutParams(dp(112), dp(42)).apply { rightMargin = dp(6) })
-        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(156), dp(42)))
+        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(148), dp(42)).apply { rightMargin = dp(6) })
+        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(112), dp(42)))
         overlay.addView(navigation, FrameLayout.LayoutParams(-1, dp(46), Gravity.TOP).apply {
             topMargin = dp(96)
             leftMargin = dp(20)
@@ -1623,6 +1635,96 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
+    private fun showControlSettings() {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(10), dp(22), dp(8))
+        }
+        val summary = TextView(this).apply {
+            text = "Tune how quickly the camera and movement respond. Changes apply immediately and are saved on this device."
+            textSize = 12f
+            setTextColor(Color.rgb(171, 190, 187))
+            setPadding(0, 0, 0, dp(8))
+        }
+        panel.addView(summary)
+
+        fun valueLabel(name: String, value: Float): TextView = TextView(this).apply {
+            text = "$name  ${(value * 100f).roundToInt()}%"
+            textSize = 13f
+            setTextColor(Color.rgb(244, 218, 155))
+        }
+
+        fun sensitivitySlider(
+            name: String,
+            initial: Float,
+            minimum: Float,
+            maximum: Float,
+            onChanged: (Float) -> Unit
+        ) {
+            val label = valueLabel(name, initial)
+            panel.addView(label)
+            panel.addView(SeekBar(this).apply {
+                max = 100
+                progress = (((initial - minimum) / (maximum - minimum)) * 100f).roundToInt().coerceIn(0, 100)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                        val selected = minimum + (maximum - minimum) * (value / 100f)
+                        label.text = "$name  ${(selected * 100f).roundToInt()}%"
+                        onChanged(selected)
+                    }
+                    override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+                })
+            })
+        }
+
+        sensitivitySlider("GYRO SENSITIVITY", gyroSensitivity, 0.25f, 2.5f) { value ->
+            gyroSensitivity = value
+            controlPreferences.edit().putFloat("gyro_sensitivity", value).apply()
+        }
+        sensitivitySlider("LOOK / LENS SENSITIVITY", lookSensitivity, 0.25f, 2.5f) { value ->
+            lookSensitivity = value
+            controlPreferences.edit().putFloat("look_sensitivity", value).apply()
+        }
+        sensitivitySlider("JOYSTICK RESPONSE", joystickSensitivity, 0.50f, 1.50f) { value ->
+            joystickSensitivity = value
+            joystickView.setSensitivity(value)
+            controlPreferences.edit().putFloat("joystick_sensitivity", value).apply()
+        }
+        panel.addView(TextView(this).apply {
+            text = "LOWER values give slower, precise aiming. HIGHER values turn faster. Joystick response changes the thumb-to-movement curve, not the maximum speed."
+            textSize = 11f
+            setTextColor(Color.rgb(171, 190, 187))
+            setPadding(0, dp(8), 0, dp(6))
+        })
+
+        lateinit var dialog: AlertDialog
+        panel.addView(actionButton("RESET CONTROL DEFAULTS") {
+            gyroSensitivity = 1.0f
+            lookSensitivity = 1.0f
+            joystickSensitivity = 1.0f
+            joystickView.setSensitivity(joystickSensitivity)
+            controlPreferences.edit()
+                .putFloat("gyro_sensitivity", gyroSensitivity)
+                .putFloat("look_sensitivity", lookSensitivity)
+                .putFloat("joystick_sensitivity", joystickSensitivity)
+                .apply()
+            dialog.dismiss()
+            showControlSettings()
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(4) })
+        panel.addView(actionButton("AUDIO SETTINGS") {
+            dialog.dismiss()
+            showAudioSettings()
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+
+        dialog = AlertDialog.Builder(this)
+            .setTitle("AETHELGARD CONTROLS")
+            .setView(panel)
+            .setNegativeButton("CLOSE", null)
+            .create()
+        dialog.show()
+    }
+
     private fun showAudioSettings() {
         val current = audio.getSettings()
         val panel = LinearLayout(this).apply {
@@ -2004,8 +2106,16 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     private val density = context.resources.displayMetrics.density
     private val deadZone = 0.10f
     private val leftZoneFraction = 0.46f
+    private var sensitivity = 1.0f
+    private var responseCurve = 1.12f
 
     private fun dp(value: Int): Int = (value * density).roundToInt()
+
+    fun setSensitivity(value: Float) {
+        sensitivity = value.coerceIn(0.50f, 1.50f)
+        // Keep full-speed output at the edge while changing precision near center.
+        responseCurve = (1.42f - sensitivity * 0.30f).coerceIn(0.97f, 1.27f)
+    }
 
     init {
         setWillNotDraw(false)
@@ -2043,8 +2153,14 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         paint.style = android.graphics.Paint.Style.STROKE
         paint.strokeWidth = dp(2).toFloat()
         paint.color = Color.argb(150, 255, 242, 194)
+        canvas.drawCircle(baseX, baseY, radius * 1.42f, paint)
+        paint.color = Color.argb(185, 255, 242, 194)
         canvas.drawCircle(knobX, knobY, radius * 0.43f, paint)
         paint.style = android.graphics.Paint.Style.FILL
+        paint.textSize = dp(10).toFloat()
+        paint.textAlign = android.graphics.Paint.Align.CENTER
+        paint.color = Color.argb(205, 241, 224, 178)
+        canvas.drawText("MOVE", baseX, baseY + radius * 1.72f, paint)
     }
 
     private fun emitMove(event: MotionEvent, index: Int) {
@@ -2063,10 +2179,11 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         val directionY = dy / distance
         knobX = baseX + directionX * clampedDistance
         knobY = baseY + directionY * clampedDistance
-        val normalizedDistance = ((clampedDistance / radius) - deadZone) / (1f - deadZone)
+        val normalizedDistance = (((clampedDistance / radius) - deadZone) / (1f - deadZone)).coerceIn(0f, 1f)
+        val curvedDistance = normalizedDistance.pow(responseCurve)
         onMove(
-            (directionX * normalizedDistance).coerceIn(-1f, 1f),
-            (directionY * normalizedDistance).coerceIn(-1f, 1f)
+            (directionX * curvedDistance).coerceIn(-1f, 1f),
+            (directionY * curvedDistance).coerceIn(-1f, 1f)
         )
         invalidate()
     }
@@ -2074,8 +2191,8 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     private fun beginPointer(event: MotionEvent, index: Int): Boolean {
         if (event.getX(index) > width * leftZoneFraction || event.getY(index) < height * 0.08f) return false
         activePointerId = event.getPointerId(index)
-        baseX = event.getX(index)
-        baseY = event.getY(index)
+        baseX = event.getX(index).coerceIn(radius * 1.55f, width - radius * 1.55f)
+        baseY = event.getY(index).coerceIn(radius * 1.55f, height - radius * 1.55f)
         emitMove(event, index)
         invalidate()
         return true
