@@ -1307,8 +1307,12 @@ class MainActivity : Activity(), SensorEventListener {
                         if (!fallbackStarted) {
                             fallbackStarted = true
                             status.text = "Full resources are required before start"
-                            details.text = "Play Asset Delivery could not start for this installation."
-                            note.text = "Install the Play Store/internal-test AAB to download the compiled ${ContentDownloadPlan.totalGiBLabel} resource packs. A direct APK cannot unlock the production world."
+                            details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
+                            note.text = if (event.errorCode == -2) {
+                                "Free storage, then press retry. Required headroom: ${ContentDownloadPlan.minimumFreeSpaceMiB} MB."
+                            } else {
+                                "Install the Play Store/internal-test AAB to download the compiled ${ContentDownloadPlan.totalGiBLabel} resource packs. A direct APK cannot unlock the production world."
+                            }
                             note.setTextColor(Color.rgb(255, 180, 150))
                             progress.progress = 0
                             retry.visibility = View.VISIBLE

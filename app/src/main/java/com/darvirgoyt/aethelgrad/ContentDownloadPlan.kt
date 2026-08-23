@@ -37,7 +37,10 @@ object ContentDownloadPlan {
     )
 
     val totalMiB: Int = packs.sumOf { it.targetMiB }
-    val totalGiBLabel: String = "%.1f GB".format(totalMiB / 1024.0)
+    val requiredMiB: Int = packs.filter { it.requiredBeforeStart }.sumOf { it.targetMiB }
+    // Reserve headroom for Play staging, filesystem metadata, and safe pack updates.
+    val minimumFreeSpaceMiB: Int = requiredMiB + 512
+    val totalGiBLabel: String = "%.1f GB".format(requiredMiB / 1024.0)
     val summary: String = packs.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }
     val requiredPackNames: List<String> = packs.filter { it.requiredBeforeStart }.map { it.playPackName }
 }

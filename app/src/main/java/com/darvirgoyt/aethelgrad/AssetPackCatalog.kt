@@ -1,6 +1,7 @@
 package com.darvirgoyt.aethelgrad
 
 import android.content.Context
+import android.os.StatFs
 import com.google.android.play.core.assetpacks.AssetPackManager
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.android.play.core.assetpacks.AssetPackState
@@ -37,14 +38,52 @@ class AssetPackCatalog(context: Context) {
         val failed: Boolean get() = status == AssetPackStatus.FAILED
     }
 
+    data class Preflight(
+        val ready: Boolean,
+        val detail: String,
+        val availableBytes: Long,
+        val requiredBytes: Long
+    )
+
     companion object {
         /** Content stays outside the base APK and is downloaded independently. */
         val productionPackNames: List<String>
             get() = ContentDownloadPlan.requiredPackNames
     }
 
-    private val manager: AssetPackManager = AssetPackManagerFactory.getInstance(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val manager: AssetPackManager = AssetPackManagerFactory.getInstance(appContext)
     private var listener: AssetPackStateUpdateListener? = null
+
+    fun checkProductionPreflight(): Preflight {
+        val requiredBytes = ContentDownloadPlan.minimumFreeSpaceMiB.toLong() * 1024L * 1024L
+        return try {
+            val stats = StatFs(appContext.filesDir.absolutePath)
+            val availableBytes = stats.availableBytes
+            if (availableBytes < requiredBytes) {
+                Preflight(
+                    ready = false,
+                    detail = "Not enough free storage: ${availableBytes / (1024L * 1024L)} MB available; ${ContentDownloadPlan.minimumFreeSpaceMiB} MB required.",
+                    availableBytes = availableBytes,
+                    requiredBytes = requiredBytes
+                )
+            } else {
+                Preflight(
+                    ready = true,
+                    detail = "Storage check passed: ${availableBytes / (1024L * 1024L)} MB available.",
+                    availableBytes = availableBytes,
+                    requiredBytes = requiredBytes
+                )
+            }
+        } catch (error: Exception) {
+            Preflight(
+                ready = false,
+                detail = "Storage check failed: ${error.message ?: "unable to inspect free space"}",
+                availableBytes = 0L,
+                requiredBytes = requiredBytes
+            )
+        }
+    }
 
     fun request(packName: String, onProgress: (Progress) -> Unit = {}) {
         listener?.let(manager::unregisterListener)
@@ -75,8 +114,23 @@ class AssetPackCatalog(context: Context) {
                 ProductionProgress(
                     status = AssetPackStatus.COMPLETED,
                     percent = 100,
-                    bytesDownloaded = ContentDownloadPlan.totalMiB.toLong() * 1024L * 1024L,
-                    totalBytes = ContentDownloadPlan.totalMiB.toLong() * 1024L * 1024L
+                    bytesDownloaded = ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L,
+                    totalBytes = ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L
+                )
+            )
+            return
+        }
+
+        val preflight = checkProductionPreflight()
+        if (!preflight.ready) {
+            onProgress(
+                ProductionProgress(
+                    status = AssetPackStatus.FAILED,
+                    percent = 0,
+                    bytesDownloaded = 0L,
+                    totalBytes = ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L,
+                    failedPack = preflight.detail,
+                    errorCode = -2
                 )
             )
             return
@@ -113,6 +167,9 @@ class AssetPackCatalog(context: Context) {
         val reportedTotalBytes = states.values.sumOf { it.totalBytes }
         val bytesDownloaded = states.values.sumOf { it.bytesDownloaded }
         val failed = states.values.firstOrNull { it.status == AssetPackStatus.FAILED }
+        val waitingForWifi = states.values.any { it.status == AssetPackStatus.WAITING_FOR_WIFI }
+        val confirmationRequired = states.values.any { it.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION }
+        val canceled = states.values.any { it.status == AssetPackStatus.CANCELED }
         val complete = productionPackNames.all { packName ->
             states[packName]?.status == AssetPackStatus.COMPLETED || isReady(packName)
         }
@@ -123,7 +180,7 @@ class AssetPackCatalog(context: Context) {
         val totalBytes = if (allTotalsKnown) {
             reportedTotalBytes
         } else {
-            maxOf(reportedTotalBytes, ContentDownloadPlan.totalMiB.toLong() * 1024L * 1024L)
+            maxOf(reportedTotalBytes, ContentDownloadPlan.requiredMiB.toLong() * 1024L * 1024L)
         }
         val percent = when {
             complete -> 100
@@ -134,6 +191,9 @@ class AssetPackCatalog(context: Context) {
             ProductionProgress(
                 status = when {
                     failed != null -> AssetPackStatus.FAILED
+                    waitingForWifi -> AssetPackStatus.WAITING_FOR_WIFI
+                    confirmationRequired -> AssetPackStatus.REQUIRES_USER_CONFIRMATION
+                    canceled -> AssetPackStatus.CANCELED
                     complete -> AssetPackStatus.COMPLETED
                     else -> AssetPackStatus.DOWNLOADING
                 },
