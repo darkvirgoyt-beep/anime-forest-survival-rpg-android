@@ -196,19 +196,12 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
-        // Production starts with a small bootstrap install, then prepares the
-        // separately downloadable 3D content before showing account onboarding.
-        if (!BuildConfig.PROTOTYPE_MODE) {
-            onboardingOverlay.visibility = View.GONE
-            showAssetPatchOverlay()
-        } else {
-            onboardingOverlay.visibility = View.GONE
-        }
+        // Every launch begins on the sign-in screen. Content preparation and
+        // character/world entry happen only after authentication succeeds.
+        onboardingOverlay.visibility = View.VISIBLE
         updateGyroButton()
         registerGyro()
-        if (!BuildConfig.PROTOTYPE_MODE) {
-            accountSession.initialize(this, ::applyAccountSnapshot)
-        }
+        accountSession.initialize(this, ::applyAccountSnapshot)
     }
 
     private fun detectSupportedTargetFps(): List<Int> {
@@ -544,11 +537,14 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
-            accountSession.fetchProfile { profile, profileError ->
-                accountSession.fetchOwnedWorlds { worlds, worldsError ->
-                    showCharacterSetup(snapshot.accountId, profile, worlds.orEmpty(), worldsError ?: profileError)
+            val continueToCharacterSetup = {
+                accountSession.fetchProfile { profile, profileError ->
+                    accountSession.fetchOwnedWorlds { worlds, worldsError ->
+                        showCharacterSetup(snapshot.accountId, profile, worlds.orEmpty(), worldsError ?: profileError)
+                    }
                 }
             }
+            if (BuildConfig.PROTOTYPE_MODE) continueToCharacterSetup() else showAssetPatchOverlay(continueToCharacterSetup)
             return
         }
         if (!::onboardingStatus.isInitialized) return
@@ -1203,7 +1199,7 @@ class MainActivity : Activity(), SensorEventListener {
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
-    private fun showAssetPatchOverlay() {
+    private fun showAssetPatchOverlay(onReady: () -> Unit = {}) {
         if (assetPatchOverlay != null) return
         val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(4, 10, 16)) }
         val panel = LinearLayout(this).apply {
@@ -1267,9 +1263,7 @@ class MainActivity : Activity(), SensorEventListener {
             hudHandler.postDelayed({
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
-                if (!authenticationTransitionStarted && !BuildConfig.PROTOTYPE_MODE) {
-                    onboardingOverlay.visibility = View.VISIBLE
-                }
+                onReady()
             }, 450L)
         }
 
