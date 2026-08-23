@@ -2,7 +2,7 @@
 
 ## Current playable workflow
 
-AETHELGRAD uses an invite-only, four-player co-op room flow for the first multiplayer slice. The Android client signs the player into the configured game session, lets the host create a six-character room code, and lets friends join with that code. The room response reports the region, maximum party size, active participants, synchronized world time, tower revision, Warden health, and combat revision.
+AETHELGRAD uses an invite-only, four-player **persistent creator-owned world** flow for the first multiplayer slice. The Android client signs the player into the configured game session, lets the host create a named world with a six-character access code, and lets friends join with that code. The world remains in the database when players leave; the creator remains the owner, each member keeps a durable item/progression save, and the shared world keeps its state and placed buildings. The room response reports the region, maximum party size, owner, active participants, synchronized world time, tower revision, Warden health, and combat revision.
 
 The flow is intentionally staged rather than pretending to be a complete public matchmaking service:
 
@@ -16,11 +16,12 @@ The flow is intentionally staged rather than pretending to be a complete public 
 | Presence | Client sends movement/tower state heartbeat approximately every two seconds. | Server bounds coordinates, refreshes presence, and returns the current room snapshot. |
 | Reconnect | After a heartbeat failure, the client retries with bounded exponential backoff. | The reconnect endpoint refreshes the member’s presence only if the account is already a member. |
 | Shared actions | Combat, gathering, and crafting requests carry request IDs. | Server checks range, cooldowns, inventory state, and duplicate request receipts before mutating state. |
-| Leave | Player leaves explicitly or is no longer shown after the presence timeout. | Membership row is removed for explicit leave; stale presence is excluded from snapshots. |
+| Leave | Player leaves explicitly or is no longer shown after the presence timeout. | The member is marked inactive; saved items, progression, and world membership remain recoverable. |
+| Persistence | Client loads the member save and shared world save on entry and autosaves during play. | Revision-checked item/progression saves and creator-only world saves prevent silent overwrites. |
 
 ## Reconnect behavior
 
-`POST /v1/coop/rooms/:code/reconnect` is an authenticated recovery operation. It does not let an arbitrary account enter a room. The server first normalizes the room code, confirms that the room exists, confirms that the account already has a membership row, refreshes `last_seen_at`, and returns the same authoritative snapshot used by normal room polling.
+`POST /v1/coop/rooms/:code/reconnect` is an authenticated recovery operation. It does not let an arbitrary account enter a world. The server first normalizes the access code, confirms that the persistent world exists, confirms that the account already has a membership row, reactivates that membership, refreshes `last_seen_at`, and returns the same authoritative snapshot used by normal world polling. `GET /player-save` restores that member’s items and progression, while `GET /save` restores the creator-owned shared world and placed buildings.
 
 The Android client attempts reconnect at most once at a time. Its delay grows from one second to a maximum of eight seconds. A successful snapshot resets the attempt counter. If the server reports that the room no longer exists or membership has expired, the client stops polling and returns to the co-op entry state rather than creating an uncontrolled duplicate session.
 
@@ -38,7 +39,7 @@ The reported output showed that the asset-budget validator and all seven resourc
 
 ## Honest boundary
 
-This is an authenticated room/rendezvous and authoritative-action workflow. It is not yet a dedicated Unreal realtime simulation server with replicated movement, server-side AI, network prediction, lag compensation, or public matchmaking. Those systems require the Unreal networking layer, a deployed dedicated-server build, backend admission integration, and device/network testing. The current workflow is appropriate for the first playable co-op slice and keeps gameplay mutations on the server.
+This is an authenticated persistent-world and authoritative-action workflow. It is not yet a dedicated Unreal realtime simulation server with replicated movement, server-side AI, network prediction, lag compensation, or public matchmaking. Those systems require the Unreal networking layer, a deployed dedicated-server build, backend admission integration, and device/network testing. The current workflow is appropriate for the first playable persistent co-op slice and keeps saved gameplay mutations on the server.
 
 ## References
 

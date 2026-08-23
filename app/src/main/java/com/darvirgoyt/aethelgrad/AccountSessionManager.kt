@@ -85,7 +85,25 @@ data class CoOpRoomSnapshot(
     val towerRevision: Int,
     val bossHealth: Int,
     val combatRevision: Int,
-    val participants: List<CoOpParticipant>
+    val participants: List<CoOpParticipant>,
+    val worldName: String = "Aethelgard Shared World",
+    val ownerAccountId: String? = null
+)
+
+data class CoOpPlayerSave(
+    val worldName: String,
+    val ownerAccountId: String?,
+    val memberRevision: Int,
+    val itemStateJson: String,
+    val progressionStateJson: String
+)
+
+data class CoOpWorldSave(
+    val worldName: String,
+    val ownerAccountId: String?,
+    val saveRevision: Int,
+    val worldStateJson: String,
+    val buildingsJson: String
 )
 
 data class AuthoritativeCombatResult(
@@ -101,7 +119,8 @@ data class AuthoritativeInventoryResult(
     val fiber: Int,
     val stone: Int,
     val emberKit: Boolean,
-    val inventoryRevision: Int
+    val inventoryRevision: Int,
+    val memberRevision: Int = 0
 )
 
 /**
@@ -132,6 +151,8 @@ class AccountSessionManager {
         const val SESSION_PREFS = "aethelgard_session"
         const val SESSION_BLOB = "encrypted_session"
         const val SESSION_KEY_ALIAS = "aethelgard_session_key"
+        const val LAST_COOP_CODE_PREFS = "aethelgard_persistent_world"
+        const val LAST_COOP_CODE = "last_world_code"
     }
 
     fun initialize(activity: Activity, onStateChanged: (SessionSnapshot) -> Unit) {
@@ -502,7 +523,9 @@ class AccountSessionManager {
                     publishCoOpResult(onComplete, null, "Could not create the co-op room (${response.statusCode}).")
                     return@execute
                 }
-                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+                val room = parseCoOpRoom(response.body)
+                rememberCoOpRoom(room.code)
+                publishCoOpResult(onComplete, room, null)
             } catch (_: Exception) {
                 publishCoOpResult(onComplete, null, "Could not create the co-op room. Check your connection.")
             }
@@ -527,9 +550,93 @@ class AccountSessionManager {
                     publishCoOpResult(onComplete, null, if (response.statusCode == 404) "Tower room not found." else if (response.statusCode == 409) "Tower room is full." else "Could not join the co-op room (${response.statusCode}).")
                     return@execute
                 }
-                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+                val room = parseCoOpRoom(response.body)
+                rememberCoOpRoom(room.code)
+                publishCoOpResult(onComplete, room, null)
             } catch (_: Exception) {
                 publishCoOpResult(onComplete, null, "Could not join the co-op room. Check your connection.")
+            }
+        }
+    }
+
+    fun lastPersistentCoOpRoomCode(): String? = activity?.getSharedPreferences(LAST_COOP_CODE_PREFS, Activity.MODE_PRIVATE)?.getString(LAST_COOP_CODE, null)
+
+    fun rememberCoOpRoom(code: String) {
+        activity?.getSharedPreferences(LAST_COOP_CODE_PREFS, Activity.MODE_PRIVATE)?.edit()?.putString(LAST_COOP_CODE, code.trim().uppercase())?.apply()
+    }
+
+    /** Reopens the last creator-owned or joined persistent world after an app restart. */
+    fun reconnectLastPersistentCoOpWorld(onComplete: (CoOpRoomSnapshot?, String?) -> Unit) {
+        val code = lastPersistentCoOpRoomCode()
+        if (code.isNullOrBlank()) {
+            onComplete(null, "No saved multiplayer world is available on this device.")
+            return
+        }
+        reconnectCoOpRoom(code, onComplete)
+    }
+
+    fun loadCoOpPlayerSave(roomCode: String, onComplete: (CoOpPlayerSave?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = getJson(cloudEndpoint("/coop/rooms/$normalized/player-save"), token)
+                if (response.statusCode !in 200..299) {
+                    publishCoOpSaveResult(onComplete, null, "Could not load your saved items and progression (${response.statusCode}).")
+                    return@execute
+                }
+                val root = JSONObject(response.body)
+                publishCoOpSaveResult(onComplete, CoOpPlayerSave(root.optString("worldName", "Aethelgard Shared World"), root.optString("ownerAccountId").takeIf { it.isNotBlank() }, root.optInt("memberRevision"), root.optJSONObject("itemState")?.toString() ?: "{}", root.optJSONObject("progressionState")?.toString() ?: "{}"), null)
+            } catch (_: Exception) {
+                publishCoOpSaveResult(onComplete, null, "Could not load your saved multiplayer state.")
+            }
+        }
+    }
+
+    fun saveCoOpPlayerState(roomCode: String, expectedRevision: Int, itemStateJson: String, progressionStateJson: String, onComplete: (Int?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("expectedRevision", expectedRevision).put("itemState", JSONObject(itemStateJson)).put("progressionState", JSONObject(progressionStateJson)).toString()
+                val response = requestJson("PUT", cloudEndpoint("/coop/rooms/$normalized/player-save"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishIntResult(onComplete, null, if (response.statusCode == 409) "Your save changed on another device. Reload the world before saving again." else "Could not save your items and progression (${response.statusCode}).")
+                    return@execute
+                }
+                publishIntResult(onComplete, JSONObject(response.body).optInt("memberRevision"), null)
+            } catch (_: Exception) {
+                publishIntResult(onComplete, null, "Could not save your multiplayer state.")
+            }
+        }
+    }
+
+    fun loadCoOpWorldSave(roomCode: String, onComplete: (CoOpWorldSave?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = getJson(cloudEndpoint("/coop/rooms/$normalized/save"), token)
+                if (response.statusCode !in 200..299) {
+                    publishCoOpWorldSaveResult(onComplete, null, "Could not load the shared world save (${response.statusCode}).")
+                    return@execute
+                }
+                val root = JSONObject(response.body)
+                publishCoOpWorldSaveResult(onComplete, CoOpWorldSave(root.optString("worldName", "Aethelgard Shared World"), root.optString("ownerAccountId").takeIf { it.isNotBlank() }, root.optInt("saveRevision"), root.optJSONObject("worldState")?.toString() ?: "{}", root.optJSONArray("buildings")?.toString() ?: "[]"), null)
+            } catch (_: Exception) {
+                publishCoOpWorldSaveResult(onComplete, null, "Could not load the shared world save.")
             }
         }
     }
@@ -549,7 +656,9 @@ class AccountSessionManager {
                     publishCoOpResult(onComplete, null, if (response.statusCode == 404) "Tower room is no longer available." else if (response.statusCode == 403) "Your membership has expired." else "Reconnect rejected (${response.statusCode}).")
                     return@execute
                 }
-                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+                val room = parseCoOpRoom(response.body)
+                rememberCoOpRoom(room.code)
+                publishCoOpResult(onComplete, room, null)
             } catch (_: Exception) {
                 publishCoOpResult(onComplete, null, "Reconnect server unavailable.")
             }
@@ -573,7 +682,9 @@ class AccountSessionManager {
                     publishCoOpResult(onComplete, null, "Co-op room heartbeat failed (${response.statusCode}).")
                     return@execute
                 }
-                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+                val room = parseCoOpRoom(response.body)
+                rememberCoOpRoom(room.code)
+                publishCoOpResult(onComplete, room, null)
             } catch (_: Exception) {
                 publishCoOpResult(onComplete, null, "Co-op room connection lost.")
             }
@@ -621,7 +732,7 @@ class AccountSessionManager {
                 }
                 val result = JSONObject(response.body)
                 val inventory = result.getJSONObject("inventory")
-                publishInventoryResult(onComplete, AuthoritativeInventoryResult(result.optString("operation"), inventory.optInt("wood"), inventory.optInt("fiber"), inventory.optInt("stone"), inventory.optBoolean("emberKit"), result.optInt("inventoryRevision")), null)
+                publishInventoryResult(onComplete, AuthoritativeInventoryResult(result.optString("operation"), inventory.optInt("wood"), inventory.optInt("fiber"), inventory.optInt("stone"), inventory.optBoolean("emberKit"), result.optInt("inventoryRevision"), result.optInt("memberRevision")), null)
             } catch (_: Exception) {
                 publishInventoryResult(onComplete, null, "Authoritative inventory service unavailable.")
             }
@@ -660,7 +771,9 @@ class AccountSessionManager {
             towerRevision = room.optLong("towerRevision", 0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             bossHealth = room.optInt("bossHealth", 100).coerceIn(0, 100),
             combatRevision = room.optLong("combatRevision", 0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-            participants = participants
+            participants = participants,
+            worldName = room.optString("worldName", "Aethelgard Shared World"),
+            ownerAccountId = room.optString("ownerAccountId").takeIf { it.isNotBlank() }
         )
     }
 
@@ -760,6 +873,9 @@ class AccountSessionManager {
     private fun publishCoOpResult(callback: (CoOpRoomSnapshot?, String?) -> Unit, room: CoOpRoomSnapshot?, error: String?) = mainHandler.post { callback(room, error) }
     private fun publishCombatResult(callback: (AuthoritativeCombatResult?, String?) -> Unit, result: AuthoritativeCombatResult?, error: String?) = mainHandler.post { callback(result, error) }
     private fun publishInventoryResult(callback: (AuthoritativeInventoryResult?, String?) -> Unit, result: AuthoritativeInventoryResult?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishCoOpSaveResult(callback: (CoOpPlayerSave?, String?) -> Unit, result: CoOpPlayerSave?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishIntResult(callback: (Int?, String?) -> Unit, result: Int?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishCoOpWorldSaveResult(callback: (CoOpWorldSave?, String?) -> Unit, result: CoOpWorldSave?, error: String?) = mainHandler.post { callback(result, error) }
 
     private fun restorePersistedSession(): Boolean {
         val owner = activity ?: return false

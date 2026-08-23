@@ -40,10 +40,13 @@ function createMemoryPool() {
     if (normalized.startsWith("UPDATE sessions SET last_seen_at")) return { rowCount: 1, rows: [] };
 
     if (normalized.startsWith("INSERT INTO coop_rooms")) {
+      const hasWorldName = normalized.includes("world_name");
       const room = {
         id: `room-${nextRoomId++}`,
         code: params[0],
         region: params[1],
+        worldName: hasWorldName ? params[2] : "Aethelgard Shared World",
+        createdBy: hasWorldName ? params[3] : params[2],
         maxPlayers: 4,
         worldTime: 0,
         towerRevision: 0,
@@ -53,11 +56,11 @@ function createMemoryPool() {
       rooms.set(room.id, room);
       return { rowCount: 1, rows: [{ id: room.id }] };
     }
-    if (normalized.startsWith("INSERT INTO coop_members (room_id, account_id)")) {
+    if (normalized.startsWith("INSERT INTO coop_members (room_id, account_id, is_active)")) {
       const memberKey = key(params[0], params[1]);
       const current = members.get(memberKey) || {
         roomId: params[0], accountId: params[1], playerX: -0.55, playerY: -0.08,
-        atTower: false, towerRevision: 0, lastSeenAt: Date.now(), wood: 12, fiber: 8,
+        atTower: false, towerRevision: 0, lastSeenAt: Date.now(), isActive: true, wood: 12, fiber: 8,
         stone: 4, inventoryRevision: 0, emberKit: false, lastActionAt: null
       };
       current.lastSeenAt = Date.now();
@@ -72,9 +75,9 @@ function createMemoryPool() {
       const count = [...members.values()].filter(member => member.roomId === params[0] && member.accountId !== params[1] && Date.now() - member.lastSeenAt < 20_000).length;
       return { rowCount: 1, rows: [{ count }] };
     }
-    if (normalized.startsWith("SELECT id, code, region, max_players, world_time, tower_revision, boss_health, combat_revision FROM coop_rooms")) {
+    if (normalized.startsWith("SELECT id, code, region, world_name, created_by, max_players, world_time, tower_revision, boss_health, combat_revision FROM coop_rooms")) {
       const room = roomByCode(params[0]);
-      return room ? { rowCount: 1, rows: [{ id: room.id, code: room.code, region: room.region, max_players: room.maxPlayers, world_time: room.worldTime, tower_revision: room.towerRevision, boss_health: room.bossHealth, combat_revision: room.combatRevision }] } : { rowCount: 0, rows: [] };
+      return room ? { rowCount: 1, rows: [{ id: room.id, code: room.code, region: room.region, world_name: room.worldName, created_by: room.createdBy, max_players: room.maxPlayers, world_time: room.worldTime, tower_revision: room.towerRevision, boss_health: room.bossHealth, combat_revision: room.combatRevision }] } : { rowCount: 0, rows: [] };
     }
     if (normalized.startsWith("SELECT 1 FROM coop_members")) {
       return memberFor(params[0], params[1]) ? { rowCount: 1, rows: [{}] } : { rowCount: 0, rows: [] };
@@ -114,6 +117,13 @@ function createMemoryPool() {
     if (normalized.startsWith("UPDATE coop_rooms SET tower_revision")) {
       const room = rooms.get(params[0]);
       if (room) room.towerRevision = Math.max(room.towerRevision, params[1]);
+      return { rowCount: 1, rows: [] };
+    }
+    if (normalized.startsWith("INSERT INTO coop_world_saves")) return { rowCount: 1, rows: [] };
+    if (normalized.startsWith("UPDATE coop_members SET is_active")) {
+      const room = roomByCode(params[0]);
+      const member = room ? memberFor(room.id, params[1]) : null;
+      if (member) { member.isActive = false; member.lastSeenAt = Date.now(); }
       return { rowCount: 1, rows: [] };
     }
     if (normalized.startsWith("DELETE FROM coop_members")) {

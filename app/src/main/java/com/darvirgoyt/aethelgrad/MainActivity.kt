@@ -45,6 +45,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.ScrollView
+import org.json.JSONObject
 import android.widget.TextView
 import android.widget.VideoView
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
@@ -175,6 +176,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var guestRoomConnectInFlight = false
     private var lastCoOpTowerRevision = 0
     private var coOpRequestCounter = 0L
+    private var coOpMemberRevision = 0
+    private var coOpSaveInFlight = false
     private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
     private lateinit var networkMonitor: NetworkConnectivityMonitor
@@ -229,6 +232,12 @@ class MainActivity : Activity(), SensorEventListener {
                 }
             }
             hudHandler.postDelayed(this, 2_000L)
+        }
+    }
+    private val coOpSaveUpdater = object : Runnable {
+        override fun run() {
+            savePersistentCoOpState()
+            hudHandler.postDelayed(this, 30_000L)
         }
     }
     private val cloudSaveUpdater = object : Runnable {
@@ -496,7 +505,8 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
-        if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+        hudHandler.removeCallbacks(coOpSaveUpdater)
+        if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
         activeCoOpRoom = null
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
         val world = activeCloudWorld
@@ -527,6 +537,7 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.postDelayed(cloudSaveUpdater, 45_000L)
         if (activeCoOpRoom != null) {
             hudHandler.postDelayed(coOpUpdater, 1_000L)
+            hudHandler.postDelayed(coOpSaveUpdater, 30_000L)
         } else if (accountSession.snapshot.state == SessionState.AUTHENTICATED && accountSession.snapshot.isGuest) {
             gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
             connectGuestToOnlineRoom()
@@ -537,7 +548,8 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
-        if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+        hudHandler.removeCallbacks(coOpSaveUpdater)
+        if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
         accountSession.shutdown()
         if (::networkMonitor.isInitialized) networkMonitor.stop()
         if (::assetPacks.isInitialized) assetPacks.close()
@@ -1483,8 +1495,9 @@ class MainActivity : Activity(), SensorEventListener {
             runOnUiThread {
                 accountSession.authoritativeInventory(room.code, nextCoOpRequestId(operation), operation, resourceId) { result, error ->
                     if (result != null) {
+                        coOpMemberRevision = maxOf(coOpMemberRevision, result.memberRevision)
                         gameView.queueEvent { NativeGameBridge.applyAuthoritativeInventory(result.wood, result.fiber, result.stone, result.emberKit) }
-                        coOpStatusLabel.text = "CO-OP ${room.code}  •  ${result.operation.uppercase()} ACCEPTED  •  W ${result.wood} F ${result.fiber} S ${result.stone}"
+                        coOpStatusLabel.text = "${room.worldName}  •  ${result.operation.uppercase()} ACCEPTED  •  W ${result.wood} F ${result.fiber} S ${result.stone}"
                     } else if (error != null) {
                         coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
                     }
@@ -1544,7 +1557,8 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val tower = if (snapshot.towerRevision > 0) "TOWER ${snapshot.towerRevision}" else "TOWER READY"
-        coOpStatusLabel.text = "CO-OP ${snapshot.code}  •  ${snapshot.participants.size}/${snapshot.maxPlayers}  •  $tower  •  WARDEN ${snapshot.bossHealth}/100  •  WEATHER SYNCED"
+        val ownerLabel = if (snapshot.ownerAccountId == accountSession.snapshot.accountId) "OWNER" else "SHARED"
+        coOpStatusLabel.text = "${snapshot.worldName}  •  $ownerLabel  •  ${snapshot.code}  •  ${snapshot.participants.size}/${snapshot.maxPlayers}  •  $tower  •  WARDEN ${snapshot.bossHealth}/100  •  WEATHER SYNCED"
     }
 
     private fun startCoOpRoom(snapshot: CoOpRoomSnapshot) {
@@ -1553,10 +1567,58 @@ class MainActivity : Activity(), SensorEventListener {
         coOpReconnectAttempts = 0
         coOpNextReconnectAtMs = 0L
         lastCoOpTowerRevision = 0
+        coOpMemberRevision = 0
+        coOpSaveInFlight = false
+        accountSession.rememberCoOpRoom(snapshot.code)
         gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
         applyCoOpSnapshot(snapshot)
+        accountSession.loadCoOpPlayerSave(snapshot.code) { playerSave, _ ->
+            if (playerSave != null) {
+                coOpMemberRevision = playerSave.memberRevision
+                gameView.queueEvent { NativeGameBridge.loadCloudState(playerSave.progressionStateJson) }
+                if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "${snapshot.worldName}  •  SAVED ITEMS + PROGRESSION RESTORED  •  ${snapshot.code}"
+            }
+        }
+        accountSession.loadCoOpWorldSave(snapshot.code) { worldSave, _ ->
+            if (worldSave != null && ::coOpStatusLabel.isInitialized) {
+                coOpStatusLabel.text = "${snapshot.worldName}  •  ${worldSave.buildingsJson.count { it == '{' }} SAVED BUILDINGS  •  ${snapshot.code}"
+            }
+        }
         hudHandler.removeCallbacks(coOpUpdater)
+        hudHandler.removeCallbacks(coOpSaveUpdater)
         hudHandler.postDelayed(coOpUpdater, 250L)
+        hudHandler.postDelayed(coOpSaveUpdater, 30_000L)
+    }
+
+    private fun savePersistentCoOpState() {
+        val room = activeCoOpRoom ?: return
+        if (!networkOnline || coOpSaveInFlight || !::gameView.isInitialized) return
+        coOpSaveInFlight = true
+        gameView.queueEvent {
+            val nativeState = NativeGameBridge.getCloudState()
+            runOnUiThread {
+                try {
+                    val root = JSONObject(nativeState)
+                    val itemState = JSONObject()
+                        .put("wood", root.optInt("wood"))
+                        .put("fiber", root.optInt("fiber"))
+                        .put("stone", root.optInt("stone"))
+                        .put("emberKit", root.optBoolean("emberKitCrafted"))
+                        .put("items", org.json.JSONArray())
+                    accountSession.saveCoOpPlayerState(room.code, coOpMemberRevision, itemState.toString(), root.toString()) { revision, error ->
+                        coOpSaveInFlight = false
+                        if (revision != null) {
+                            coOpMemberRevision = revision
+                            if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "${room.worldName}  •  SAVED  •  ${room.code}"
+                        } else if (error != null && ::coOpStatusLabel.isInitialized) {
+                            coOpStatusLabel.text = "${room.worldName}  •  SAVE RETRY  •  $error"
+                        }
+                    }
+                } catch (_: Exception) {
+                    coOpSaveInFlight = false
+                }
+            }
+        }
     }
 
     private fun showCoOpDialog() {

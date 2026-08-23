@@ -217,7 +217,9 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
 
   app.post("/v1/coop/rooms", requireSession, async (req, res) => {
     const region = typeof req.body?.region === "string" ? req.body.region.trim().slice(0, 32) : "asia";
-    const code = await createCoOpRoom(pool, req.accountId, region);
+    const worldName = typeof req.body?.worldName === "string" ? req.body.worldName.trim().slice(0, 64) : "Aethelgard Shared World";
+    if (!worldName) return res.status(400).json({ error: "world_name_required" });
+    const code = await createCoOpRoom(pool, req.accountId, region, worldName);
     const room = await getCoOpRoom(pool, code, req.accountId);
     res.status(201).json(room);
   });
@@ -228,11 +230,11 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     const roomResult = await pool.query("SELECT id, code, region, max_players FROM coop_rooms WHERE code = $1", [code]);
     if (roomResult.rowCount !== 1) return res.status(404).json({ error: "room_not_found" });
     const room = roomResult.rows[0];
-    const active = await pool.query("SELECT COUNT(*)::int AS count FROM coop_members WHERE room_id = $1 AND account_id <> $2 AND last_seen_at > now() - interval '20 seconds'", [room.id, req.accountId]);
+    const active = await pool.query("SELECT COUNT(*)::int AS count FROM coop_members WHERE room_id = $1 AND account_id <> $2 AND is_active = TRUE AND last_seen_at > now() - interval '20 seconds'", [room.id, req.accountId]);
     if (Number(active.rows[0]?.count || 0) >= room.max_players) return res.status(409).json({ error: "room_full" });
     await pool.query(
-      `INSERT INTO coop_members (room_id, account_id) VALUES ($1, $2)
-       ON CONFLICT (room_id, account_id) DO UPDATE SET last_seen_at = now()`,
+      `INSERT INTO coop_members (room_id, account_id, is_active) VALUES ($1, $2, TRUE)
+       ON CONFLICT (room_id, account_id) DO UPDATE SET is_active = TRUE, last_seen_at = now()`,
       [room.id, req.accountId]
     );
     res.json(await getCoOpRoom(pool, code, req.accountId));
@@ -254,7 +256,7 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     const roomId = roomResult.rows[0].id;
     const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
     if (membership.rowCount !== 1) return res.status(403).json({ error: "room_membership_required" });
-    await pool.query("UPDATE coop_members SET last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
+    await pool.query("UPDATE coop_members SET is_active = TRUE, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
     const room = await getCoOpRoom(pool, code, req.accountId);
     if (!room) return res.status(404).json({ error: "room_not_found" });
     res.json(room);
@@ -288,8 +290,99 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
   app.delete("/v1/coop/rooms/:code/leave", requireSession, async (req, res) => {
     const code = normalizeRoomCode(req.params.code);
     if (!code) return res.status(400).json({ error: "invalid_room_code" });
-    await pool.query("DELETE FROM coop_members WHERE room_id = (SELECT id FROM coop_rooms WHERE code = $1) AND account_id = $2", [code, req.accountId]);
+    await pool.query("UPDATE coop_members SET is_active = FALSE, last_seen_at = now() WHERE room_id = (SELECT id FROM coop_rooms WHERE code = $1) AND account_id = $2", [code, req.accountId]);
     res.status(204).end();
+  });
+
+  app.get("/v1/coop/rooms/:code/player-save", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const result = await pool.query(
+      `SELECT m.item_state, m.progression_state, m.member_revision, r.created_by, r.world_name
+       FROM coop_members m JOIN coop_rooms r ON r.id = m.room_id
+       WHERE r.code = $1 AND m.account_id = $2`,
+      [code, req.accountId]
+    );
+    if (result.rowCount !== 1) return res.status(403).json({ error: "world_membership_required" });
+    const row = result.rows[0];
+    res.json({
+      ownerAccountId: row.created_by,
+      worldName: row.world_name,
+      memberRevision: Number(row.member_revision || 0),
+      itemState: row.item_state || {},
+      progressionState: row.progression_state || {}
+    });
+  });
+
+  app.put("/v1/coop/rooms/:code/player-save", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const expectedRevision = Number.isInteger(req.body?.expectedRevision) ? req.body.expectedRevision : -1;
+    const itemState = req.body?.itemState;
+    const progressionState = req.body?.progressionState;
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (expectedRevision < 0 || !isPlainObject(itemState) || !isPlainObject(progressionState)) return res.status(400).json({ error: "invalid_player_save" });
+    if (JSON.stringify(itemState).length > 64_000 || JSON.stringify(progressionState).length > 64_000) return res.status(413).json({ error: "player_save_too_large" });
+    const result = await pool.query(
+      `UPDATE coop_members SET item_state = $3, progression_state = $4, member_revision = member_revision + 1, last_seen_at = now()
+       WHERE room_id = (SELECT id FROM coop_rooms WHERE code = $1) AND account_id = $2 AND member_revision = $5
+       RETURNING member_revision, item_state, progression_state`,
+      [code, req.accountId, itemState, progressionState, expectedRevision]
+    );
+    if (result.rowCount !== 1) return res.status(409).json({ error: "player_save_revision_conflict" });
+    const row = result.rows[0];
+    res.json({ memberRevision: Number(row.member_revision), itemState: row.item_state, progressionState: row.progression_state });
+  });
+
+  app.get("/v1/coop/rooms/:code/save", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const room = await pool.query("SELECT id, created_by, world_name FROM coop_rooms WHERE code = $1", [code]);
+    if (room.rowCount !== 1) return res.status(404).json({ error: "world_not_found" });
+    const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [room.rows[0].id, req.accountId]);
+    if (membership.rowCount !== 1) return res.status(403).json({ error: "world_membership_required" });
+    const save = await pool.query("SELECT world_state, save_revision, updated_at FROM coop_world_saves WHERE room_id = $1", [room.rows[0].id]);
+    const buildings = await pool.query("SELECT id, building_type, placed_by, transform, state, created_at, updated_at FROM coop_buildings WHERE room_id = $1 ORDER BY created_at", [room.rows[0].id]);
+    const row = save.rows[0] || { world_state: {}, save_revision: 0, updated_at: null };
+    res.json({ ownerAccountId: room.rows[0].created_by, worldName: room.rows[0].world_name, saveRevision: Number(row.save_revision || 0), updatedAt: row.updated_at, worldState: row.world_state || {}, buildings: buildings.rows });
+  });
+
+  app.put("/v1/coop/rooms/:code/save", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const expectedRevision = Number.isInteger(req.body?.expectedRevision) ? req.body.expectedRevision : -1;
+    const worldState = req.body?.worldState;
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (!isPlainObject(worldState) || expectedRevision < 0) return res.status(400).json({ error: "invalid_world_save" });
+    if (JSON.stringify(worldState).length > 256_000) return res.status(413).json({ error: "world_save_too_large" });
+    const owner = await pool.query("SELECT id, created_by FROM coop_rooms WHERE code = $1", [code]);
+    if (owner.rowCount !== 1) return res.status(404).json({ error: "world_not_found" });
+    const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [owner.rows[0].id, req.accountId]);
+    if (membership.rowCount !== 1) return res.status(403).json({ error: "world_membership_required" });
+    if (owner.rows[0].created_by !== req.accountId) return res.status(403).json({ error: "world_owner_required" });
+    const saved = await pool.query(
+      `UPDATE coop_world_saves SET world_state = $2, save_revision = save_revision + 1, updated_by = $3, updated_at = now()
+       WHERE room_id = $1 AND save_revision = $4
+       RETURNING save_revision, updated_at`,
+      [owner.rows[0].id, worldState, req.accountId, expectedRevision]
+    );
+    if (saved.rowCount !== 1) return res.status(409).json({ error: "world_save_revision_conflict" });
+    res.json({ saveRevision: Number(saved.rows[0].save_revision), updatedAt: saved.rows[0].updated_at });
+  });
+
+  app.post("/v1/coop/rooms/:code/buildings", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const buildingType = typeof req.body?.buildingType === "string" ? req.body.buildingType.trim().slice(0, 64) : "";
+    const transform = req.body?.transform;
+    const state = req.body?.state && isPlainObject(req.body.state) ? req.body.state : {};
+    if (!code || !buildingType || !isPlainObject(transform)) return res.status(400).json({ error: "invalid_building" });
+    if (JSON.stringify(transform).length > 8_000 || JSON.stringify(state).length > 16_000) return res.status(413).json({ error: "building_state_too_large" });
+    const result = await pool.query(
+      `INSERT INTO coop_buildings (room_id, building_type, placed_by, transform, state)
+       SELECT r.id, $2, $3, $4, $5 FROM coop_rooms r JOIN coop_members m ON m.room_id = r.id AND m.account_id = $3 AND m.is_active = TRUE WHERE r.code = $1
+       RETURNING id, building_type, placed_by, transform, state, created_at, updated_at`,
+      [code, buildingType, req.accountId, transform, state]
+    );
+    if (result.rowCount !== 1) return res.status(403).json({ error: "active_world_membership_required" });
+    res.status(201).json({ building: result.rows[0] });
   });
 
   app.post("/v1/coop/rooms/:code/combat", requireSession, async (req, res) => {
@@ -367,7 +460,7 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
         return res.status(404).json({ error: "room_not_found" });
       }
       const roomId = roomResult.rows[0].id;
-      const memberResult = await client.query("SELECT player_x, player_y, wood, fiber, stone, inventory_revision, ember_kit FROM coop_members WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
+      const memberResult = await client.query("SELECT player_x, player_y, wood, fiber, stone, inventory_revision, ember_kit, item_state, progression_state, member_revision FROM coop_members WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
       if (memberResult.rowCount !== 1) {
         await client.query("ROLLBACK");
         return res.status(403).json({ error: "room_membership_required" });
@@ -382,6 +475,8 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
       let fiber = Number(member.fiber);
       let stone = Number(member.stone);
       let emberKit = Boolean(member.ember_kit);
+      const itemState = isPlainObject(member.item_state) ? { ...member.item_state } : {};
+      const progressionState = isPlainObject(member.progression_state) ? member.progression_state : {};
       if (operation === "gather") {
         const resources = {
           forest_cache: { x: -0.56, y: -0.28, wood: 1, fiber: 2, stone: 0 },
@@ -411,8 +506,13 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
         emberKit = true;
       }
       const inventoryRevision = Number(member.inventory_revision || 0) + 1;
-      const result = { accepted: true, operation, inventory: { wood, fiber, stone, emberKit }, inventoryRevision };
-      await client.query("UPDATE coop_members SET wood = $3, fiber = $4, stone = $5, ember_kit = $6, inventory_revision = $7, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId, wood, fiber, stone, emberKit, inventoryRevision]);
+      const memberRevision = Number(member.member_revision || 0) + 1;
+      itemState.wood = wood;
+      itemState.fiber = fiber;
+      itemState.stone = stone;
+      itemState.emberKit = emberKit;
+      const result = { accepted: true, operation, inventory: { wood, fiber, stone, emberKit }, inventoryRevision, memberRevision };
+      await client.query("UPDATE coop_members SET wood = $3, fiber = $4, stone = $5, ember_kit = $6, inventory_revision = $7, item_state = $8, member_revision = $9, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId, wood, fiber, stone, emberKit, inventoryRevision, itemState, memberRevision]);
       await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, result) VALUES ($1, $2, $3, 'inventory', $4)", [roomId, req.accountId, requestId, result]);
       await client.query("COMMIT");
       res.json(result);
@@ -449,16 +549,21 @@ function boundedNumber(value, min, max, fallback) {
   return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
 }
 
-async function createCoOpRoom(pool, accountId, region) {
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function createCoOpRoom(pool, accountId, region, worldName = "Aethelgard Shared World") {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = randomBytes(3).toString("hex").toUpperCase();
     try {
       const created = await pool.query(
-        "INSERT INTO coop_rooms (code, region, created_by) VALUES ($1, $2, $3) RETURNING id",
-        [code, region, accountId]
+        "INSERT INTO coop_rooms (code, region, world_name, created_by) VALUES ($1, $2, $3, $4) RETURNING id",
+        [code, region, worldName, accountId]
       );
       if (created.rowCount === 1) {
-        await pool.query("INSERT INTO coop_members (room_id, account_id) VALUES ($1, $2)", [created.rows[0].id, accountId]);
+        await pool.query("INSERT INTO coop_members (room_id, account_id, is_active) VALUES ($1, $2, TRUE)", [created.rows[0].id, accountId]);
+        await pool.query("INSERT INTO coop_world_saves (room_id, updated_by) VALUES ($1, $2) ON CONFLICT (room_id) DO NOTHING", [created.rows[0].id, accountId]);
         return code;
       }
     } catch (error) {
@@ -470,7 +575,7 @@ async function createCoOpRoom(pool, accountId, region) {
 
 async function getCoOpRoom(pool, code, accountId) {
   const roomResult = await pool.query(
-    `SELECT id, code, region, max_players, world_time, tower_revision, boss_health, combat_revision
+    `SELECT id, code, region, world_name, created_by, max_players, world_time, tower_revision, boss_health, combat_revision
      FROM coop_rooms WHERE code = $1`,
     [code]
   );
@@ -486,7 +591,7 @@ async function getCoOpRoom(pool, code, accountId) {
   );
   const current = await pool.query(
     `SELECT account_id, player_x, player_y, at_tower, tower_revision
-     FROM coop_members WHERE room_id = $1 AND last_seen_at > now() - interval '20 seconds'
+     FROM coop_members WHERE room_id = $1 AND is_active = TRUE AND last_seen_at > now() - interval '20 seconds'
      ORDER BY last_seen_at DESC`,
     [room.id]
   );
@@ -495,6 +600,8 @@ async function getCoOpRoom(pool, code, accountId) {
     room: {
       code: room.code,
       region: room.region,
+      worldName: room.world_name || "Aethelgard Shared World",
+      ownerAccountId: room.created_by,
       maxPlayers: room.max_players,
       worldTime: Number(refreshed.rows[0]?.world_time || room.world_time || 0),
       towerRevision: Number(refreshed.rows[0]?.tower_revision || room.tower_revision || 0),
