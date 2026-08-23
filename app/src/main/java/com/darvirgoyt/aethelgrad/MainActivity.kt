@@ -2032,11 +2032,11 @@ class MainActivity : Activity(), SensorEventListener {
 
         val backdrop = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(205, 2, 8, 13))
-            setPadding(dp(22), dp(18), dp(22), dp(18))
+            setPadding(dp(12), dp(6), dp(12), dp(6))
         }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(28), dp(22), dp(28), dp(22))
+            setPadding(dp(20), dp(10), dp(20), dp(10))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(Color.rgb(17, 31, 39), Color.rgb(6, 14, 21))
@@ -2089,7 +2089,7 @@ class MainActivity : Activity(), SensorEventListener {
             val isHigh = tier == ContentDownloadPlan.ResourceTier.HIGH
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(14), dp(16), dp(14))
+                setPadding(dp(10), dp(8), dp(10), dp(8))
                 isClickable = true
                 isFocusable = true
             }
@@ -2109,8 +2109,8 @@ class MainActivity : Activity(), SensorEventListener {
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(244, 239, 223))
             }
-            nameRow.addView(name, LinearLayout.LayoutParams(0, dp(28), 1f))
-            nameRow.addView(size, LinearLayout.LayoutParams(dp(62), dp(28)))
+            nameRow.addView(name, LinearLayout.LayoutParams(0, dp(24), 1f))
+            nameRow.addView(size, LinearLayout.LayoutParams(dp(68), dp(24)))
             card.addView(nameRow)
 
             val descriptor = TextView(this).apply {
@@ -2118,7 +2118,7 @@ class MainActivity : Activity(), SensorEventListener {
                 textSize = 9f
                 letterSpacing = 0.10f
                 setTextColor(if (isHigh) Color.rgb(237, 188, 107) else Color.rgb(139, 207, 184))
-                setPadding(0, 0, 0, dp(8))
+                setPadding(0, 0, 0, dp(4))
             }
             card.addView(descriptor)
 
@@ -2132,15 +2132,15 @@ class MainActivity : Activity(), SensorEventListener {
                 setTextColor(Color.rgb(210, 221, 218))
                 setLineSpacing(0f, 1.15f)
             }
-            card.addView(details, LinearLayout.LayoutParams(-1, dp(68)))
+            card.addView(details, LinearLayout.LayoutParams(-1, dp(52)))
 
             val technical = TextView(this).apply {
                 text = "${envelope.foliageDensity}% foliage  •  ${envelope.effectScalePercent}% effects\n${envelope.shadowQuality}  •  ${envelope.waterQuality}"
                 textSize = 9f
                 setTextColor(Color.rgb(147, 170, 172))
-                setPadding(0, dp(8), 0, 0)
+                setPadding(0, dp(4), 0, 0)
             }
-            card.addView(technical, LinearLayout.LayoutParams(-1, dp(42)))
+            card.addView(technical, LinearLayout.LayoutParams(-1, dp(34)))
 
             val selected = TextView(this).apply {
                 text = "SELECTED"
@@ -2155,7 +2155,7 @@ class MainActivity : Activity(), SensorEventListener {
                 }
             }
             selectedLabels[tier] = selected
-            card.addView(selected, LinearLayout.LayoutParams(-1, dp(24)).apply { topMargin = dp(8) })
+            card.addView(selected, LinearLayout.LayoutParams(-1, dp(20)).apply { topMargin = dp(4) })
             cardViews[tier] = card
             card.setOnClickListener {
                 chosenTier = tier
@@ -2166,7 +2166,7 @@ class MainActivity : Activity(), SensorEventListener {
                 }
                 continueButton.text = "CONTINUE WITH ${chosenTier.name}  •  ${ContentDownloadPlan.totalGiBLabelFor(chosenTier)}"
             }
-            cards.addView(card, LinearLayout.LayoutParams(0, dp(206), 1f).apply {
+            cards.addView(card, LinearLayout.LayoutParams(0, dp(150), 1f).apply {
                 if (!isHigh) rightMargin = dp(8) else leftMargin = dp(8)
             })
         }
@@ -2177,7 +2177,7 @@ class MainActivity : Activity(), SensorEventListener {
             textSize = 10f
             setTextColor(Color.rgb(148, 177, 178))
             gravity = Gravity.CENTER
-            setPadding(0, dp(14), 0, dp(10))
+            setPadding(0, dp(6), 0, dp(4))
         }
         continueButton = cinematicButton("CONTINUE WITH ${chosenTier.name}  •  ${ContentDownloadPlan.totalGiBLabelFor(chosenTier)}", true) {
             dialog.dismiss()
@@ -2187,9 +2187,9 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(eyebrow, LinearLayout.LayoutParams(-1, dp(18)))
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(38)))
         panel.addView(subtitle, LinearLayout.LayoutParams(-1, dp(36)))
-        panel.addView(cards, LinearLayout.LayoutParams(-1, dp(214)))
-        panel.addView(footer, LinearLayout.LayoutParams(-1, dp(34)))
-        panel.addView(continueButton, LinearLayout.LayoutParams(-1, dp(44)))
+        panel.addView(cards, LinearLayout.LayoutParams(-1, dp(158)))
+        panel.addView(footer, LinearLayout.LayoutParams(-1, dp(24)))
+        panel.addView(continueButton, LinearLayout.LayoutParams(-1, dp(42)))
         backdrop.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
         dialog.setContentView(backdrop)
         dialog.setCancelable(false)
@@ -2197,7 +2197,11 @@ class MainActivity : Activity(), SensorEventListener {
         dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         dialog.window?.attributes = dialog.window?.attributes?.apply { dimAmount = 0.40f }
         dialog.show()
-        dialog.window?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT)
+        val display = resources.displayMetrics
+        dialog.window?.setLayout(
+            (display.widthPixels * 0.92f).roundToInt(),
+            (display.heightPixels * 0.90f).roundToInt()
+        )
         cardViews.forEach { (tier, card) ->
             val active = tier == chosenTier
             card.background = cardBackground(tier, active)
