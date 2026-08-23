@@ -4,6 +4,11 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.pm.ApplicationInfo
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -21,6 +26,7 @@ import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.content.Context
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -179,141 +185,160 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun buildOnboardingOverlay(): View {
-        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
+        val overlay = FrameLayout(this)
+        overlay.addView(CinematicLoginBackdropView(this), FrameLayout.LayoutParams(-1, -1))
+
+        val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {
+            val index = ServerDirectory.regions.indexOfFirst { it.id == selectedServer.id }
+            selectedServer = ServerDirectory.regions[(index + 1) % ServerDirectory.regions.size]
+            onboardingStatus.text = "${selectedServer.name} selected  •  PING: ${selectedServer.pingMs?.let { "$it ms" } ?: "—"}  •  ${selectedServer.status}"
+        }
+        overlay.addView(serverButton, FrameLayout.LayoutParams(dp(176), dp(42), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(18)
+            rightMargin = dp(24)
+        })
+
+        val settingsButton = cinematicButton("⚙  SETTINGS", false) { showAudioSettings() }
+        overlay.addView(settingsButton, FrameLayout.LayoutParams(dp(132), dp(38), Gravity.BOTTOM or Gravity.END).apply {
+            bottomMargin = dp(16)
+            rightMargin = dp(24)
+        })
+
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(32), dp(24), dp(32), dp(24))
-            background = GradientDrawable().apply {
-                cornerRadius = 24f
-                setColor(Color.rgb(18, 35, 39))
-                setStroke(2, Color.rgb(111, 180, 158))
+            setPadding(dp(28), dp(18), dp(28), dp(18))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(218, 10, 17, 24), Color.argb(234, 8, 13, 18))
+            ).apply {
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.rgb(150, 116, 62))
             }
+        }
+        val crest = TextView(this).apply {
+            text = "✦"
+            textSize = 42f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(226, 184, 101))
+            setShadowLayer(12f, 0f, 0f, Color.argb(180, 226, 184, 101))
         }
         val title = TextView(this).apply {
-            text = "AETHELGARD: WILD HORIZONS – CRAFTING"
-            textSize = 22f
+            text = "AETHELGARD"
+            textSize = 35f
             gravity = Gravity.CENTER
-            setTextColor(Color.rgb(244, 218, 155))
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            letterSpacing = 0.12f
+            setTextColor(Color.rgb(239, 234, 219))
+            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+            setShadowLayer(10f, 0f, 2f, Color.BLACK)
         }
         val subtitle = TextView(this).apply {
-            text = "FOUNDATION BUILD 01  •  ACCOUNT  →  SERVER  →  CHARACTER  →  WORLD"
-            textSize = 11f
+            text = "WILD HORIZONS  •  CRAFTING"
+            textSize = 12f
             gravity = Gravity.CENTER
-            setTextColor(Color.LTGRAY)
-            setPadding(0, dp(6), 0, dp(12))
+            letterSpacing = 0.16f
+            setTextColor(Color.rgb(217, 178, 99))
+            setPadding(0, 0, 0, dp(8))
+        }
+        val divider = TextView(this).apply {
+            text = "────  ◈  ────"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(188, 143, 76))
+        }
+        val welcome = TextView(this).apply {
+            text = "WELCOME, WAYFARER"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(236, 193, 108))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(0, dp(8), 0, dp(2))
+        }
+        val instruction = TextView(this).apply {
+            text = "Securely sign in to access your cloud worlds and co-op expeditions."
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(210, 214, 218))
+            setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "ONLINE ONLY  •  Sign in with Google Play to continue to server selection and cloud world access."
-            textSize = 12f
+            text = "ONLINE ONLY  •  Checking your Google Play account…"
+            textSize = 11f
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setPadding(0, dp(4), 0, dp(10))
+            setTextColor(Color.rgb(255, 205, 145))
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(115, 42, 39, 29))
+            }
         }
-        val accountRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        val google = actionButton("GOOGLE PLAY SIGN-IN") {
+        val consent = CheckBox(this).apply {
+            text = "I agree to the Terms of Service and Privacy Policy"
+            textSize = 11f
+            setTextColor(Color.rgb(220, 222, 224))
+            buttonTintList = android.content.res.ColorStateList.valueOf(Color.rgb(220, 182, 101))
+            isChecked = false
+        }
+        val google = cinematicButton("✦  CONTINUE WITH GOOGLE PLAY", true) {
             accountSession.requestGooglePlaySignIn()
+        }.apply {
+            isEnabled = false
+            alpha = 0.5f
         }
-        if (isDeveloperBuild) {
-            val guest = actionButton("DEV GUEST") {
-                val snapshot = accountSession.startGuest()
-                onboardingStatus.text = "DEV ONLY  •  ${snapshot.message}"
+        consent.setOnCheckedChangeListener { _, checked ->
+            google.isEnabled = checked
+            google.alpha = if (checked) 1f else 0.5f
+        }
+        val characterStage = cinematicButton("PREPARE CHARACTER  ›", false) {
+            val authenticated = accountSession.snapshot.state == SessionState.AUTHENTICATED
+            if (!authenticated) {
+                onboardingStatus.text = "Google Play sign-in is required before character creation."
+                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            } else {
+                onboardingStatus.text = "Account verified. Character customization is the next online world stage."
                 onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
             }
-            accountRow.addView(guest, LinearLayout.LayoutParams(0, dp(46), 1f).apply { rightMargin = dp(8) })
-            accountRow.addView(google, LinearLayout.LayoutParams(0, dp(46), 1f))
-        } else {
-            accountRow.addView(google, LinearLayout.LayoutParams(0, dp(46), 1f))
         }
-
-        val serverTitle = TextView(this).apply {
-            text = "SERVER / REGION"
-            textSize = 12f
-            setTextColor(Color.rgb(244, 218, 155))
-            setPadding(0, dp(14), 0, dp(4))
-        }
-        val serverRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        ServerDirectory.regions.forEachIndexed { index, region ->
-            val button = actionButton(region.name.removePrefix("Aethelgard ").uppercase()) {
-                selectedServer = region
-                onboardingStatus.text = "${region.name} selected  •  PING: ${region.pingMs?.let { "$it ms" } ?: "—"}  •  ${region.status}"
+        val trustRow = LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(145, 7, 11, 16))
+                setStroke(dp(1), Color.rgb(69, 62, 49))
             }
-            serverRow.addView(button, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
-                if (index < ServerDirectory.regions.lastIndex) rightMargin = dp(8)
+            setPadding(dp(6), dp(8), dp(6), dp(8))
+        }
+        listOf("☁\nCLOUD SAVE", "⟡\nACCOUNT LINK", "✥\nSECURE SESSIONS", "⚔\nCO-OP READY").forEachIndexed { index, value ->
+            val item = TextView(this).apply {
+                text = value
+                textSize = 9f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(210, 188, 139))
+            }
+            trustRow.addView(item, LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                if (index < 3) rightMargin = dp(2)
             })
         }
 
-        val characterTitle = TextView(this).apply {
-            text = "CHARACTER CREATION"
-            textSize = 12f
-            setTextColor(Color.rgb(244, 218, 155))
-            setPadding(0, dp(12), 0, dp(4))
-        }
-        characterNameInput = EditText(this).apply {
-            hint = "Character name (3–16 letters/numbers)"
-            textSize = 14f
-            setSingleLine(true)
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.GRAY)
-            setPadding(dp(16), 0, dp(16), 0)
-        }
-        val styleRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        fun styleButton(label: String, value: () -> Int, update: (Int) -> Unit): Button {
-            val button = actionButton("$label: ${value() + 1}") { }
-            button.setOnClickListener {
-                val next = (value() + 1) % 4
-                update(next)
-                button.text = "$label: ${next + 1}"
-            }
-            return button
-        }
-        styleRow.addView(styleButton("EYEBROW", { characterCreation.eyebrowStyle }, { characterCreation.eyebrowStyle = it }), LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
-        styleRow.addView(styleButton("CLOTHES", { characterCreation.outfitStyle }, { characterCreation.outfitStyle = it }), LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
-        styleRow.addView(styleButton("HAIR", { characterCreation.hairStyle }, { characterCreation.hairStyle = it }), LinearLayout.LayoutParams(0, dp(42), 1f))
+        panel.addView(crest, LinearLayout.LayoutParams(-1, dp(44)))
+        panel.addView(title, LinearLayout.LayoutParams(-1, dp(50)))
+        panel.addView(subtitle, LinearLayout.LayoutParams(-1, dp(28)))
+        panel.addView(divider, LinearLayout.LayoutParams(-1, dp(22)))
+        panel.addView(welcome, LinearLayout.LayoutParams(-1, dp(38)))
+        panel.addView(instruction, LinearLayout.LayoutParams(-1, dp(30)))
+        panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(42)))
+        panel.addView(consent, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
+        panel.addView(google, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(2) })
+        panel.addView(characterStage, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        panel.addView(trustRow, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(12) })
 
-        val enter = actionButton("CREATE PROFILE / ENTER WORLD") {
-            characterCreation.name = characterNameInput.text.toString()
-            val error = characterCreation.validate()
-            val authenticated = accountSession.snapshot.state == SessionState.AUTHENTICATED
-            val developerGuest = isDeveloperBuild && accountSession.snapshot.state == SessionState.GUEST
-            val serverReady = selectedServer.status == "ONLINE" && selectedServer.pingMs != null
-            if (!authenticated && !developerGuest) {
-                onboardingStatus.text = "Google Play sign-in is required before entering the online world."
-                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
-            } else if (!serverReady && !developerGuest) {
-                onboardingStatus.text = "Server health/ping is not ready. Online world entry is blocked."
-                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
-            } else if (error != null) {
-                onboardingStatus.text = error
-                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
-            } else {
-                onboardingStatus.text = "${characterCreation.name} ready on ${selectedServer.name}. World bootstrap begins next."
-                onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
-                overlay.postDelayed({ overlay.visibility = View.GONE }, 650L)
-            }
-        }
-
-        panel.addView(title, LinearLayout.LayoutParams(-1, dp(48)))
-        panel.addView(subtitle, LinearLayout.LayoutParams(-1, dp(34)))
-        panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(50)))
-        panel.addView(accountRow, LinearLayout.LayoutParams(-1, dp(50)))
-        panel.addView(serverTitle, LinearLayout.LayoutParams(-1, dp(30)))
-        panel.addView(serverRow, LinearLayout.LayoutParams(-1, dp(46)))
-        panel.addView(characterTitle, LinearLayout.LayoutParams(-1, dp(28)))
-        panel.addView(characterNameInput, LinearLayout.LayoutParams(-1, dp(50)).apply { bottomMargin = dp(8) })
-        panel.addView(styleRow, LinearLayout.LayoutParams(-1, dp(46)))
-        panel.addView(enter, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(14) })
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             clipToPadding = false
-            setPadding(0, dp(16), 0, dp(16))
+            setPadding(dp(46), dp(14), dp(46), dp(14))
             addView(panel, FrameLayout.LayoutParams(-1, -2))
         }
-        overlay.addView(scroll, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER).apply {
-            leftMargin = dp(24)
-            rightMargin = dp(24)
-        })
+        overlay.addView(scroll, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
         return overlay
     }
 
@@ -476,6 +501,74 @@ class MainActivity : Activity(), SensorEventListener {
             setColor(Color.rgb(238, 194, 112))
             setStroke(2, Color.rgb(255, 230, 168))
         }
+    }
+
+    private fun cinematicButton(label: String, primary: Boolean, onClick: () -> Unit): Button = Button(this).apply {
+        text = label
+        textSize = 12f
+        isAllCaps = false
+        minHeight = 0
+        minimumHeight = 0
+        minWidth = 0
+        minimumWidth = 0
+        letterSpacing = 0.05f
+        setPadding(dp(12), 0, dp(12), 0)
+        setTextColor(if (primary) Color.rgb(27, 22, 15) else Color.rgb(232, 224, 205))
+        setOnClickListener { onClick() }
+        background = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            if (primary) intArrayOf(Color.rgb(214, 170, 88), Color.rgb(247, 209, 132)) else intArrayOf(Color.argb(230, 29, 34, 41), Color.argb(230, 12, 18, 25))
+        ).apply {
+            cornerRadius = dp(10).toFloat()
+            setStroke(dp(1), if (primary) Color.rgb(255, 226, 161) else Color.rgb(151, 114, 62))
+        }
+    }
+}
+
+/** Original procedural dark-fantasy landscape: no external background art is copied into the build. */
+private class CinematicLoginBackdropView(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val ridge = Path()
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        val w = width.toFloat().coerceAtLeast(1f)
+        val h = height.toFloat().coerceAtLeast(1f)
+        paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Color.rgb(5, 14, 22), Color.rgb(13, 23, 30), Color.rgb(3, 7, 11)), null, Shader.TileMode.CLAMP)
+        canvas.drawRect(0f, 0f, w, h, paint)
+
+        paint.shader = RadialGradient(w * 0.14f, h * 0.26f, w * 0.53f, intArrayOf(Color.argb(205, 218, 151, 72), Color.argb(55, 126, 107, 75), Color.TRANSPARENT), floatArrayOf(0f, 0.46f, 1f), Shader.TileMode.CLAMP)
+        canvas.drawCircle(w * 0.14f, h * 0.26f, w * 0.53f, paint)
+        paint.shader = null
+
+        drawRidge(canvas, w, h, 0.56f, Color.rgb(23, 41, 49), 0.06f)
+        drawRidge(canvas, w, h, 0.67f, Color.rgb(14, 28, 36), 0.10f)
+        drawRidge(canvas, w, h, 0.78f, Color.rgb(7, 16, 23), 0.15f)
+
+        paint.color = Color.argb(80, 211, 185, 130)
+        for (i in 0..18) {
+            val x = ((i * 97) % w.toInt()).toFloat()
+            val y = h * (0.08f + ((i * 37) % 32) / 100f)
+            canvas.drawCircle(x, y, if (i % 3 == 0) 2.5f else 1.2f, paint)
+        }
+        paint.shader = LinearGradient(0f, h * 0.65f, 0f, h, Color.argb(0, 0, 0, 0), Color.argb(220, 0, 0, 0), Shader.TileMode.CLAMP)
+        canvas.drawRect(0f, h * 0.62f, w, h, paint)
+        paint.shader = null
+    }
+
+    private fun drawRidge(canvas: android.graphics.Canvas, w: Float, h: Float, base: Float, color: Int, amplitude: Float) {
+        ridge.reset()
+        ridge.moveTo(0f, h)
+        ridge.lineTo(0f, h * base)
+        for (i in 0..8) {
+            val x = w * i / 8f
+            val peak = h * (base - amplitude * if (i % 2 == 0) 1.25f else 0.45f)
+            ridge.lineTo(x + w / 16f, peak)
+            ridge.lineTo(x + w / 8f, h * base)
+        }
+        ridge.lineTo(w, h)
+        ridge.close()
+        paint.color = color
+        canvas.drawPath(ridge, paint)
     }
 }
 
