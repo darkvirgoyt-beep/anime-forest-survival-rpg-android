@@ -6,7 +6,7 @@ This service is the first production boundary for **Aethelgard: Wild Horizons â€
 
 1. Install Node.js 22 and PostgreSQL 16, or run the included Docker Compose file.
 2. Copy `.env.example` to `.env`. Set `GOOGLE_ID_TOKEN_AUDIENCE` to the **Web OAuth client ID** from Google Cloud and create a random `GAME_SESSION_JWT_SECRET` of at least 32 characters. Never commit `.env`.
-3. Start PostgreSQL and apply `sql/001_init.sql`, then `sql/002_hardened_sessions.sql`.
+3. Start PostgreSQL and apply `sql/001_init.sql`, `sql/002_hardened_sessions.sql`, and `sql/003_coop_rendezvous.sql`.
 4. Install dependencies and start the service:
 
 ```bash
@@ -26,6 +26,20 @@ The backend returns a short-lived game access token plus a rotating refresh toke
 
 When a Play Console game and Game Server credential exist, add `GOOGLE_GAME_SERVER_CLIENT_ID` and `GOOGLE_GAME_SERVER_CLIENT_SECRET` only to the backend deployment. The service can then enable `POST /v1/auth/play-games/exchange` without changing the session or world contracts. Until both values are configured, that endpoint deliberately returns `play_games_not_configured`.
 
+## Co-op tower rendezvous
+
+Migration `sql/003_coop_rendezvous.sql` adds authenticated tower rooms and short-lived member presence. The Android client can create or join a six-character room code, then sends a heartbeat every two seconds with its local position and tower-arrival revision. The service advances one room clock and returns it to every member, so the existing deterministic weather cycle and day-night cycle stay aligned. When one member activates the tower, the room revision is observed by the other members and they teleport to the same tower landmark.
+
+The current implementation is a lightweight HTTPS rendezvous layer: it synchronizes the shared clock, positions, and tower event, but it does not claim authoritative real-time combat simulation. A production combat server can later consume the same room identity and world-clock contract while owning movement validation, hit detection, inventory authority, and low-latency replication.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /v1/coop/rooms` | Create a room for the authenticated playerâ€™s selected region. |
+| `POST /v1/coop/rooms/:code/join` | Join a room using its six-character code. |
+| `GET /v1/coop/rooms/:code` | Read the synchronized room clock and active participants. |
+| `POST /v1/coop/rooms/:code/heartbeat` | Publish position and tower-arrival state and receive the current room snapshot. |
+| `DELETE /v1/coop/rooms/:code/leave` | Leave the room explicitly; inactive presence also expires after 20 seconds. |
+
 ## Production requirements
 
 Before public release, replace the development setup with a managed PostgreSQL instance, secret storage, TLS termination, rate limiting, structured audit logs, database backups and migrations, token revocation, abuse controls, and a dedicated-server allocator. The HTTP service must be deployed independently from the Unreal dedicated-server fleet. The game client must never receive a Google client secret or database credentials.
@@ -41,4 +55,4 @@ The initial API is deliberately narrow:
 | `GET /v1/worlds` | List online worlds after session validation. |
 | `POST /v1/worlds` | Allocate a world record for later dedicated-server placement. |
 
-World allocation is only a database contract at this stage. It must not be presented as a live multiplayer fleet until a real Unreal dedicated server, allocator, health reporting, and reconnect path are deployed.
+World allocation is only a database contract at this stage. It must not be presented as a live multiplayer fleet until a real Unreal dedicated server, allocator, health reporting, reconnect path, and authoritative gameplay layer are deployed.

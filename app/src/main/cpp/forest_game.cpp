@@ -69,6 +69,15 @@ ViewMode gViewMode = ViewMode::ThirdPerson;
 bool gWorldMapVisible = false;
 float gTowerGlow = 0.0f;
 float gTowerCooldown = 0.0f;
+float gSynchronizedWorldTime = -1.0f;
+int gTowerRevision = 0;
+struct CoOpPeer {
+    bool active = false;
+    float x = 0.0f;
+    float y = 0.0f;
+    bool atTower = false;
+};
+CoOpPeer gCoOpPeers[3]{};
 
 enum class Biome {
     Forest,
@@ -207,6 +216,12 @@ const char* timePhaseName() {
 
 void updateCalendar() {
     gDaysPlayed = static_cast<int>(std::floor(std::max(0.0f, gTime) / kDayCycleSeconds)) + 1;
+}
+
+void applySynchronizedWorldTime() {
+    if (gSynchronizedWorldTime < 0.0f) return;
+    gTime = std::max(0.0f, gSynchronizedWorldTime);
+    gSynchronizedWorldTime = -1.0f;
 }
 
 const forest::physics::StaticObstacle gObstacles[] = {
@@ -433,6 +448,35 @@ void drawQuad(float x, float y, float width, float height, float r, float g, flo
 void drawTriangle(float x, float y, float width, float height, float r, float g, float b, float a);
 void drawCircle(float x, float y, float radius, float r, float g, float b, float a);
 
+void draw3DPeer(const Mat4& viewProjection, const CoOpPeer& peer, int index) {
+    if (!peer.active) return;
+    const float px = peer.x * 4.3f;
+    const float pz = -peer.y * 4.0f;
+    const float tint = 0.14f * static_cast<float>(index);
+    draw3DBox(viewProjection, px, 0.26f, pz, 0.34f, 0.50f, 0.26f, 0.18f + tint, 0.30f, 0.62f);
+    draw3DBox(viewProjection, px, 0.72f, pz, 0.32f, 0.34f, 0.32f, 0.82f, 0.52f, 0.30f);
+    if (peer.atTower) {
+        draw3DBox(viewProjection, px, 0.04f, pz, 0.56f, 0.05f, 0.56f, 1.0f, 0.78f, 0.26f, 0.82f);
+    }
+}
+
+void draw3DWeather(const Mat4& viewProjection) {
+    const float intensity = rainIntensity();
+    if (intensity <= 0.0f) return;
+    const int drops = 20 + gGraphicsQuality * 8;
+    for (int i = 0; i < drops; ++i) {
+        const float seed = static_cast<float>(i) * 0.371f;
+        const float x = -8.0f + std::fmod(seed * 13.0f + gTime * 1.9f, 16.0f);
+        const float z = -6.0f + std::fmod(seed * 17.0f + gTime * 1.3f, 14.0f);
+        const float y = 3.9f - std::fmod(seed * 5.0f + gTime * (2.8f + intensity), 5.0f);
+        draw3DBox(viewProjection, x, y, z, 0.018f, 0.48f + intensity * 0.20f, 0.018f, 0.36f, 0.72f, 0.88f, 0.48f);
+    }
+    const float flash = lightningIntensity();
+    if (flash > 0.0f) {
+        draw3DBox(viewProjection, 0.0f, 4.0f, 0.0f, 18.0f, 0.05f, 18.0f, 0.72f, 0.86f, 1.0f, flash * 0.42f);
+    }
+}
+
 void draw3DMapOverlay() {
     glDisable(GL_DEPTH_TEST);
     glUseProgram(gProgram);
@@ -468,13 +512,22 @@ void draw3DWorld() {
         eye = {px - std::sin(yaw) * horizontal * distance, 0.72f + vertical * distance + 1.0f, pz - std::cos(yaw) * horizontal * distance};
     }
     const Mat4 viewProjection = multiplyMatrix(perspectiveMatrix(1.03f, aspect, 0.05f, 60.0f), lookAtMatrix(eye, target));
-    const float sky = currentTimePhase() == TimePhase::Night ? 0.025f : 0.075f;
-    glClearColor(0.025f, sky, 0.10f, 1.0f);
+    float daylight = 1.0f;
+    switch (currentTimePhase()) {
+        case TimePhase::Day: daylight = 1.0f; break;
+        case TimePhase::Afternoon: daylight = 0.86f; break;
+        case TimePhase::Evening: daylight = 0.52f; break;
+        case TimePhase::Night: daylight = 0.22f; break;
+    }
+    if (currentWeather() == WeatherState::Thunderstorm) daylight *= 0.72f;
+    const float sky = 0.075f * daylight;
+    glClearColor(0.018f * daylight, sky, 0.10f * daylight + 0.012f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    draw3DBox(viewProjection, 0.0f, -0.16f, 0.0f, 18.0f, 0.20f, 18.0f, 0.07f, 0.19f, 0.15f);
+    draw3DBox(viewProjection, 0.0f, -0.16f, 0.0f, 18.0f, 0.20f, 18.0f, 0.07f * daylight, 0.19f * daylight, 0.15f * daylight);
+    draw3DBox(viewProjection, 0.0f, 3.90f, 0.0f, 18.0f, 0.20f, 18.0f, 0.06f * daylight, 0.11f * daylight, 0.20f * daylight);
     draw3DBox(viewProjection, -4.4f, -0.02f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
     draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
     draw3DBox(viewProjection, 4.4f, 0.0f, 0.7f, 4.2f, 0.08f, 7.0f, 0.40f, 0.62f, 0.72f);
@@ -491,7 +544,9 @@ void draw3DWorld() {
         draw3DBox(viewProjection, -1.4f, 0.48f, 1.6f, 0.72f, 0.96f, 0.72f, 0.20f, 0.12f, 0.32f);
         draw3DBox(viewProjection, -1.4f, 1.18f, 1.6f, 0.88f, 0.18f, 0.88f, 0.58f, 0.28f, 0.77f);
     }
+    for (const CoOpPeer& peer : gCoOpPeers) draw3DPeer(viewProjection, peer, static_cast<int>(&peer - gCoOpPeers));
     draw3DPlayer(viewProjection, firstPerson);
+    draw3DWeather(viewProjection);
     glDisable(GL_CULL_FACE);
     if (gWorldMapVisible) draw3DMapOverlay();
 }
@@ -894,6 +949,7 @@ void drawForestWarden(float x, float y, float scale, bool combatTarget) {
 
 
 void simulatePhysicsStep() {
+    applySynchronizedWorldTime();
     gTime += kPhysicsStep;
     updateCalendar();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
@@ -1097,6 +1153,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gWorldMapVisible = false;
     gTowerGlow = 0.0f;
     gTowerCooldown = 0.0f;
+    gSynchronizedWorldTime = -1.0f;
+    gTowerRevision = 0;
+    for (CoOpPeer& peer : gCoOpPeers) peer = {};
     gProgression = {};
     gWood = 12;
     gFiber = 8;
@@ -1166,6 +1225,27 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setWorldMapVisible(JNIEnv*, jobj
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setWorldTime(JNIEnv*, jobject, jfloat worldTime) {
+    if (std::isfinite(static_cast<float>(worldTime))) gSynchronizedWorldTime = std::max(0.0f, static_cast<float>(worldTime));
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setCoOpPeer(JNIEnv*, jobject, jint index, jboolean active, jfloat x, jfloat y, jboolean atTower) {
+    const int peerIndex = static_cast<int>(index);
+    if (peerIndex < 0 || peerIndex >= static_cast<int>(sizeof(gCoOpPeers) / sizeof(gCoOpPeers[0]))) return;
+    CoOpPeer& peer = gCoOpPeers[peerIndex];
+    peer.active = active == JNI_TRUE;
+    peer.x = std::clamp(static_cast<float>(x), kSimulationMinX, kSimulationMaxX);
+    peer.y = std::clamp(static_cast<float>(y), kSimulationMinY, kSimulationMaxY);
+    peer.atTower = atTower == JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_clearCoOpPeers(JNIEnv*, jobject) {
+    for (CoOpPeer& peer : gCoOpPeers) peer = {};
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_teleportToTower(JNIEnv*, jobject) {
     if (gTowerCooldown > 0.0f) return;
     gController.body.position = {-0.06f, 0.28f};
@@ -1174,6 +1254,19 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_teleportToTower(JNIEnv*, jobject
     gPlayerY = gController.body.position.y;
     gTowerGlow = 1.8f;
     gTowerCooldown = 4.0f;
+    ++gTowerRevision;
+    gQuestPulse = 120;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_syncTeleportToTower(JNIEnv*, jobject, jint revision) {
+    gController.body.position = {-0.06f, 0.28f};
+    gController.body.velocity = {0.0f, 0.0f};
+    gPlayerX = gController.body.position.x;
+    gPlayerY = gController.body.position.y;
+    gTowerGlow = 1.8f;
+    gTowerCooldown = 0.8f;
+    gTowerRevision = std::max(gTowerRevision, static_cast<int>(revision));
     gQuestPulse = 120;
 }
 
@@ -1288,6 +1381,15 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << (gViewMode == ViewMode::FirstPerson ? "FIRST_PERSON" : "THIRD_PERSON") << '|'
           << (gWorldMapVisible ? "MAP_ON" : "MAP_OFF") << '|'
           << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY");
+    const std::string value = state.str();
+    return env->NewStringUTF(value.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCoOpLocalState(JNIEnv* env, jobject) {
+    const float towerDistance = std::abs(gPlayerX + 0.06f) + std::abs(gPlayerY - 0.28f);
+    std::ostringstream state;
+    state << gPlayerX << '|' << gPlayerY << '|' << (towerDistance < 0.16f ? 1 : 0) << '|' << gTowerRevision << '|' << gTime;
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }

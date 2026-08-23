@@ -2,6 +2,7 @@ import express from "express";
 import pg from "pg";
 import { OAuth2Client } from "google-auth-library";
 import { pathToFileURL } from "node:url";
+import { randomBytes } from "node:crypto";
 import {
   createOpaqueToken,
   hashSecret,
@@ -27,7 +28,7 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
       res.setHeader("Vary", "Origin");
     }
     res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
   });
@@ -191,12 +192,147 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     res.status(201).json({ world: result.rows[0] });
   });
 
+  app.post("/v1/coop/rooms", requireSession, async (req, res) => {
+    const region = typeof req.body?.region === "string" ? req.body.region.trim().slice(0, 32) : "asia";
+    const code = await createCoOpRoom(pool, req.accountId, region);
+    const room = await getCoOpRoom(pool, code, req.accountId);
+    res.status(201).json(room);
+  });
+
+  app.post("/v1/coop/rooms/:code/join", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const roomResult = await pool.query("SELECT id, code, region, max_players FROM coop_rooms WHERE code = $1", [code]);
+    if (roomResult.rowCount !== 1) return res.status(404).json({ error: "room_not_found" });
+    const room = roomResult.rows[0];
+    const active = await pool.query("SELECT COUNT(*)::int AS count FROM coop_members WHERE room_id = $1 AND account_id <> $2 AND last_seen_at > now() - interval '20 seconds'", [room.id, req.accountId]);
+    if (Number(active.rows[0]?.count || 0) >= room.max_players) return res.status(409).json({ error: "room_full" });
+    await pool.query(
+      `INSERT INTO coop_members (room_id, account_id) VALUES ($1, $2)
+       ON CONFLICT (room_id, account_id) DO UPDATE SET last_seen_at = now()`,
+      [room.id, req.accountId]
+    );
+    res.json(await getCoOpRoom(pool, code, req.accountId));
+  });
+
+  app.get("/v1/coop/rooms/:code", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const room = await getCoOpRoom(pool, code, req.accountId);
+    if (!room) return res.status(404).json({ error: "room_not_found" });
+    res.json(room);
+  });
+
+  app.post("/v1/coop/rooms/:code/heartbeat", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const x = boundedNumber(req.body?.playerX, -0.90, 0.90, -0.55);
+    const y = boundedNumber(req.body?.playerY, -0.50, 0.52, -0.08);
+    const towerRevision = Math.max(0, Math.min(Number(req.body?.towerRevision) || 0, 2_000_000_000));
+    const atTower = req.body?.atTower === true;
+    const roomResult = await pool.query("SELECT id FROM coop_rooms WHERE code = $1", [code]);
+    if (roomResult.rowCount !== 1) return res.status(404).json({ error: "room_not_found" });
+    const roomId = roomResult.rows[0].id;
+    const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
+    if (membership.rowCount !== 1) return res.status(403).json({ error: "room_membership_required" });
+    await pool.query(
+      `INSERT INTO coop_members (room_id, account_id, player_x, player_y, at_tower, tower_revision, last_seen_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now())
+       ON CONFLICT (room_id, account_id) DO UPDATE SET player_x = EXCLUDED.player_x, player_y = EXCLUDED.player_y,
+         at_tower = EXCLUDED.at_tower, tower_revision = EXCLUDED.tower_revision, last_seen_at = now()`,
+      [roomId, req.accountId, x, y, atTower, towerRevision]
+    );
+    if (atTower && towerRevision > 0) {
+      await pool.query("UPDATE coop_rooms SET tower_revision = GREATEST(tower_revision, $2), updated_at = now() WHERE id = $1", [roomId, towerRevision]);
+    }
+    res.json(await getCoOpRoom(pool, code, req.accountId));
+  });
+
+  app.delete("/v1/coop/rooms/:code/leave", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    await pool.query("DELETE FROM coop_members WHERE room_id = (SELECT id FROM coop_rooms WHERE code = $1) AND account_id = $2", [code, req.accountId]);
+    res.status(204).end();
+  });
+
   app.use((_req, res) => res.status(404).json({ error: "not_found" }));
   app.use((error, _req, res, _next) => {
     console.error("unhandled_request_error", safeErrorCode(error));
     res.status(500).json({ error: "internal_server_error" });
   });
   return app;
+}
+
+const COOP_ROOM_CODE = /^[A-Z0-9]{6}$/;
+
+function normalizeRoomCode(value) {
+  const code = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return COOP_ROOM_CODE.test(code) ? code : null;
+}
+
+function boundedNumber(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+}
+
+async function createCoOpRoom(pool, accountId, region) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const code = randomBytes(3).toString("hex").toUpperCase();
+    try {
+      const created = await pool.query(
+        "INSERT INTO coop_rooms (code, region, created_by) VALUES ($1, $2, $3) RETURNING id",
+        [code, region, accountId]
+      );
+      if (created.rowCount === 1) {
+        await pool.query("INSERT INTO coop_members (room_id, account_id) VALUES ($1, $2)", [created.rows[0].id, accountId]);
+        return code;
+      }
+    } catch (error) {
+      if (error?.code !== "23505") throw error;
+    }
+  }
+  throw new Error("coop_room_code_generation_failed");
+}
+
+async function getCoOpRoom(pool, code, accountId) {
+  const roomResult = await pool.query(
+    `SELECT id, code, region, max_players, world_time, tower_revision
+     FROM coop_rooms WHERE code = $1`,
+    [code]
+  );
+  if (roomResult.rowCount !== 1) return null;
+  const room = roomResult.rows[0];
+  const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [room.id, accountId]);
+  if (membership.rowCount !== 1) return null;
+  await pool.query(
+    `UPDATE coop_rooms
+     SET world_time = world_time + EXTRACT(EPOCH FROM (now() - last_tick_at)), last_tick_at = now(), updated_at = now()
+     WHERE id = $1`,
+    [room.id]
+  );
+  const current = await pool.query(
+    `SELECT account_id, player_x, player_y, at_tower, tower_revision
+     FROM coop_members WHERE room_id = $1 AND last_seen_at > now() - interval '20 seconds'
+     ORDER BY last_seen_at DESC`,
+    [room.id]
+  );
+  const refreshed = await pool.query("SELECT world_time, tower_revision FROM coop_rooms WHERE id = $1", [room.id]);
+  return {
+    room: {
+      code: room.code,
+      region: room.region,
+      maxPlayers: room.max_players,
+      worldTime: Number(refreshed.rows[0]?.world_time || room.world_time || 0),
+      towerRevision: Number(refreshed.rows[0]?.tower_revision || room.tower_revision || 0)
+    },
+    participants: current.rows.map(member => ({
+      accountId: member.account_id,
+      playerX: Number(member.player_x),
+      playerY: Number(member.player_y),
+      atTower: Boolean(member.at_tower),
+      towerRevision: Number(member.tower_revision || 0)
+    }))
+  };
 }
 
 export async function exchangePlayGamesCode(serverAuthCode, config, fetchImpl = fetch) {

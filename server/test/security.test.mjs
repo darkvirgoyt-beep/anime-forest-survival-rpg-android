@@ -181,3 +181,30 @@ test("refresh rotation rejects reuse of the prior refresh session", async () => 
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+
+test("co-op room routes reject malformed tower room codes after session verification", async () => {
+  const issued = issueAccessToken({ accountId: "account-1", sessionId: 9, secret: validConfig.GAME_SESSION_JWT_SECRET, now: Date.now(), ttlSeconds: 900 });
+  const pool = {
+    async query(sql) {
+      if (sql.includes("FROM sessions") && sql.includes("token_hash")) {
+        return { rowCount: 1, rows: [{ id: 9, account_id: "account-1" }] };
+      }
+      return { rowCount: 1, rows: [] };
+    }
+  };
+  const app = createOnlineService({ pool, config: loadRuntimeConfig(validConfig) });
+  const server = http.createServer(app);
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/v1/coop/rooms/not-valid/join`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${issued.token}`, "Content-Type": "application/json" },
+      body: "{}"
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error, "invalid_room_code");
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});

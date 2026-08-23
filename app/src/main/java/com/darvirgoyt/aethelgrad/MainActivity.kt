@@ -54,7 +54,12 @@ object NativeGameBridge {
     external fun orbitCamera(deltaYaw: Float, deltaPitch: Float)
     external fun toggleViewMode()
     external fun setWorldMapVisible(visible: Boolean)
+    external fun setWorldTime(worldTime: Float)
+    external fun setCoOpPeer(index: Int, active: Boolean, x: Float, y: Float, atTower: Boolean)
+    external fun clearCoOpPeers()
     external fun teleportToTower()
+    external fun syncTeleportToTower(revision: Int)
+    external fun getCoOpLocalState(): String
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun attack()
@@ -98,6 +103,10 @@ class MainActivity : Activity(), SensorEventListener {
     private var activeCloudWorld: CloudWorldManifest? = null
     private var cloudSaveInFlight = false
     private var cloudRecoveryNotice: String? = null
+    private var activeCoOpRoom: CoOpRoomSnapshot? = null
+    private var coOpHeartbeatInFlight = false
+    private var lastCoOpTowerRevision = 0
+    private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
@@ -109,6 +118,28 @@ class MainActivity : Activity(), SensorEventListener {
                 }
             }
             hudHandler.postDelayed(this, 200L)
+        }
+    }
+    private val coOpUpdater = object : Runnable {
+        override fun run() {
+            val room = activeCoOpRoom
+            if (room != null && !coOpHeartbeatInFlight && ::gameView.isInitialized) {
+                coOpHeartbeatInFlight = true
+                gameView.queueEvent {
+                    val local = NativeGameBridge.getCoOpLocalState().split('|')
+                    val x = local.getOrNull(0)?.toFloatOrNull() ?: -0.55f
+                    val y = local.getOrNull(1)?.toFloatOrNull() ?: -0.08f
+                    val atTower = local.getOrNull(2) == "1"
+                    val towerRevision = local.getOrNull(3)?.toIntOrNull() ?: 0
+                    runOnUiThread {
+                        accountSession.heartbeatCoOpRoom(room.code, x, y, atTower, towerRevision) { snapshot, error ->
+                            coOpHeartbeatInFlight = false
+                            if (snapshot != null) applyCoOpSnapshot(snapshot) else if (error != null && ::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+                        }
+                    }
+                }
+            }
+            hudHandler.postDelayed(this, 2_000L)
         }
     }
     private val cloudSaveUpdater = object : Runnable {
@@ -247,6 +278,10 @@ class MainActivity : Activity(), SensorEventListener {
         gyroEnabled = false
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
+        hudHandler.removeCallbacks(coOpUpdater)
+        activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+        activeCoOpRoom = null
+        if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
         val world = activeCloudWorld
         if (world != null && !cloudSaveInFlight) {
             cloudSaveInFlight = true
@@ -273,11 +308,14 @@ class MainActivity : Activity(), SensorEventListener {
         updateGyroButton()
         hudHandler.postDelayed(hudUpdater, 350L)
         hudHandler.postDelayed(cloudSaveUpdater, 45_000L)
+        if (activeCoOpRoom != null) hudHandler.postDelayed(coOpUpdater, 1_000L)
     }
 
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
+        hudHandler.removeCallbacks(coOpUpdater)
+        activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
         accountSession.shutdown()
         if (::assetDelivery.isInitialized) assetDelivery.shutdown()
         if (::assetPacks.isInitialized) assetPacks.close()
@@ -776,6 +814,123 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    private fun applyCoOpSnapshot(snapshot: CoOpRoomSnapshot) {
+        activeCoOpRoom = snapshot
+        if (!::coOpStatusLabel.isInitialized) return
+        val accountId = accountSession.snapshot.accountId
+        val remoteParticipants = snapshot.participants.filter { it.accountId != accountId }
+        val incomingTowerRevision = remoteParticipants.maxOfOrNull { it.towerRevision } ?: 0
+        if (incomingTowerRevision > lastCoOpTowerRevision && remoteParticipants.any { it.atTower && it.towerRevision >= incomingTowerRevision }) {
+            lastCoOpTowerRevision = incomingTowerRevision
+            gameView.queueEvent { NativeGameBridge.syncTeleportToTower(incomingTowerRevision) }
+        }
+        gameView.queueEvent {
+            NativeGameBridge.setWorldTime(snapshot.worldTime)
+            NativeGameBridge.clearCoOpPeers()
+            remoteParticipants.take(3).forEachIndexed { index, participant ->
+                NativeGameBridge.setCoOpPeer(index, true, participant.playerX, participant.playerY, participant.atTower)
+            }
+        }
+        val tower = if (snapshot.towerRevision > 0) "TOWER ${snapshot.towerRevision}" else "TOWER READY"
+        coOpStatusLabel.text = "CO-OP ${snapshot.code}  •  ${snapshot.participants.size}/${snapshot.maxPlayers}  •  $tower  •  WEATHER SYNCED"
+    }
+
+    private fun startCoOpRoom(snapshot: CoOpRoomSnapshot) {
+        activeCoOpRoom = snapshot
+        lastCoOpTowerRevision = 0
+        applyCoOpSnapshot(snapshot)
+        hudHandler.removeCallbacks(coOpUpdater)
+        hudHandler.postDelayed(coOpUpdater, 250L)
+    }
+
+    private fun showCoOpDialog() {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(4))
+        }
+        val explanation = TextView(this).apply {
+            text = "Create a six-character tower room code and share it with friends. The room synchronizes the day-night clock, weather phase, player positions, and tower arrivals."
+            textSize = 12f
+            setTextColor(Color.rgb(205, 220, 218))
+            setPadding(0, 0, 0, dp(10))
+        }
+        panel.addView(explanation)
+        val status = TextView(this).apply {
+            text = activeCoOpRoom?.let { "Active room: ${it.code}" } ?: "No active tower room"
+            textSize = 12f
+            setTextColor(Color.rgb(244, 218, 155))
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(10))
+        }
+        panel.addView(status)
+        val codeInput = EditText(this).apply {
+            hint = "ROOM CODE (6 CHARACTERS)"
+            textSize = 14f
+            isSingleLine = true
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.rgb(164, 170, 177))
+            setPadding(dp(14), 0, dp(14), 0)
+            background = GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(180, 7, 12, 18))
+                setStroke(dp(1), Color.rgb(127, 99, 56))
+            }
+        }
+        panel.addView(codeInput, LinearLayout.LayoutParams(-1, dp(48)))
+        val result = TextView(this).apply {
+            textSize = 11f
+            setTextColor(Color.rgb(255, 205, 145))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, 0)
+        }
+        panel.addView(result, LinearLayout.LayoutParams(-1, dp(32)))
+        val create = actionButton("CREATE TOWER ROOM") {
+            result.text = "Allocating a shared tower room…"
+            accountSession.createCoOpRoom(selectedServer.id) { room, error ->
+                if (room == null) {
+                    result.text = error ?: "Room creation failed."
+                } else {
+                    startCoOpRoom(room)
+                    result.setTextColor(Color.rgb(164, 231, 190))
+                    result.text = "Room ${room.code} ready. Share this code with your friends."
+                    codeInput.setText(room.code)
+                    status.text = "Active room: ${room.code}"
+                }
+            }
+        }
+        val join = actionButton("JOIN TOWER ROOM") {
+            result.text = "Joining tower room…"
+            accountSession.joinCoOpRoom(codeInput.text.toString()) { room, error ->
+                if (room == null) {
+                    result.text = error ?: "Room join failed."
+                } else {
+                    startCoOpRoom(room)
+                    result.setTextColor(Color.rgb(164, 231, 190))
+                    result.text = "Joined ${room.code}. Friends will appear near the tower."
+                    status.text = "Active room: ${room.code}"
+                }
+            }
+        }
+        panel.addView(create, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        panel.addView(join, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+        if (activeCoOpRoom != null) {
+            val leave = actionButton("LEAVE CURRENT ROOM") {
+                activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+                activeCoOpRoom = null
+                hudHandler.removeCallbacks(coOpUpdater)
+                gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
+                if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP OFFLINE  •  WEATHER LOCAL"
+                result.text = "Left the tower room."
+            }
+            panel.addView(leave, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+        }
+        AlertDialog.Builder(this)
+            .setTitle("CO-OP TOWER RENDEZVOUS")
+            .setView(panel)
+            .setNegativeButton("CLOSE", null)
+            .show()
+    }
+
     private fun buildHud(): View {
         val overlay = FrameLayout(this)
         val top = LinearLayout(this).apply {
@@ -874,6 +1029,22 @@ class MainActivity : Activity(), SensorEventListener {
         overlay.addView(orbitHint, FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP).apply {
             topMargin = dp(142)
             leftMargin = dp(24)
+        })
+        coOpStatusLabel = TextView(this).apply {
+            text = "CO-OP OFFLINE  •  WEATHER LOCAL"
+            textSize = 10f
+            setTextColor(Color.rgb(183, 218, 208))
+            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+        }
+        overlay.addView(coOpStatusLabel, FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP).apply {
+            topMargin = dp(168)
+            leftMargin = dp(24)
+            rightMargin = dp(214)
+        })
+        val coOpButton = actionButton("CO-OP ROOM") { showCoOpDialog() }
+        overlay.addView(coOpButton, FrameLayout.LayoutParams(dp(160), dp(42), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(146)
+            rightMargin = dp(28)
         })
 
         val actions = LinearLayout(this).apply {

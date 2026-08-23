@@ -56,6 +56,23 @@ data class PlayerProfile(
     val profileVisibility: String
 )
 
+data class CoOpParticipant(
+    val accountId: String,
+    val playerX: Float,
+    val playerY: Float,
+    val atTower: Boolean,
+    val towerRevision: Int
+)
+
+data class CoOpRoomSnapshot(
+    val code: String,
+    val region: String,
+    val maxPlayers: Int,
+    val worldTime: Float,
+    val towerRevision: Int,
+    val participants: List<CoOpParticipant>
+)
+
 /**
  * Standard Google account sign-in boundary for pre-Play-Console testing.
  * The Android client sends only a Google-issued ID token to the configured HTTPS backend.
@@ -385,6 +402,109 @@ class AccountSessionManager {
         }
     }
 
+    fun createCoOpRoom(region: String, onComplete: (CoOpRoomSnapshot?, String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again to create a co-op room.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms"), token, JSONObject().put("region", region).toString())
+                if (response.statusCode !in 200..299) {
+                    publishCoOpResult(onComplete, null, "Could not create the co-op room (${response.statusCode}).")
+                    return@execute
+                }
+                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+            } catch (_: Exception) {
+                publishCoOpResult(onComplete, null, "Could not create the co-op room. Check your connection.")
+            }
+        }
+    }
+
+    fun joinCoOpRoom(code: String, onComplete: (CoOpRoomSnapshot?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = code.trim().uppercase()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again to join a co-op room.")
+            return
+        }
+        if (!Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Enter the six-character tower room code.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/join"), token, "{}")
+                if (response.statusCode !in 200..299) {
+                    publishCoOpResult(onComplete, null, if (response.statusCode == 404) "Tower room not found." else if (response.statusCode == 409) "Tower room is full." else "Could not join the co-op room (${response.statusCode}).")
+                    return@execute
+                }
+                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+            } catch (_: Exception) {
+                publishCoOpResult(onComplete, null, "Could not join the co-op room. Check your connection.")
+            }
+        }
+    }
+
+    fun heartbeatCoOpRoom(roomCode: String, playerX: Float, playerY: Float, atTower: Boolean, towerRevision: Int, onComplete: (CoOpRoomSnapshot?, String?) -> Unit = { _, _ -> }) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) return
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject()
+                    .put("playerX", playerX)
+                    .put("playerY", playerY)
+                    .put("atTower", atTower)
+                    .put("towerRevision", towerRevision)
+                    .toString()
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/heartbeat"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishCoOpResult(onComplete, null, "Co-op room heartbeat failed (${response.statusCode}).")
+                    return@execute
+                }
+                publishCoOpResult(onComplete, parseCoOpRoom(response.body), null)
+            } catch (_: Exception) {
+                publishCoOpResult(onComplete, null, "Co-op room connection lost.")
+            }
+        }
+    }
+
+    fun leaveCoOpRoom(roomCode: String) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) return
+        networkExecutor.execute { runCatching { requestJson("DELETE", cloudEndpoint("/coop/rooms/$normalized/leave"), token, null) } }
+    }
+
+    private fun parseCoOpRoom(json: String): CoOpRoomSnapshot {
+        val root = JSONObject(json)
+        val room = root.getJSONObject("room")
+        val participantsJson = root.optJSONArray("participants") ?: JSONArray()
+        val participants = buildList {
+            for (index in 0 until participantsJson.length()) {
+                val member = participantsJson.optJSONObject(index) ?: continue
+                val accountId = member.optString("accountId")
+                if (accountId.isNotBlank()) add(CoOpParticipant(
+                    accountId = accountId,
+                    playerX = member.optDouble("playerX", -0.55).toFloat(),
+                    playerY = member.optDouble("playerY", -0.08).toFloat(),
+                    atTower = member.optBoolean("atTower", false),
+                    towerRevision = member.optInt("towerRevision", 0)
+                ))
+            }
+        }
+        return CoOpRoomSnapshot(
+            code = room.optString("code"),
+            region = room.optString("region"),
+            maxPlayers = room.optInt("maxPlayers", 4),
+            worldTime = room.optDouble("worldTime", 0.0).toFloat(),
+            towerRevision = room.optLong("towerRevision", 0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            participants = participants
+        )
+    }
+
     fun signOut(): SessionSnapshot {
         clearSession()
         return publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out"))
@@ -458,6 +578,7 @@ class AccountSessionManager {
     private fun publishProfileResult(callback: (String?) -> Unit, error: String?) = mainHandler.post { callback(error) }
     private fun publishWorldResult(callback: (CloudWorldManifest?, String?) -> Unit, world: CloudWorldManifest?, error: String?) = mainHandler.post { callback(world, error) }
     private fun publishSnapshotResult(callback: (String?, String?) -> Unit, snapshot: String?, error: String?) = mainHandler.post { callback(snapshot, error) }
+    private fun publishCoOpResult(callback: (CoOpRoomSnapshot?, String?) -> Unit, room: CoOpRoomSnapshot?, error: String?) = mainHandler.post { callback(room, error) }
 
     private fun clearSession() {
         accessSessionToken = null
