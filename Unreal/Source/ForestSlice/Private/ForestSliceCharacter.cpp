@@ -143,10 +143,15 @@ void AForestSliceCharacter::Tick(float DeltaSeconds)
     WetnessAlpha = FMath::FInterpTo(WetnessAlpha, bInWater ? 1.0f : 0.0f, Dt, bInWater ? 3.5f : 0.45f);
     if (PresentationComponent) {
         const float SpeedNormalized = FMath::Clamp(GetVelocity().Size2D() / FMath::Max(SprintSpeed, 1.0f), 0.0f, 1.0f);
-        PresentationComponent->UpdateLocomotionState(
+        PresentationComponent->UpdateAnimationIntent(
             SpeedNormalized,
             bSprintHeld,
-            GetCharacterMovement()->IsFalling()
+            GetCharacterMovement()->IsFalling(),
+            bInWater,
+            false,
+            0,
+            false,
+            false
         );
     }
 }

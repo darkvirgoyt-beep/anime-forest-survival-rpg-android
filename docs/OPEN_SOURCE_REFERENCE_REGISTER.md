@@ -14,6 +14,7 @@ AETHELGRAD uses external projects and official engine documentation for **archit
 | [PCG with World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-with-world-partition-in-unreal-engine) | Official Epic documentation | Partition-aware procedural generation, Data Layers, HLOD layers, and streaming-friendly world authoring | No Epic world content or PCG graphs are copied. |
 | [Nakama](https://github.com/heroiclabs/nakama) | Apache-2.0 | Server-owned match logic, storage boundaries, matchmaking concepts, and online service operational seams | No Nakama server code is vendored; current AETHELGRAD Express/PostgreSQL contracts remain the source of truth. |
 | [Colyseus](https://github.com/colyseus/colyseus) | MIT | Authoritative room lifecycle, state synchronization, reconnect concepts, and real-time migration considerations | No Colyseus framework code is added unless a future migration is separately approved and documented. |
+| [Android Unity3D OpenWorld](https://github.com/nikunjsingh93/Android_Unity3D_OpenWorld) | No explicit LICENSE/COPYING/NOTICE detected; repository metadata reports no detected license | High-level separation of first-person and third-person cameras, locomotion-driven presentation, trigger-based interaction boundaries, and mobile open-world composition | No source, APK, compiled artifacts, project files, screenshots, assets, names, text, or implementation are copied. AETHELGRAD’s animation intent and renderer are independently authored. |
 
 ## Implementation policy
 
@@ -25,4 +26,4 @@ The production roadmap favors small, testable boundaries: creature-companion sta
 
 ## Verification links
 
-The GitHub repositories and official documentation links above were reviewed during the August 2026 maintenance session. License identifiers were checked through repository metadata where available. This register should be updated whenever a new external reference influences production design.
+The GitHub repositories and official documentation links above were reviewed during the August 2026 maintenance session. License identifiers were checked through repository metadata where available. The Unity open-world repository was inspected at commit `7bf02b74774331857a3d383355f8ff1efa3b694d`; it contains no source or animation assets in the shallow checkout and has no detected license, so it remains an architecture-only reference. This register should be updated whenever a new external reference influences production design.

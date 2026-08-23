@@ -17,6 +17,7 @@
 #include "rpg/companion_system.h"
 #include "rpg/quality_profile.h"
 #include "rpg/encounter_director.h"
+#include "rpg/animation_state.h"
 #include "mobs/mob_catalog.h"
 
 namespace {
@@ -1015,6 +1016,23 @@ void draw3DMobs(const Mat4& viewProjection) {
     }
 }
 
+forest::rpg::AnimationMotionState animationMotionState() {
+    switch (gController.state) {
+    case forest::controller::LocomotionState::Walk: return forest::rpg::AnimationMotionState::Walk;
+    case forest::controller::LocomotionState::Sprint: return forest::rpg::AnimationMotionState::Sprint;
+    case forest::controller::LocomotionState::Jump: return forest::rpg::AnimationMotionState::Jump;
+    case forest::controller::LocomotionState::Fall: return forest::rpg::AnimationMotionState::Fall;
+    case forest::controller::LocomotionState::Swim: return forest::rpg::AnimationMotionState::Swim;
+    case forest::controller::LocomotionState::Dodge: return forest::rpg::AnimationMotionState::Dodge;
+    case forest::controller::LocomotionState::Slide: return forest::rpg::AnimationMotionState::Slide;
+    case forest::controller::LocomotionState::Hitstun: return forest::rpg::AnimationMotionState::Hitstun;
+    case forest::controller::LocomotionState::Dead: return forest::rpg::AnimationMotionState::Dead;
+    case forest::controller::LocomotionState::Attack:
+    case forest::controller::LocomotionState::Idle:
+    default: return forest::rpg::AnimationMotionState::Idle;
+    }
+}
+
 void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
     const float jumpHeight = gController.body.verticalPosition;
     if (firstPerson) {
@@ -1027,26 +1045,32 @@ void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
     const float pz = -gPlayerY * 4.0f;
     const float speed = std::sqrt(gController.body.velocity.x * gController.body.velocity.x +
                                   gController.body.velocity.y * gController.body.velocity.y);
+    const float speedNormalized = std::clamp(speed / std::max(0.55f, gController.body.maxSpeed), 0.0f, 1.0f);
+    const forest::rpg::AnimationMotionState motion = animationMotionState();
+    const forest::rpg::AnimationIntent intent = forest::rpg::deriveAnimationIntent({
+        motion, speedNormalized, gController.body.grounded, gCombat.phase() != forest::combat::AttackPhase::None,
+        gCombat.isHeavyAttack(), gCombat.comboIndex(), gCapturedMobIndex >= 0, gCapturedCompanionStay
+    });
     const bool moving = speed > 0.05f;
-    const bool sprinting = gController.state == forest::controller::LocomotionState::Sprint;
-    const bool sliding = gController.state == forest::controller::LocomotionState::Slide;
-    const bool dodging = gController.state == forest::controller::LocomotionState::Dodge;
+    const bool sprinting = intent.motion == forest::rpg::AnimationMotionState::Sprint;
+    const bool sliding = intent.motion == forest::rpg::AnimationMotionState::Slide;
+    const bool dodging = intent.motion == forest::rpg::AnimationMotionState::Dodge;
     const float rate = sprinting ? 15.0f : 10.5f;
-    const float phase = moving ? gTime * rate : 0.0f;
+    const float phase = moving ? gTime * rate * intent.playRate : 0.0f;
     const float stride = moving ? std::sin(phase) : 0.0f;
     const float counterStride = -stride;
     const float breathe = std::sin(gTime * 2.2f) * 0.018f;
     const float bob = gController.body.grounded && moving ? std::abs(std::sin(phase)) * 0.035f : 0.0f;
     const float dodgeBlend = dodging ? std::clamp(static_cast<float>(gDodgePulse) / 8.0f, 0.0f, 1.0f) : 0.0f;
-    const float dodgeLean = dodgeBlend * 0.14f;
+    const float dodgeLean = dodgeBlend * (0.14f + intent.bodyLean * 0.35f);
     const float attackDuration = gCombat.isHeavyAttack() ? 16.0f : 10.0f;
     const float attackProgress = gAttackPulse > 0
         ? std::clamp(1.0f - static_cast<float>(gAttackPulse) / attackDuration, 0.0f, 1.0f)
         : 0.0f;
     const float attackArc = std::sin(attackProgress * PI);
     const float y = jumpHeight + bob;
-    const float baseY = sliding ? 0.27f : (dodging ? 0.43f : 0.0f);
-    const float bodyScale = sliding ? 0.84f : 1.0f;
+    const float baseY = sliding ? 0.27f : (dodging ? 0.43f : (intent.motion == forest::rpg::AnimationMotionState::Hitstun ? 0.05f : 0.0f));
+    const float bodyScale = sliding ? 0.84f : (intent.motion == forest::rpg::AnimationMotionState::Hitstun ? 0.96f : 1.0f);
 
     // Soft contact shadow plus a readable, fully 3D low-poly hero blockout.
     draw3DBox(viewProjection, px, 0.026f, pz, 0.62f, 0.025f, 0.42f, 0.02f, 0.03f, 0.04f, 0.52f);
@@ -1071,8 +1095,8 @@ void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
     draw3DBox(viewProjection, px, torsoY + 0.25f, pz - 0.19f, 0.38f, 0.08f, 0.06f,
               0.14f, 0.36f, 0.34f);
 
-    const float armSwing = moving ? stride * 0.11f : 0.0f;
-    const float rightAttack = attackArc * (gCombat.isHeavyAttack() ? 0.28f : 0.18f);
+    const float armSwing = moving ? stride * (0.11f + intent.locomotionBlend * 0.03f) : 0.0f;
+    const float rightAttack = attackArc * (gCombat.isHeavyAttack() ? 0.28f : 0.18f) + intent.bodyLean * 0.06f;
     draw3DBox(viewProjection, px - 0.29f + armSwing, 0.77f + baseY + y, pz + 0.01f,
               0.105f, 0.56f * bodyScale, 0.12f, 0.48f, 0.12f, 0.30f);
     draw3DBox(viewProjection, px + 0.29f + rightAttack - armSwing, 0.77f + baseY + y - rightAttack * 0.32f,

@@ -57,9 +57,47 @@ void UForestSlicePresentationComponent::SetPresentationEnabled(bool bEnabled)
 
 void UForestSlicePresentationComponent::UpdateLocomotionState(float SpeedNormalized, bool bInSprinting, bool bInFalling)
 {
+    UpdateAnimationIntent(SpeedNormalized, bInSprinting, bInFalling, false, false, 0, false, false);
+}
+
+void UForestSlicePresentationComponent::UpdateAnimationIntent(float SpeedNormalized, bool bInSprinting, bool bInFalling, bool bInSwimming, bool bInHitstun, int32 InComboIndex, bool bInAttackActive, bool bInHeavyAttack)
+{
     LocomotionSpeedNormalized = FMath::Clamp(SpeedNormalized, 0.0f, 1.0f);
     bSprinting = bInSprinting;
     bFalling = bInFalling;
+    AnimationIntent = FForestSliceAnimationIntent{};
+    AnimationIntent.LocomotionBlend = LocomotionSpeedNormalized;
+    AnimationIntent.PlayRate = 1.0f + LocomotionSpeedNormalized * 0.45f;
+    AnimationIntent.BodyLean = LocomotionSpeedNormalized * (bInSprinting ? 0.18f : 0.08f);
+    AnimationIntent.VerticalOffset = bInFalling ? -0.015f : 0.0f;
+    AnimationIntent.bAdditiveSecondaryMotion = true;
+
+    if (bInHitstun) {
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Hitstun;
+        AnimationIntent.PlayRate = 1.15f;
+        AnimationIntent.BodyLean = -0.12f;
+    } else if (bInSwimming) {
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Swim;
+        AnimationIntent.PlayRate = 0.78f + LocomotionSpeedNormalized * 0.20f;
+        AnimationIntent.BodyLean = 0.04f;
+    } else if (bInFalling) {
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Fall;
+    } else if (bInSprinting) {
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Sprint;
+    } else if (LocomotionSpeedNormalized > 0.08f) {
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Walk;
+    } else {
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Idle;
+    }
+
+    if (bInAttackActive) {
+        if (bInHeavyAttack) {
+            AnimationIntent.UpperBody = EForestSliceAnimationUpperBody::HeavyAttack;
+        } else {
+            const int32 Combo = FMath::Clamp(InComboIndex, 0, 2);
+            AnimationIntent.UpperBody = static_cast<EForestSliceAnimationUpperBody>(static_cast<uint8>(EForestSliceAnimationUpperBody::LightAttack1) + Combo);
+        }
+    }
 }
 
 void UForestSlicePresentationComponent::PlayMovementAnimation(EForestSliceMovementAnimation Animation)
@@ -68,14 +106,25 @@ void UForestSlicePresentationComponent::PlayMovementAnimation(EForestSliceMoveme
 
     switch (Animation) {
     case EForestSliceMovementAnimation::Dodge:
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Dodge;
+        AnimationIntent.PlayRate = 1.35f;
+        AnimationIntent.BodyLean = 0.22f;
+        AnimationIntent.bUseRootMotion = true;
         PlayMontage(ResolveMontage(CueSet.DodgeMontage));
         PlaySound(CueSet.DodgeWhoosh);
         break;
     case EForestSliceMovementAnimation::Slide:
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Slide;
+        AnimationIntent.PlayRate = 1.20f;
+        AnimationIntent.BodyLean = 0.28f;
+        AnimationIntent.VerticalOffset = -0.22f;
+        AnimationIntent.bUseRootMotion = true;
         PlayMontage(ResolveMontage(CueSet.SlideMontage));
         PlaySound(CueSet.DodgeWhoosh);
         break;
     case EForestSliceMovementAnimation::Jump:
+        AnimationIntent.Motion = EForestSliceAnimationMotion::Jump;
+        AnimationIntent.VerticalOffset = 0.035f;
         PlayMontage(ResolveMontage(CueSet.JumpMontage));
         break;
     default:
@@ -112,6 +161,7 @@ void UForestSlicePresentationComponent::HandleCombatEvent(FName EventId, int32 I
     const bool bHeavy = EventId.ToString().StartsWith(TEXT("Heavy_"));
     const bool bLight = EventId.ToString().StartsWith(TEXT("Light_"));
     if (bHeavy || bLight) {
+        AnimationIntent.UpperBody = bHeavy ? EForestSliceAnimationUpperBody::HeavyAttack : static_cast<EForestSliceAnimationUpperBody>(static_cast<uint8>(EForestSliceAnimationUpperBody::LightAttack1) + FMath::Clamp(InComboIndex, 0, 2));
         PlayAttackMontage(EventId, bHeavy);
         SpawnSwordTrail();
         PlaySound(CueSet.SwordWhoosh);

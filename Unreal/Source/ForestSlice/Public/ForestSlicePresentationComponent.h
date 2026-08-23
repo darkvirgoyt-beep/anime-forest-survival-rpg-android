@@ -16,6 +16,63 @@ enum class EForestSliceMovementAnimation : uint8
     Jump
 };
 
+UENUM(BlueprintType)
+enum class EForestSliceAnimationMotion : uint8
+{
+    Idle,
+    Walk,
+    Sprint,
+    Jump,
+    Fall,
+    Swim,
+    Dodge,
+    Slide,
+    Hitstun,
+    Dead
+};
+
+UENUM(BlueprintType)
+enum class EForestSliceAnimationUpperBody : uint8
+{
+    None,
+    LightAttack1,
+    LightAttack2,
+    LightAttack3,
+    HeavyAttack,
+    CompanionCommand,
+    Interact
+};
+
+USTRUCT(BlueprintType)
+struct FForestSliceAnimationIntent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    EForestSliceAnimationMotion Motion = EForestSliceAnimationMotion::Idle;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    EForestSliceAnimationUpperBody UpperBody = EForestSliceAnimationUpperBody::None;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float LocomotionBlend = 0.0f;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation", meta = (ClampMin = "0.5", ClampMax = "2.0"))
+    float PlayRate = 1.0f;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    float BodyLean = 0.0f;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    float VerticalOffset = 0.0f;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    bool bUseRootMotion = false;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Animation")
+    bool bAdditiveSecondaryMotion = true;
+};
+
 USTRUCT(BlueprintType)
 struct FForestSlicePresentationCueSet
 {
@@ -102,6 +159,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Presentation")
     void UpdateLocomotionState(float SpeedNormalized, bool bInSprinting, bool bInFalling);
 
+    UFUNCTION(BlueprintCallable, Category = "Presentation")
+    void UpdateAnimationIntent(float SpeedNormalized, bool bInSprinting, bool bInFalling, bool bInSwimming, bool bInHitstun, int32 InComboIndex, bool bInAttackActive, bool bInHeavyAttack);
+
+    UFUNCTION(BlueprintPure, Category = "Presentation")
+    FForestSliceAnimationIntent GetAnimationIntent() const { return AnimationIntent; }
+
 protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Presentation")
     FForestSlicePresentationCueSet CueSet;
@@ -121,6 +184,8 @@ private:
     bool bSprinting = false;
     bool bFalling = false;
     float LocomotionSpeedNormalized = 0.0f;
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation")
+    FForestSliceAnimationIntent AnimationIntent;
 
     void PlayAttackMontage(FName EventId, bool bHeavy);
     void PlayMontage(UAnimMontage* Montage, FName SectionName = NAME_None);
