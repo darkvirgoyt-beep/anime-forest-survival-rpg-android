@@ -24,6 +24,7 @@ CHECKS = (
     ("Unreal/Source/ForestSlice/Public/ForestSliceInventoryComponent.h", "UForestSliceInventoryComponent", "inventory component"),
     ("Unreal/Source/ForestSlice/Private/ForestSliceResourceNodeComponent.cpp", "TryCollect", "resource gathering"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h", "GatherPressed", "mobile gathering HUD input"),
+    ("Unreal/Source/ForestSlice/ForestSlice.Build.cs", '"UMG"', "public UUserWidget module dependency"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h", "ServerTriggerVirtualCollect", "authoritative gathering request"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h", "MaxCoopMembers = 4", "co-op member limit"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceCreatureCompanionComponent.h", "ServerCaptureCreature", "authoritative companion capture"),

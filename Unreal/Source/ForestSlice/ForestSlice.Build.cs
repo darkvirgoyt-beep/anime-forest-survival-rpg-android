@@ -19,7 +19,8 @@ public class ForestSlice : ModuleRules
             "GameplayTasks",
             "AIModule",
             "NavigationSystem",
-            "OnlineSubsystemUtils"
+            "OnlineSubsystemUtils",
+            "UMG"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
