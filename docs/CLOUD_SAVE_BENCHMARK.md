@@ -42,3 +42,19 @@ taskset -c 0 ./cloud_state_benchmark cloud-state-benchmark.json
 ```
 
 The CI workflow stores the generated JSON and CSV files in the `cloud-save-benchmark` artifact. The checked-in CSV copy is [`docs/cloud_state_benchmark_ci.csv`](cloud_state_benchmark_ci.csv).
+
+## Optimization result
+
+The parser was optimized in commits [`4b74001`](https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/commit/4b74001) and [`cf84d3b`](https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/commit/cf84d3b). It now dispatches directly from the fixed `schemaVersion` prefix instead of trying the schema-5, schema-4, schema-3, and schema-2 formats in sequence. The final CI measurement is in [run #32663252849](https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/actions/runs/32663252849).
+
+| Snapshot path | Before mean | Optimized mean | Mean change | Optimized throughput |
+|---|---:|---:|---:|---:|
+| Current full snapshot | 1.9887 µs | 3.0632 µs | +54.03% in this run | 326,455 ops/s |
+| Schema 4 legacy | 4.7577 µs | 1.8324 µs | **61.49% faster** | 545,719 ops/s |
+| Schema 3 legacy | 5.3391 µs | 1.6220 µs | **69.62% faster** | 616,525 ops/s |
+| Schema 2 legacy | 3.4484 µs | 1.2825 µs | **62.81% faster** | 779,703 ops/s |
+| Schema 1 legacy | 3.9639 µs | 0.9396 µs | **76.30% faster** | 1,064,300 ops/s |
+
+The schema-5 comparison varies between CI runs because these are separate short-lived hosted runners and the operation is only a few microseconds. The local repeated run stayed near the earlier schema-5 baseline, so the apparent schema-5 increase should not be treated as a device regression without an on-device paired benchmark. The stable signal is the legacy-path improvement: every legacy schema now avoids several failed formatted scans.
+
+The optimized parser passed `cloud_state_test`, `exploration_progression_test`, the full native test job, server tests, Android compilation, PAD local-test packaging, APK/AAB packaging, 16 KB alignment verification, and OBB generation. The optimized CI CSV is [`docs/cloud_state_benchmark_optimized_ci.csv`](cloud_state_benchmark_optimized_ci.csv).
