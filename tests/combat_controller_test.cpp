@@ -19,6 +19,14 @@ int main() {
     assert(hitEvent.hitConfirmed);
     assert(combat.hitStopSeconds() > 0.0f);
 
+    forest::combat::CombatSystem heavyCombat;
+    assert(heavyCombat.requestHeavyAttack());
+    heavyCombat.tick(0.30f);
+    const auto heavyStart = heavyCombat.consumeEvent();
+    assert(heavyStart.attackStarted && heavyStart.heavyAttack);
+    assert(heavyCombat.isHeavyAttack());
+    assert(heavyCombat.currentHitbox({1.0f, 0.0f}).damage > hitbox.damage);
+
     forest::controller::ThirdPersonController controller;
     controller.body.position = {0.0f, -0.50f};
     controller.body.grounded = true;

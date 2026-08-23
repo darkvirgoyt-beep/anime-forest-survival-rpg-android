@@ -27,7 +27,7 @@ int main() {
     assert(progression.questStage == forest::rpg::QuestStage::Complete);
     assert(progression.level == 2);
     assert(progression.experience == 91);
-    assert(std::string(progression.questObjective()).find("Quest complete") != std::string::npos);
+    assert(std::string(progression.questObjective()).find("Heartfire restored") != std::string::npos);
 
     std::cout << "progression_test: PASS\n";
     return 0;

@@ -25,7 +25,7 @@ float gWidth = 1.0f;
 float gHeight = 1.0f;
 float gTime = 0.0f;
 int gDaysPlayed = 1;
-float gPlayerX = 0.0f;
+float gPlayerX = -0.55f;
 float gPlayerY = -0.08f;
 float gMoveX = 0.0f;
 float gMoveY = 0.0f;
@@ -49,11 +49,11 @@ forest::controller::ThirdPersonController gController{};
 forest::combat::CombatSystem gCombat{};
 forest::rpg::Progression gProgression{};
 bool gHitRegistered = false;
-constexpr float kSnowPredatorMaxHealth = 100.0f;
-float gEnemyHealth = kSnowPredatorMaxHealth;
+constexpr float kForestWardenMaxHealth = 100.0f;
+float gEnemyHealth = kForestWardenMaxHealth;
 float gEnemyHitFlash = 0.0f;
 float gEnemyDefeatTimer = 0.0f;
-float gEnemyX = 0.62f;
+float gEnemyX = -0.18f;
 float gEnemyY = -0.08f;
 
 enum class Biome {
@@ -414,6 +414,22 @@ void drawCampfire(float weatherFactor) {
     drawCircle(-0.67f, -0.18f, 0.005f, 1.0f, 0.82f, 0.36f, 0.68f * intensity);
 }
 
+void drawHeartfire(float x, float y, bool emberKitCrafted) {
+    const float pulse = 0.82f + 0.18f * std::sin(gTime * 6.0f);
+    const float glow = emberKitCrafted ? 0.22f * pulse : 0.08f * pulse;
+    drawCircle(x, y, 0.12f, emberKitCrafted ? 0.62f : 0.30f, 0.16f, emberKitCrafted ? 0.86f : 0.24f, glow);
+    drawQuad(x, y - 0.026f, 0.14f, 0.022f, 0.12f, 0.08f, 0.05f, 1.0f);
+    drawTriangle(x, y + 0.055f, 0.052f, 0.12f, emberKitCrafted ? 0.58f : 0.24f, 0.12f, emberKitCrafted ? 0.92f : 0.28f, 0.94f);
+    drawCircle(x, y + 0.066f, 0.018f, emberKitCrafted ? 0.94f : 0.42f, 0.72f, 1.0f, emberKitCrafted ? 0.94f : 0.60f);
+}
+
+void drawResourceCache(float x, float y, float r, float g, float b) {
+    drawCircle(x, y - 0.018f, 0.038f, 0.025f, 0.045f, 0.035f, 0.45f);
+    drawQuad(x, y, 0.050f, 0.070f, r, g, b, 0.96f);
+    drawCircle(x - 0.018f, y + 0.042f, 0.022f, r * 1.18f, g * 1.18f, b * 1.18f, 0.90f);
+    drawCircle(x + 0.018f, y + 0.044f, 0.020f, r * 0.86f, g * 0.86f, b * 0.86f, 0.90f);
+}
+
 void drawForestPath() {
     drawTriangle(-0.42f, -0.43f, 0.20f, 0.22f, 0.50f, 0.34f, 0.18f, 0.50f);
     drawTriangle(-0.46f, -0.25f, 0.12f, 0.26f, 0.56f, 0.39f, 0.20f, 0.36f);
@@ -587,7 +603,7 @@ void drawSandSettlement() {
     drawPerson(0.20f, -0.28f, 0.88f, 0.16f, 0.28f, 0.46f);
 }
 
-void drawSnowPredator(float x, float y, float scale, bool combatTarget) {
+void drawForestWarden(float x, float y, float scale, bool combatTarget) {
     if (combatTarget && gEnemyDefeatTimer > 0.0f) {
         const float fade = std::clamp(gEnemyDefeatTimer / 1.5f, 0.0f, 1.0f);
         drawCircle(x, y + 0.035f * scale, 0.18f * scale, 0.42f, 0.72f, 0.88f, 0.12f * fade);
@@ -598,10 +614,10 @@ void drawSnowPredator(float x, float y, float scale, bool combatTarget) {
     const float inkG = 0.035f;
     const float inkB = 0.070f;
     const float bodyR = 0.24f + flash;
-    const float bodyG = 0.42f + flash * 0.35f;
-    const float bodyB = 0.58f + flash * 0.25f;
+    const float bodyG = 0.18f + flash * 0.35f;
+    const float bodyB = 0.34f + flash * 0.25f;
 
-    // Broad wolf-bear silhouette with icy blue lit planes and hard navy shadows.
+    // Root-bound warden silhouette with violet lit planes and hard midnight shadows.
     drawCircle(x + 0.018f * scale, y - 0.055f * scale, 0.14f * scale, inkR, inkG, inkB, 0.55f);
     drawQuad(x - 0.070f * scale, y - 0.020f * scale, 0.050f * scale, 0.15f * scale, inkR, inkG, inkB);
     drawQuad(x + 0.070f * scale, y - 0.020f * scale, 0.050f * scale, 0.15f * scale, inkR, inkG, inkB);
@@ -621,7 +637,7 @@ void drawSnowPredator(float x, float y, float scale, bool combatTarget) {
     drawTriangle(x, y - 0.075f * scale, 0.070f * scale, 0.075f * scale, 0.50f, 0.72f, 0.84f);
 
     if (combatTarget) {
-        const float healthRatio = std::clamp(gEnemyHealth / kSnowPredatorMaxHealth, 0.0f, 1.0f);
+        const float healthRatio = std::clamp(gEnemyHealth / kForestWardenMaxHealth, 0.0f, 1.0f);
         drawQuad(x, y + 0.235f * scale, 0.30f * scale, 0.020f * scale, 0.025f, 0.045f, 0.08f, 0.92f);
         drawQuad(x - 0.15f * scale + 0.15f * scale * healthRatio, y + 0.235f * scale,
                  0.30f * scale * healthRatio, 0.013f * scale, 0.28f, 0.84f, 0.98f, 0.98f);
@@ -641,7 +657,7 @@ void simulatePhysicsStep() {
     gEnemyDefeatTimer = std::max(0.0f, gEnemyDefeatTimer - kPhysicsStep);
     const forest::combat::CombatEvent combatEvent = gCombat.consumeEvent();
     if (combatEvent.attackStarted) {
-        gAttackPulse = 6 + combatEvent.comboIndex * 2;
+        gAttackPulse = combatEvent.heavyAttack ? 16 : 6 + combatEvent.comboIndex * 2;
         gHitRegistered = false;
     }
     if (gCombat.isHitActive() && !gHitRegistered) {
@@ -768,7 +784,9 @@ void drawWorld() {
     drawCircle(0.55f, 0.37f, 0.008f, 1.0f, 1.0f, 1.0f, 0.78f);
     drawCircle(0.83f, 0.28f, 0.011f, 1.0f, 1.0f, 1.0f, 0.78f);
     drawCircle(0.70f, 0.14f, 0.007f, 1.0f, 1.0f, 1.0f, 0.78f);
-    drawSnowPredator(gEnemyX, gEnemyY, 1.0f, true);
+    if (gProgression.questStage == forest::rpg::QuestStage::DefeatWarden || gEnemyDefeatTimer > 0.0f) {
+        drawForestWarden(gEnemyX, gEnemyY, 1.0f, true);
+    }
 
     // A translucent full-scene wash makes the time phase readable even though the
     // prototype uses flat 2D geometry rather than a dynamic skybox.
@@ -786,6 +804,10 @@ void drawWorld() {
     const float currentRain = rainIntensity();
     const WeatherState weather = currentWeather();
     drawCampfire(weather == WeatherState::Thunderstorm ? 0.58f : weather == WeatherState::Rain ? 0.82f : 1.0f);
+    drawHeartfire(-0.63f, -0.22f, gProgression.emberKitCrafted);
+    drawResourceCache(-0.56f, -0.28f, 0.30f, 0.48f, 0.22f);
+    drawResourceCache(-0.40f, -0.18f, 0.22f, 0.52f, 0.46f);
+    drawResourceCache(-0.24f, -0.28f, 0.52f, 0.34f, 0.18f);
     drawRain(currentRain * (0.65f + static_cast<float>(gGraphicsQuality) * 0.10f));
     drawLightning(lightningIntensity() * (0.70f + static_cast<float>(gGraphicsQuality) * 0.075f));
 
@@ -822,13 +844,13 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gFiber = 8;
     gStone = 4;
     gHunger = 0.82f;
-    gEnemyHealth = kSnowPredatorMaxHealth;
+    gEnemyHealth = kForestWardenMaxHealth;
     gEnemyHitFlash = 0.0f;
     gEnemyDefeatTimer = 0.0f;
     gLevelPulse = 0;
     gQuestPulse = 0;
     gGraphicsQuality = 2;
-    gController.body.position = {0.0f, -0.08f};
+    gController.body.position = {-0.55f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
     glViewport(0, 0, width, height);
@@ -899,6 +921,11 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_attack(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_heavyAttack(JNIEnv*, jobject) {
+    if (gCombat.requestHeavyAttack()) gController.state = forest::controller::LocomotionState::Attack;
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_jump(JNIEnv*, jobject) {
     gController.jump();
 }
@@ -916,14 +943,14 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_slide(JNIEnv*, jobject) {
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_gather(JNIEnv*, jobject) {
     const float forestCache = std::abs(gPlayerX + 0.56f) + std::abs(gPlayerY + 0.28f);
-    const float sandCache = std::abs(gPlayerX + 0.04f) + std::abs(gPlayerY + 0.29f);
-    const float snowCache = std::abs(gPlayerX - 0.70f) + std::abs(gPlayerY + 0.32f);
-    const float nearestResource = std::min(forestCache, std::min(sandCache, snowCache));
-    if (nearestResource < 0.42f) {
-        if (forestCache <= sandCache && forestCache <= snowCache) {
+    const float rootCache = std::abs(gPlayerX + 0.40f) + std::abs(gPlayerY + 0.18f);
+    const float wardenCache = std::abs(gPlayerX + 0.24f) + std::abs(gPlayerY + 0.28f);
+    const float nearestResource = std::min(forestCache, std::min(rootCache, wardenCache));
+    if (nearestResource < 0.32f) {
+        if (forestCache <= rootCache && forestCache <= wardenCache) {
             gWood += 1;
             gFiber += 2;
-        } else if (sandCache <= snowCache) {
+        } else if (rootCache <= wardenCache) {
             gWood += 1;
             gFiber += 1;
         } else {
@@ -982,7 +1009,22 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobject) {
-    const forest::rpg::CloudState state{gPlayerX, gPlayerY, gController.health, gController.stamina, gHunger, gWood, gFiber, gStone, gProgression.experience, gDaysPlayed, gTime};
+    forest::rpg::CloudState state{};
+    state.playerX = gPlayerX;
+    state.playerY = gPlayerY;
+    state.health = gController.health;
+    state.stamina = gController.stamina;
+    state.hunger = gHunger;
+    state.wood = gWood;
+    state.fiber = gFiber;
+    state.stone = gStone;
+    state.experience = gProgression.experience;
+    state.day = gDaysPlayed;
+    state.worldTime = gTime;
+    state.gatheringActions = gProgression.gatheringActions;
+    state.questStage = static_cast<int>(gProgression.questStage);
+    state.emberKitCrafted = gProgression.emberKitCrafted;
+    state.wardenDefeated = gProgression.wardenDefeated;
     const std::string value = forest::rpg::serializeCloudState(state);
     return env->NewStringUTF(value.c_str());
 }
@@ -1006,6 +1048,11 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     gFiber = state.fiber;
     gStone = state.stone;
     gProgression.experience = state.experience;
+    gProgression.gatheringActions = state.gatheringActions;
+    gProgression.questStage = static_cast<forest::rpg::QuestStage>(std::clamp(state.questStage, 0, 3));
+    gProgression.emberKitCrafted = state.emberKitCrafted;
+    gProgression.wardenDefeated = state.wardenDefeated;
+    gEnemyHealth = gProgression.wardenDefeated ? 0.0f : kForestWardenMaxHealth;
     gDaysPlayed = state.day;
     gTime = state.worldTime;
     return JNI_TRUE;

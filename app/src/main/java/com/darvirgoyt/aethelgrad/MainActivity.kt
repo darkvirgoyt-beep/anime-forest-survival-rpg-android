@@ -55,6 +55,7 @@ object NativeGameBridge {
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun attack()
+    external fun heavyAttack()
     external fun jump()
     external fun dodge()
     external fun slide()
@@ -770,9 +771,9 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val title = TextView(this).apply {
             text = if (BuildConfig.PROTOTYPE_MODE) {
-                "AETHEL GARD  •  PROTOTYPE  •  OFFLINE"
+                "WISTERIA FOREST  •  PROTOTYPE  •  OFFLINE"
             } else {
-                "AETHEL GARD  •  DAY 1  •  DAY"
+                "WISTERIA FOREST  •  DAY 1  •  DAY"
             }
             textSize = 15f
             setTextColor(Color.rgb(244, 218, 155))
@@ -785,7 +786,7 @@ class MainActivity : Activity(), SensorEventListener {
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
         }
         questLabel = TextView(this).apply {
-            text = "THE FIRST EMBER  •  Gather 3 resource caches"
+            text = "THE FIRST EMBER  -  Aurora arrives - gather 3 caches for the camp"
             textSize = 13f
             setTextColor(Color.rgb(255, 226, 164))
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -823,6 +824,7 @@ class MainActivity : Activity(), SensorEventListener {
             true
         }
         val attack = actionButton("ATTACK") { audio.playEffect("attack"); gameView.queueEvent { NativeGameBridge.attack() } }
+        val heavy = actionButton("HEAVY") { audio.playEffect("attack"); gameView.queueEvent { NativeGameBridge.heavyAttack() } }
         val jump = actionButton("JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
         val dodge = actionButton("DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
         val gather = actionButton("GATHER") { audio.playEffect("gather"); gameView.queueEvent { NativeGameBridge.gather() } }
@@ -830,6 +832,7 @@ class MainActivity : Activity(), SensorEventListener {
         val settings = actionButton("GRAPHICS / FPS") { showGraphicsSettings() }
         actions.addView(sprintSlide, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(attack, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(heavy, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(jump, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(dodge, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(gather, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
@@ -872,7 +875,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
         )
         val recoveryNotice = cloudRecoveryNotice
-        questLabel.text = recoveryNotice ?: if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  $weather  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
+        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  $phase  •  $weather  •  FOREST WARDEN HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 

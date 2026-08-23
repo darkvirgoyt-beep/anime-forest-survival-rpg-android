@@ -39,13 +39,13 @@ void Progression::recordWardenDefeat() {
 const char* Progression::questObjective() const {
     switch (questStage) {
         case QuestStage::GatherMaterials:
-            return "THE FIRST EMBER  •  Gather 3 resource caches";
+            return "THE FIRST EMBER  -  Aurora arrives - gather 3 caches for the camp";
         case QuestStage::CraftEmberKit:
-            return "THE FIRST EMBER  •  Craft the ember kit";
+            return "THE FIRST EMBER  -  At camp, craft the ember kit";
         case QuestStage::DefeatWarden:
-            return "THE FIRST EMBER  •  Defeat the forest warden";
+            return "THE FIRST EMBER  -  Face the Forest Warden beneath the roots";
         case QuestStage::Complete:
-            return "THE FIRST EMBER  •  Quest complete — the wilds remember you";
+            return "THE FIRST EMBER  -  Heartfire restored - the wilds remember you";
     }
     return "THE FIRST EMBER";
 }

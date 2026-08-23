@@ -28,6 +28,7 @@ struct AttackDefinition {
 
 struct CombatEvent {
     bool attackStarted = false;
+    bool heavyAttack = false;
     bool hitConfirmed = false;
     bool attackFinished = false;
     int comboIndex = 0;
@@ -39,6 +40,7 @@ public:
     CombatSystem();
     void tick(float deltaSeconds);
     bool requestAttack();
+    bool requestHeavyAttack();
     bool requestDodge();
     void confirmHit();
     CombatEvent consumeEvent();
@@ -46,17 +48,21 @@ public:
     AttackPhase phase() const { return currentPhase; }
     int comboIndex() const { return currentCombo; }
     bool isHitActive() const { return currentPhase == AttackPhase::Active; }
+    bool isHeavyAttack() const { return currentHeavy; }
     float hitStopSeconds() const { return hitStop; }
 
 private:
     static constexpr int kAttackCount = 3;
     AttackDefinition attacks[kAttackCount]{};
+    AttackDefinition heavyAttack{};
     AttackPhase currentPhase = AttackPhase::None;
     int currentCombo = 0;
     float phaseTimer = 0.0f;
     float comboTimer = 0.0f;
     float hitStop = 0.0f;
     bool queuedAttack = false;
+    bool queuedHeavyAttack = false;
+    bool currentHeavy = false;
     bool activeEventSent = false;
     CombatEvent pendingEvent{};
 };
