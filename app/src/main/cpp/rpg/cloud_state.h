@@ -106,6 +106,7 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
         }
     }
     }
+    }
     parsed.health = std::clamp(parsed.health, 0.0f, 1.0f);
     parsed.stamina = std::clamp(parsed.stamina, 0.0f, 1.0f);
     parsed.hunger = std::clamp(parsed.hunger, 0.0f, 1.0f);
