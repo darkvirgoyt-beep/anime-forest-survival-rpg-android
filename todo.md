@@ -28,4 +28,5 @@
 - [x] Surface actionable Android Credential Manager failure diagnostics instead of a generic cancelled-or-unavailable message.
 - [ ] Verify the release signing certificate fingerprint and Google Android OAuth registration required for device Google Sign-In.
 - [x] Diagnose the reported Google Credential Manager cancellation before backend exchange and improve the device-facing remediation guidance.
+- [x] Separate the offline `.prototype` harness from the online release at launch and document the matching Google OAuth package/artifact path; physical release-device sign-in validation remains required.
 - [x] Design and implement the Emberling companion-bond milestone with original creature interaction, visible follow/stay behavior, cloud-state persistence, native regression coverage, and explicit mobile/online authority boundaries.

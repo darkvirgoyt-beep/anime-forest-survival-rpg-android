@@ -198,12 +198,19 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
-        // Every launch begins on the sign-in screen. Content preparation and
-        // character/world entry happen only after authentication succeeds.
-        onboardingOverlay.visibility = View.VISIBLE
         updateGyroButton()
         registerGyro()
-        accountSession.initialize(this, ::applyAccountSnapshot)
+        if (BuildConfig.PROTOTYPE_MODE) {
+            // The .prototype application id is an offline development harness.
+            // It must not masquerade as the signed online release or request a
+            // Google credential whose Android OAuth package deliberately differs.
+            onboardingOverlay.visibility = View.GONE
+        } else {
+            // The release package remains online-only. Content preparation and
+            // character/world entry happen only after authentication succeeds.
+            onboardingOverlay.visibility = View.VISIBLE
+            accountSession.initialize(this, ::applyAccountSnapshot)
+        }
     }
 
     private fun detectSupportedTargetFps(): List<Int> {

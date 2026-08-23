@@ -19,6 +19,10 @@ Android OAuth binds an installed application to both its package name and certif
 
 The current build workflow falls back to an Android debug certificate when protected release-signing secrets are absent. A debug certificate created on a GitHub runner can differ from the certificate for an older artifact, so an Android OAuth client that contains an old SHA-1 will reject the newer APK before the backend receives an ID token. For every test APK, download its `aethelgard-android-signing-certificate` artifact and register that SHA-1; for a permanent test/release channel, configure the protected reusable signing key described in `GITHUB_RELEASE_SIGNING.md`.
 
+## Use the Correct GitHub Artifact
+
+`aethelgard-prototype-apk` is an offline development harness with the separate package `com.darvirgoyt.aethelgrad.prototype`. It is intentionally not an online-login test build and now launches directly into the local prototype world. To test the real Google sign-in and cloud-world backend, install only `forest-slice-release-apk` from the same successful GitHub Actions run as the `aethelgard-android-signing-certificate` artifact. Register the SHA-1 from that artifact against the release package `com.darvirgoyt.aethelgrad` in the Android OAuth client.
+
 ## Official References
 
 1. [Android Credential Manager troubleshooting guide](https://developer.android.com/identity/sign-in/credential-manager-troubleshooting-guide)
