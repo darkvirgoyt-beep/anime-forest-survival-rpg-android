@@ -18,7 +18,7 @@
 
 ## Included in v0.1
 
-The current scene uses procedural OpenGL ES geometry and shader colors for the forest backdrop, trees, rocks, resources, animals, moon, combat pulse, and the hero. These elements are code-generated and do not embed third-party artwork. The hero is an original cel-shaded anime-fantasy design rendered as layered flat-color polygons and circles: a deep-violet hair silhouette, warm skin planes, a plum tunic with hard shadow blocks, teal sash accents, ink-like outlines, and a short gold-edged sword.
+The current scene uses procedural OpenGL ES geometry and shader colors for the forest, sand, and snow panorama, layered mountains, clouds, paths, farm plots, village structures, market awnings, lanterns, snow crystals, rocks, resources, animals, moon/sun treatment, combat pulse, and the hero. These elements are code-generated and do not embed third-party artwork. The hero is an original cel-shaded anime-fantasy design rendered as layered flat-color polygons and circles: a deep-violet hair silhouette, warm skin planes, a plum tunic with hard shadow blocks, teal sash accents, ink-like outlines, and a short gold-edged sword. The newer visual pass adds depth layers, biome landmarks, lighting-aware lanterns, and richer silhouettes while keeping the prototype mobile-safe.
 
 The concept references are also bundled into `app/src/main/res/drawable-nodpi/` as `reference_*` resources. The onboarding screen exposes them through the **VIEW ART REFERENCES** library so the board, player expressions, environments and lighting, creatures, assets and weapons, and UI target can be reviewed on-device. These are reference images for the prototype and are not used as final runtime 3D models or textures.
 

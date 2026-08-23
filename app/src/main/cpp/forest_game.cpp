@@ -60,9 +60,31 @@ enum class Biome {
     Snow
 };
 
+// The prototype keeps compact normalized coordinates for GLES drawing, while the
+// gameplay map is authored in a readable 100 x 100 world-unit coordinate system.
+constexpr float kWorldMinX = 0.0f;
+constexpr float kWorldMaxX = 100.0f;
+constexpr float kWorldMinY = 0.0f;
+constexpr float kWorldMaxY = 100.0f;
+constexpr float kSimulationMinX = -0.90f;
+constexpr float kSimulationMaxX = 0.90f;
+constexpr float kSimulationMinY = -0.50f;
+constexpr float kSimulationMaxY = 0.52f;
+
+float worldXFromSimulation(float simulationX) {
+    const float normalized = (simulationX - kSimulationMinX) / (kSimulationMaxX - kSimulationMinX);
+    return kWorldMinX + std::clamp(normalized, 0.0f, 1.0f) * (kWorldMaxX - kWorldMinX);
+}
+
+float worldYFromSimulation(float simulationY) {
+    const float normalized = (simulationY - kSimulationMinY) / (kSimulationMaxY - kSimulationMinY);
+    return kWorldMinY + std::clamp(normalized, 0.0f, 1.0f) * (kWorldMaxY - kWorldMinY);
+}
+
 Biome currentBiome() {
-    if (gPlayerX < -0.30f) return Biome::Forest;
-    if (gPlayerX < 0.30f) return Biome::Sand;
+    const float worldX = worldXFromSimulation(gPlayerX);
+    if (worldX < 34.0f) return Biome::Forest;
+    if (worldX < 68.0f) return Biome::Sand;
     return Biome::Snow;
 }
 
@@ -217,6 +239,50 @@ void drawTree(float x, float y, float size) {
 void drawRock(float x, float y, float size) {
     drawTriangle(x, y, size, size * 0.78f, 0.27f, 0.33f, 0.34f);
     drawTriangle(x, y + size * 0.08f, size * 0.65f, size * 0.5f, 0.52f, 0.58f, 0.57f);
+}
+
+void drawCloud(float x, float y, float scale, float alpha = 0.34f) {
+    drawCircle(x - 0.055f * scale, y, 0.055f * scale, 0.90f, 0.97f, 0.98f, alpha);
+    drawCircle(x, y + 0.020f * scale, 0.072f * scale, 0.96f, 0.99f, 1.0f, alpha + 0.06f);
+    drawCircle(x + 0.062f * scale, y, 0.048f * scale, 0.88f, 0.95f, 0.98f, alpha);
+}
+
+void drawMountain(float x, float y, float width, float height, float r, float g, float b) {
+    drawTriangle(x, y, width, height, r, g, b, 0.92f);
+    drawTriangle(x - width * 0.13f, y + height * 0.05f, width * 0.42f, height * 0.60f,
+                 std::min(1.0f, r + 0.12f), std::min(1.0f, g + 0.12f), std::min(1.0f, b + 0.12f), 0.88f);
+}
+
+void drawLantern(float x, float y, float scale, bool lit) {
+    drawQuad(x, y - 0.028f * scale, 0.010f * scale, 0.085f * scale, 0.12f, 0.08f, 0.06f);
+    drawQuad(x, y + 0.022f * scale, 0.036f * scale, 0.044f * scale, 0.08f, 0.06f, 0.04f);
+    if (lit) {
+        drawCircle(x, y + 0.022f * scale, 0.060f * scale, 1.0f, 0.62f, 0.18f, 0.12f);
+        drawCircle(x, y + 0.022f * scale, 0.026f * scale, 1.0f, 0.88f, 0.52f, 0.92f);
+    } else {
+        drawCircle(x, y + 0.022f * scale, 0.018f * scale, 0.32f, 0.24f, 0.15f, 0.95f);
+    }
+}
+
+void drawForestPath() {
+    drawTriangle(-0.42f, -0.43f, 0.20f, 0.22f, 0.50f, 0.34f, 0.18f, 0.50f);
+    drawTriangle(-0.46f, -0.25f, 0.12f, 0.26f, 0.56f, 0.39f, 0.20f, 0.36f);
+    drawCircle(-0.43f, -0.12f, 0.030f, 0.72f, 0.55f, 0.30f, 0.28f);
+}
+
+void drawSandMarketDetails() {
+    drawQuad(0.02f, 0.04f, 0.22f, 0.018f, 0.22f, 0.10f, 0.05f, 0.75f);
+    drawTriangle(0.02f, 0.10f, 0.22f, 0.11f, 0.85f, 0.35f, 0.10f, 0.92f);
+    drawQuad(0.02f, -0.05f, 0.014f, 0.16f, 0.25f, 0.12f, 0.06f);
+    drawQuad(0.14f, -0.05f, 0.014f, 0.16f, 0.25f, 0.12f, 0.06f);
+    drawCircle(-0.18f, -0.30f, 0.038f, 0.77f, 0.52f, 0.20f, 0.86f);
+    drawCircle(-0.18f, -0.30f, 0.018f, 0.98f, 0.80f, 0.34f, 0.95f);
+}
+
+void drawSnowCrystalCluster(float x, float y, float scale) {
+    drawTriangle(x - 0.030f * scale, y, 0.052f * scale, 0.16f * scale, 0.36f, 0.70f, 0.84f, 0.80f);
+    drawTriangle(x + 0.026f * scale, y + 0.005f * scale, 0.040f * scale, 0.12f * scale, 0.58f, 0.86f, 0.96f, 0.82f);
+    drawCircle(x, y - 0.058f * scale, 0.016f * scale, 0.74f, 0.94f, 1.0f, 0.75f);
 }
 
 void drawPlayer() {
@@ -493,6 +559,25 @@ void drawWorld() {
     drawQuad(0.60f, -0.53f, 0.60f, 0.58f, 0.82f, 0.90f, 0.94f);
     drawQuad(-0.30f, 0.05f, 0.012f, 1.10f, 0.07f, 0.10f, 0.09f, 0.70f);
     drawQuad(0.30f, 0.05f, 0.012f, 1.10f, 0.20f, 0.25f, 0.28f, 0.70f);
+
+    // Layered distance shapes add depth while preserving the lightweight GLES path.
+    drawCloud(-0.70f, 0.56f, 0.95f, 0.22f);
+    drawCloud(-0.06f, 0.66f, 0.70f, 0.18f);
+    drawCloud(0.56f, 0.62f, 0.82f, 0.20f);
+    drawMountain(-0.74f, 0.40f, 0.46f, 0.34f, 0.08f, 0.25f, 0.22f);
+    drawMountain(-0.42f, 0.39f, 0.36f, 0.28f, 0.06f, 0.20f, 0.18f);
+    drawMountain(0.00f, 0.40f, 0.44f, 0.32f, 0.42f, 0.23f, 0.13f);
+    drawMountain(0.25f, 0.38f, 0.34f, 0.28f, 0.50f, 0.28f, 0.15f);
+    drawMountain(0.52f, 0.43f, 0.42f, 0.40f, 0.44f, 0.68f, 0.82f);
+    drawMountain(0.78f, 0.45f, 0.38f, 0.44f, 0.52f, 0.74f, 0.86f);
+    drawForestPath();
+    drawSandMarketDetails();
+    drawSnowCrystalCluster(0.50f, -0.35f, 0.90f);
+    drawSnowCrystalCluster(0.84f, -0.31f, 0.72f);
+    const bool lanternsLit = currentTimePhase() != TimePhase::Day;
+    drawLantern(-0.88f, -0.14f, 0.90f, lanternsLit);
+    drawLantern(-0.25f, -0.10f, 0.82f, lanternsLit);
+    drawLantern(0.07f, -0.08f, 0.82f, lanternsLit);
 
     // Forest biome: tree line, village hut, farms, crops, and local people.
     drawTriangle(-0.72f, 0.43f, 0.50f, 0.40f, 0.08f, 0.28f, 0.20f);
