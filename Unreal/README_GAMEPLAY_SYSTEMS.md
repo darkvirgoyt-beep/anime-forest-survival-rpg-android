@@ -46,12 +46,12 @@ The gyro toggle must bind to `SetGyroSensorSupport`. If false, set `GYRO: UNSUPP
 
 ## Current verification boundary
 
-The repository CI can validate the project descriptor, required source layout, Android prototype build, and native prototype tests. It cannot compile Unreal C++ without the Unreal Engine editor/toolchain and generated headers. Use a real Unreal 5.6+ runner to generate project files, compile the module, create input/UMG assets, cook content, and run device tests.
+The repository CI can validate the project descriptor, required source layout, Android online release build, and native client tests. It cannot compile Unreal C++ without the Unreal Engine editor/toolchain and generated headers. Use a real Unreal 5.6+ runner to generate project files, compile the module, create input/UMG assets, cook content, and run device tests.
 
 
 ## Movement, water, and physical reactions
 
-The native prototype now uses a water-volume contract with surface height, current, buoyancy, and drag. Bodies sample overlapping volumes at the fixed 60 Hz step, reduce acceleration and top speed while wading or swimming, receive an upward buoyancy response, inherit current motion, and apply velocity drag. Sprinting is disabled while submerged, sliding is rejected in water, and dodge direction follows the last meaningful camera-relative movement vector instead of always moving along world X.
+The native mobile client now uses a water-volume contract with surface height, current, buoyancy, and drag. Bodies sample overlapping volumes at the fixed 60 Hz step, reduce acceleration and top speed while wading or swimming, receive an upward buoyancy response, inherit current motion, and apply velocity drag. Sprinting is disabled while submerged, sliding is rejected in water, and dodge direction follows the last meaningful camera-relative movement vector instead of always moving along world X.
 
 The controller also exposes a `Swim` locomotion state and applies partial input during hitstun rather than freezing the character. Knockback is applied through a clamped impulse path to avoid unbounded velocity. Existing callers remain source-compatible because water arrays are optional arguments to the native body and controller step functions.
 

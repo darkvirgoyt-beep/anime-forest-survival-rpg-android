@@ -180,7 +180,7 @@ enum class Biome {
     Snow
 };
 
-// The prototype keeps compact normalized coordinates for GLES drawing, while the
+// The mobile client keeps compact normalized coordinates for GLES drawing, while the
 // gameplay map is authored in a readable 100 x 100 world-unit coordinate system.
 constexpr float kWorldMinX = 0.0f;
 constexpr float kWorldMaxX = 100.0f;
@@ -324,7 +324,7 @@ const forest::physics::StaticObstacle gObstacles[] = {
     {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
 };
 
-// A shallow stream in the prototype demonstrates the same gameplay contract that
+// A shallow stream in the mobile client demonstrates the same gameplay contract that
 // production water volumes will use: surface height, current, buoyancy, and drag.
 const forest::physics::WaterVolume gWaterVolumes[] = {
     {{{0.04f, -0.36f}, {0.20f, 0.11f}}, -0.28f, {0.025f, 0.0f}, 0.78f, 3.2f}
@@ -1065,7 +1065,7 @@ void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
     }
 
     // Animated water caustic bands and a warm campfire halo provide depth cues
-    // even when the device is using the GLES prototype renderer.
+    // even when the device is using the GLES renderer.
     const auto& stream = gWaterVolumes[0];
     const float streamX = stream.bounds.center.x * 4.3f;
     const float streamZ = -stream.bounds.center.y * 4.0f;
@@ -1133,20 +1133,20 @@ void draw3DMapOverlay() {
     glEnable(GL_DEPTH_TEST);
 }
 
-float prototypeTerrainHeight(int chunkX, int chunkZ) {
+float terrainHeight(int chunkX, int chunkZ) {
     const float x = static_cast<float>(chunkX);
     const float z = static_cast<float>(chunkZ);
     return 0.018f * std::sin(x * 1.7f + z * 0.8f) + 0.012f * std::cos(z * 1.2f - x * 0.4f);
 }
 
-void drawPrototypeTerrainChunks(const Mat4& viewProjection, float daylight) {
+void drawTerrainChunks(const Mat4& viewProjection, float daylight) {
     constexpr int chunkRadius = 2;
     constexpr float chunkSize = 3.6f;
     for (int chunkZ = -chunkRadius; chunkZ <= chunkRadius; ++chunkZ) {
         for (int chunkX = -chunkRadius; chunkX <= chunkRadius; ++chunkX) {
             const float worldX = static_cast<float>(chunkX) * chunkSize;
             const float worldZ = static_cast<float>(chunkZ) * chunkSize;
-            const float terrainY = prototypeTerrainHeight(chunkX, chunkZ);
+            const float terrainY = terrainHeight(chunkX, chunkZ);
             const bool riverBand = chunkX == 1;
             const bool roadBand = chunkZ == 0 && chunkX != 1;
             const float topR = riverBand ? 0.08f : roadBand ? 0.33f : 0.16f;
@@ -1229,7 +1229,7 @@ void draw3DWorld() {
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     draw3DSkyOrb(viewProjection, px, pz, yaw, daylight);
-    drawPrototypeTerrainChunks(viewProjection, daylight);
+    drawTerrainChunks(viewProjection, daylight);
     draw3DBox(viewProjection, -4.4f, 0.055f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
     draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
     draw3DBox(viewProjection, 4.4f, 0.0f, 0.7f, 4.2f, 0.08f, 7.0f, 0.40f, 0.62f, 0.72f);
@@ -1849,7 +1849,7 @@ void drawWorld() {
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(gProgram);
 
-    // Three side-by-side regions keep the prototype traversable while making the
+    // Three side-by-side regions keep the mobile launch area traversable while making the
     // biome contrast immediately readable on a phone screen.
     drawQuad(-0.60f, 0.18f, 0.60f, 1.42f, 0.035f, 0.17f, 0.14f);
     drawQuad(0.00f, 0.18f, 0.60f, 1.42f, 0.34f, 0.20f, 0.09f);
@@ -1911,7 +1911,7 @@ void drawWorld() {
     }
 
     // A translucent full-scene wash makes the time phase readable even though the
-    // prototype uses flat 2D geometry rather than a dynamic skybox.
+    // mobile renderer uses flat geometry rather than a dynamic skybox.
     if (tintAlpha > 0.0f) {
         drawQuad(0.0f, 0.18f, 2.0f, 1.42f, tintR, tintG, tintB, tintAlpha);
     }
@@ -1934,7 +1934,7 @@ void drawWorld() {
     drawLightning(lightningIntensity() * (0.70f + static_cast<float>(effectiveGraphicsQuality()) * 0.075f));
 
     // Water is drawn before the hero so the body remains readable while ripples and
-    // surface highlights communicate depth and movement on the small prototype screen.
+    // surface highlights communicate depth and movement on the small mobile screen.
     const auto& stream = gWaterVolumes[0];
     drawQuad(stream.bounds.center.x, stream.bounds.center.y, stream.bounds.halfExtents.x * 2.0f,
              stream.bounds.halfExtents.y * 2.0f, 0.06f, 0.34f, 0.47f, 0.82f);

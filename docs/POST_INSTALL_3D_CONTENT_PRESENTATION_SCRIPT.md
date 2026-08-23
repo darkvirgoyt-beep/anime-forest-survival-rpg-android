@@ -139,7 +139,7 @@ The progress bar aggregates bytes across packs. Before every pack has reported i
 
 “On a clean Play installation, Android creates the surface and immediately shows the resource center. It requests the required production pack names through Play Asset Delivery. The player can leave and return; Play handles resumable delivery, while the app recomputes state from mounted pack locations.
 
-If the device has no Play Asset Delivery context—for example, a direct APK—the production build does not pretend that the full world is available. It explains that the Play Store or internal-test AAB is required. Prototype mode can still use the tiny local deterministic bundle for development, but that path is deliberately not the production launch path.”
+If the device has no Play Asset Delivery context—for example, a direct APK—the online client does not pretend that the full world is available. It explains that the Play Store or internal-test AAB is required before online world entry.”
 
 **On-screen cue:** Animate a failed direct-APK request stopping at the resource center, then show the AAB path continuing to ready.
 

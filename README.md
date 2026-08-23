@@ -1,8 +1,8 @@
 # Aethelgard: Wild Horizons – Crafting
 
-**Aethelgard: Wild Horizons – Crafting** is an original anime-inspired Android game prototype built around a small third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
+**Aethelgard: Wild Horizons – Crafting** is an original anime-inspired Android online game built around a third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
 
-> This repository is a vertical slice, not a claim to reproduce the production scale or visual fidelity of a large commercial title.
+> This repository contains the verified online mobile client and a connected production-engine foundation; it does not claim to reproduce the scale or visual fidelity of a large commercial title.
 
 ## Pre-production package
 
@@ -10,9 +10,9 @@ The complete end-to-end production brief is in [`PREPRODUCTION_BIBLE.md`](PREPRO
 
 ## Current milestone
 
-The current slice renders a stylized Wisteria Forest launch region through OpenGL ES 3, begins Aurora at the frontier camp beside a visible Heartfire and three resource caches, and includes an original cel-shaded anime-fantasy hero with ink-like contours, hard shadow planes, expressive hair, outfit accents, and a short sword. The First Ember quest now flows through Aurora’s arrival, camp gathering, ember-kit crafting, and a Forest Warden encounter in the forest. The scene also includes animals, a repeating four-phase time cycle—day, afternoon, evening, and night—with a visible in-game day counter, mobile joystick movement, light-combo and heavy-finisher combat, gathering, crafting, Heartfire feedback, and a Forest Warden health bar. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future online session wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
+The current online build renders a stylized Wisteria Forest launch region through OpenGL ES 3, begins Aurora at the frontier camp beside a visible Heartfire and three resource caches, and includes an original cel-shaded anime-fantasy hero with ink-like contours, hard shadow planes, expressive hair, outfit accents, and a short sword. The First Ember quest now flows through Aurora’s arrival, camp gathering, ember-kit crafting, and a Forest Warden encounter in the forest. The scene also includes animals, a repeating four-phase time cycle—day, afternoon, evening, and night—with a visible in-game day counter, mobile joystick movement, light-combo and heavy-finisher combat, gathering, crafting, Heartfire feedback, and a Forest Warden health bar. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and online session integration. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
 
-The intended player-facing product flow is **online-only** for every Android build: Google authentication, backend session exchange, server-region health/ping, cloud-save preflight, and co-op session validation must succeed before entering a production world. No build variant bypasses the real login screen. After a successful sign-in, the rotating refresh session is stored in Android Keystore-backed encrypted storage so a game restart restores the account automatically; choosing **LOG OUT** clears it.
+The intended player-facing product flow is **online-only** for every Android build: Google authentication, backend session exchange, server-region health/ping, cloud-save preflight, and co-op session validation must succeed before entering a production world. No build or launch path bypasses the online guest session boundary. After a successful sign-in, the rotating refresh session is stored in Android Keystore-backed encrypted storage so a game restart restores the account automatically; choosing **LOG OUT** clears it.
 
 The Aethelgard RPG layer now adds a deterministic progression loop: the **First Ember** quest tracks three resource caches, an ember-kit craft, and a Forest Warden defeat; gathering, combat hits, crafting, and the quest reward grant XP; level thresholds are surfaced in the live HUD; and the warden has a readable health bar, hit flash, defeat feedback, and quest completion state. The progression rules live in `app/src/main/cpp/rpg/progression.*` and are covered by a native regression test.
 
@@ -53,7 +53,7 @@ The left virtual joystick moves the hero. Right-side drag controls camera orbit.
 
 ## Production blueprint and GDD map
 
-The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). The 10–20 GB production reset, content budget, milestone gates, and acceptance standard are in [`AAA_PRODUCTION_MASTER_PLAN.md`](AAA_PRODUCTION_MASTER_PLAN.md). The AAA engine and multiplayer decision is documented in [`docs/AAA_PRODUCTION_ARCHITECTURE.md`](docs/AAA_PRODUCTION_ARCHITECTURE.md), and the supplied GDD requirements are mapped in [`docs/GDD_IMPLEMENTATION_MAP.md`](docs/GDD_IMPLEMENTATION_MAP.md). These documents separate the current prototype from the future Unreal C++ production path instead of claiming that a small OpenGL prototype is already a finished AAA game.
+The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). The 10–20 GB production reset, content budget, milestone gates, and acceptance standard are in [`AAA_PRODUCTION_MASTER_PLAN.md`](AAA_PRODUCTION_MASTER_PLAN.md). The AAA engine and multiplayer decision is documented in [`docs/AAA_PRODUCTION_ARCHITECTURE.md`](docs/AAA_PRODUCTION_ARCHITECTURE.md), and the supplied GDD requirements are mapped in [`docs/GDD_IMPLEMENTATION_MAP.md`](docs/GDD_IMPLEMENTATION_MAP.md). These documents separate the current mobile online client from the future Unreal C++ production path and describe the production migration honestly.
 
 ## Roadmap
 
@@ -61,7 +61,7 @@ The next production slices should add a proper 3D camera, original rigged anime 
 
 ## Repository status
 
-This repository is now being developed in two explicit layers: a verified Android/Kotlin/C++ prototype for input and gameplay contracts, and a planned Unreal C++ production path for the real 3D open-world game. The prototype is intentionally not padded with fake data to reach 10–20 GB; content size will come from useful original assets, audio, animation, cinematics, language packs, and optional Android asset packs.
+This repository is now being developed in two connected layers: a verified Android/Kotlin/C++ online client for mobile gameplay and service contracts, and a planned Unreal C++ production path for the larger 3D open-world game. Content size will come from useful original assets, audio, animation, cinematics, language packs, and optional Android asset packs—not padded placeholder data.
 
 ## Contribution
 Contributors can propose improvements through feature branches and pull requests. Please describe gameplay, Android, or build changes clearly in each contribution. Configure Git with the email linked to your GitHub account so contribution credit is attributed correctly.
@@ -69,14 +69,9 @@ Contributors can propose improvements through feature branches and pull requests
 For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.md`](docs/GOOGLE_PLAY_GAMES_SETUP.md). The real online multiplayer target is documented in [`docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md`](docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md). The first backend service is in [`server/README.md`](server/README.md).
 
 
-**Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android forest-survival RPG prototype.
-
-
-## First playable prototype
-
-The first playable milestone is documented in [`docs/FIRST_PLAYABLE_PROTOTYPE.md`](docs/FIRST_PLAYABLE_PROTOTYPE.md). The `prototype` build keeps a separate `.prototype` application-id suffix so it can coexist with the release build, but it now uses the same real online Google authentication and production session boundary. Build it with `gradle assemblePrototype`; the APK is written to `app/build/outputs/apk/prototype/app-prototype.apk`.
+**Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android online forest-survival RPG.
 
 
 ## 3D digging and farming slice
 
-The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, mobile HUD, character progression, visible ground-tile, animated chunk, map-layout, stackable inventory, and resource-node pickup contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md), [`docs/PROGRESSION_AND_XP_SPEC.md`](docs/PROGRESSION_AND_XP_SPEC.md), [`docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md`](docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md), and [`docs/REFERENCE_SURVIVAL_GAME_AUDIT.md`](docs/REFERENCE_SURVIVAL_GAME_AUDIT.md) plus [`docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md`](docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md) and [`docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md`](docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md). The four-player online flow is documented in [`docs/MULTIPLAYER_WORKFLOW.md`](docs/MULTIPLAYER_WORKFLOW.md). The player has 100 maximum HP, starts at level 0, can reach level 100, and earns integer XP through grinding. The Android GLES prototype remains the lightweight control and presentation harness; the true production 3D gameplay path is the Unreal project.
+The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, mobile HUD, character progression, visible ground-tile, animated chunk, map-layout, stackable inventory, and resource-node pickup contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md), [`docs/PROGRESSION_AND_XP_SPEC.md`](docs/PROGRESSION_AND_XP_SPEC.md), [`docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md`](docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md), and [`docs/REFERENCE_SURVIVAL_GAME_AUDIT.md`](docs/REFERENCE_SURVIVAL_GAME_AUDIT.md) plus [`docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md`](docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md) and [`docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md`](docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md). The four-player online flow is documented in [`docs/MULTIPLAYER_WORKFLOW.md`](docs/MULTIPLAYER_WORKFLOW.md). The player has 100 maximum HP, starts at level 0, can reach level 100, and earns integer XP through grinding. The Android GLES client is the verified online mobile gameplay path; the true large-scale 3D gameplay migration remains in the Unreal project.

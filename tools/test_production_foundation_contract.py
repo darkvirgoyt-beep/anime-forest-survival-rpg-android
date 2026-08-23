@@ -12,7 +12,7 @@ CHECKS = (
     ("app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt", "QualityEnvelope", "quality envelope model"),
     ("app/src/main/cpp/forest_game.cpp", "effectiveGraphicsQuality", "native quality gate"),
     ("app/src/main/cpp/forest_game.cpp", "setContentTierReady", "native readiness JNI hook"),
-    ("app/src/main/cpp/forest_game.cpp", "drawPrototypeTerrainChunks", "prototype terrain renderer"),
+    ("app/src/main/cpp/forest_game.cpp", "drawTerrainChunks", "mobile terrain renderer"),
     ("app/src/main/cpp/forest_game.cpp", "kPlayerMaxHealthHp = 100", "player health contract"),
     ("Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp", "GetBiomeAtWorldLocation", "streamed biome lookup"),
     ("Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h", "GroundInstances", "procedural world instances"),

@@ -112,7 +112,6 @@ class MainActivity : Activity(), SensorEventListener {
     private val controlPreferences by lazy { getSharedPreferences("aethelgard_controls", MODE_PRIVATE) }
     private lateinit var audio: GameAudio
     private lateinit var joystickView: JoystickView
-    private lateinit var assetDelivery: AssetDeliveryManager
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
     private var hudPlayerTitle: TextView? = null
@@ -122,7 +121,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var assetPatchOverlay: View? = null
     private var cinematicEntryOverlay: View? = null
     private var worldLoadingOverlay: View? = null
-    private var resourcePreparationComplete = BuildConfig.PROTOTYPE_MODE
+    private var resourcePreparationComplete = false
+    private var resourceTierChooserVisible = false
     private var pendingWorldEntry: (() -> Unit)? = null
     private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
@@ -238,7 +238,6 @@ class MainActivity : Activity(), SensorEventListener {
             runCatching { ContentDownloadPlan.ResourceTier.valueOf(value) }.getOrNull()
         }
         audio = GameAudio(this)
-        assetDelivery = AssetDeliveryManager(this)
         audio.playMusic()
 
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
@@ -268,27 +267,66 @@ class MainActivity : Activity(), SensorEventListener {
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // Every build requires the real online Google sign-in flow.
+        // Every build enters the production online guest flow; no offline world exists.
         onboardingOverlay.visibility = View.VISIBLE
-        if (networkOnline) {
-            when {
-                selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
-                    applyResourceTier(chosenTier)
-                    showAssetPatchOverlay()
-                }
-                assetPacks.productionContentReady(selectedResourceTier!!) -> resourcePreparationComplete = true
-                else -> showAssetPatchOverlay()
-            }
-        } else {
-            onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
-        }
+        if (networkOnline) beginOnlineStartup()
     }
 
     private fun requestOnlineGuestSession() {
-        if (BuildConfig.PROTOTYPE_MODE || !networkOnline || guestSignInAttempted) return
+        if (!networkOnline || guestSignInAttempted) return
         guestSignInAttempted = true
         onboardingStatus.text = "ONLINE ONLY / GUEST SESSION  •  CONNECTING…"
         accountSession.requestGuestSignIn()
+    }
+
+    private fun markProductionContentReady() {
+        if (resourcePreparationComplete) return
+        resourcePreparationComplete = true
+        val readyTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
+        applyGraphicsTier(readyTier.graphicsTierIndex)
+        if (::gameView.isInitialized) {
+            gameView.queueEvent { NativeGameBridge.setContentTierReady(true, readyTier.graphicsTierIndex) }
+        }
+    }
+
+    private fun continuePendingWorldEntry() {
+        pendingWorldEntry?.let { continuation ->
+            pendingWorldEntry = null
+            continuation()
+        }
+    }
+
+    private fun beginOnlineStartup() {
+        if (!networkOnline) {
+            if (::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+            }
+            return
+        }
+        if (selectedResourceTier == null) {
+            if (!resourceTierChooserVisible) {
+                resourceTierChooserVisible = true
+                showResourceTierChooser { chosenTier ->
+                    resourceTierChooserVisible = false
+                    applyResourceTier(chosenTier)
+                    showAssetPatchOverlay()
+                }
+            }
+        } else if (!resourcePreparationComplete) {
+            if (assetPacks.productionContentReady(selectedResourceTier!!)) {
+                markProductionContentReady()
+                continuePendingWorldEntry()
+            } else {
+                showAssetPatchOverlay()
+            }
+        }
+        when (accountSession.snapshot.state) {
+            SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> requestOnlineGuestSession()
+            SessionState.AUTHENTICATED -> {
+                if (!authenticationTransitionStarted) applyAccountSnapshot(accountSession.snapshot)
+            }
+            else -> Unit
+        }
     }
 
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
@@ -302,7 +340,7 @@ class MainActivity : Activity(), SensorEventListener {
             if (::coOpStatusLabel.isInitialized && activeCoOpRoom == null) {
                 coOpStatusLabel.text = "CO-OP BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
             }
-            if (!BuildConfig.PROTOTYPE_MODE && ::onboardingStatus.isInitialized) {
+            if (::onboardingStatus.isInitialized) {
                 onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
             }
             return
@@ -312,9 +350,10 @@ class MainActivity : Activity(), SensorEventListener {
             networkStatusLabel.text = "NETWORK: ${snapshot.message}  •  PING: —"
             networkStatusLabel.setTextColor(Color.rgb(164, 231, 190))
         }
-        if (!BuildConfig.PROTOTYPE_MODE && accountSession.snapshot.state != SessionState.AUTHENTICATED && ::onboardingStatus.isInitialized) {
-            onboardingStatus.text = "ONLINE READY  •  SIGN IN WITH GOOGLE TO CONTINUE"
+        if (accountSession.snapshot.state != SessionState.AUTHENTICATED && ::onboardingStatus.isInitialized) {
+            onboardingStatus.text = "ONLINE READY  •  STARTING GUEST SESSION…"
         }
+        beginOnlineStartup()
         refreshSelectedServerPing()
     }
 
@@ -358,7 +397,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun requireOnline(action: String): Boolean {
-        if (BuildConfig.PROTOTYPE_MODE || networkOnline) return true
+        if (networkOnline) return true
         if (::coOpStatusLabel.isInitialized) {
             coOpStatusLabel.text = "$action BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
         }
@@ -729,10 +768,11 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
+        if (!networkOnline) return
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
             setPlayerName("GUEST")
             authenticationTransitionStarted = true
-            if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
+            if (resourcePreparationComplete) {
                 enterGuestOnlineWorld()
             } else {
                 pendingWorldEntry = ::enterGuestOnlineWorld
@@ -750,7 +790,7 @@ class MainActivity : Activity(), SensorEventListener {
                     }
                 }
             }
-            if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
+            if (resourcePreparationComplete) {
                 continueToCharacterSetup()
             } else {
                 pendingWorldEntry = continueToCharacterSetup
@@ -1796,7 +1836,7 @@ class MainActivity : Activity(), SensorEventListener {
             runOnUiThread {
                 fun number(index: Int): Int = values.getOrNull(index)?.toIntOrNull() ?: 0
                 val companion = values.getOrNull(22)?.replace('_', ' ') ?: "EMBERLING WILD"
-                val account = accountSession.snapshot.accountId?.take(10)?.let { "Account $it…" } ?: "Local prototype"
+                val account = accountSession.snapshot.accountId?.take(10)?.let { "Account $it…" } ?: "Online guest"
                 val world = activeCloudWorld?.let { "${it.name}  •  Revision ${it.saveRevision}" } ?: "No cloud world active"
                 val panel = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
@@ -1852,10 +1892,6 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun confirmLogout() {
-        if (BuildConfig.PROTOTYPE_MODE) {
-            android.widget.Toast.makeText(this, "Offline prototype has no account session", android.widget.Toast.LENGTH_SHORT).show()
-            return
-        }
         AlertDialog.Builder(this)
             .setTitle("LOG OUT OF AETHELGARD?")
             .setMessage("This removes the local session from this device. Your cloud world remains protected in your account.")
@@ -1963,46 +1999,21 @@ class MainActivity : Activity(), SensorEventListener {
             hudHandler.postDelayed({
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
-                resourcePreparationComplete = true
-                val readyTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
-                applyGraphicsTier(readyTier.graphicsTierIndex)
-                if (::gameView.isInitialized) {
-                    gameView.queueEvent { NativeGameBridge.setContentTierReady(true, readyTier.graphicsTierIndex) }
-                }
+                markProductionContentReady()
                 onReady()
-                pendingWorldEntry?.let { continuation ->
-                    pendingWorldEntry = null
-                    continuation()
-                }
+                continuePendingWorldEntry()
             }, 450L)
-        }
-
-        fun showLocalPreparationFallback() {
-            assetDelivery.prepareForTier(selectedGraphicsTier) { event ->
-                status.text = event.title
-                details.text = "Direct APK fallback: ${event.detail}"
-                progress.progress = event.percent
-                if (event.state == AssetDeliveryManager.State.READY) finishPreparation()
-                if (event.state == AssetDeliveryManager.State.FAILED) {
-                    note.text = event.error ?: "The local development bundle was rejected."
-                    note.setTextColor(Color.rgb(255, 180, 150))
-                    retry.visibility = View.VISIBLE
-                }
-            }
         }
 
         lateinit var startPreparation: () -> Unit
         startPreparation = {
             retry.visibility = View.GONE
             progress.progress = 0
-            if (BuildConfig.PROTOTYPE_MODE) {
-                showLocalPreparationFallback()
-            } else {
-                var fallbackStarted = false
-                assetPacks.requestProductionContent(resourceTier) { event ->
+            var failureShown = false
+            assetPacks.requestProductionContent(resourceTier) { event ->
                     if (event.failed) {
-                        if (!fallbackStarted) {
-                            fallbackStarted = true
+                        if (!failureShown) {
+                            failureShown = true
                             status.text = "Full resources are required before start"
                             details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
                             note.text = if (event.errorCode == -2) {
@@ -2045,7 +2056,6 @@ class MainActivity : Activity(), SensorEventListener {
                         progress.progress = event.percent
                         if (event.complete) finishPreparation()
                     }
-                }
             }
         }
         retry.setOnClickListener { startPreparation() }

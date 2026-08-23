@@ -11,7 +11,7 @@ The installed APK is a small bootstrap client. After installation, the productio
 | Google Play Asset Delivery fast-follow/on-demand packs | Best fit for Android Play installation, resumable delivery and Play-managed updates; requires a signed AAB and Play internal testing or production track. | Play distribution/storage and bandwidth costs; no custom server required. | Medium. Requires correct asset-pack modules, Play Console configuration, and real cooked content. |
 | Direct HTTPS resource bundles | Works outside Play and can support a custom CDN; requires implementing download, resume, checksum, extraction, versioning, and security independently. | CDN/storage/bandwidth costs and additional backend operations. | High. Must protect against corrupted or tampered bundles and manage updates. |
 
-AETHELGRAD uses Play Asset Delivery for the production path because the project already contains asset-pack modules and the required Play libraries. Direct APKs and the offline prototype remain development paths and do not unlock the production content contract.
+AETHELGRAD uses Play Asset Delivery for the online production path because the project already contains asset-pack modules and the required Play libraries. Direct APKs are bootstrap test artifacts only; they do not unlock the online world without Play-managed production content.
 
 ## State machine
 
@@ -31,13 +31,13 @@ The post-install flow uses the following user-visible states:
 
 The current plan uses one install-time bootstrap pack and a set of production packs. `assetpack_forest` is fast-follow for the initial Forest region. Large optional or later-region packs are on-demand in the Gradle modules and should be requested by map progression in a later milestone. Packs marked `requiredBeforeStart` are the only packs included in the initial production gate.
 
-The checked-in pack directories are intentionally small development placeholders. They do not represent a finished multi-gigabyte Unreal world. The final AAB must replace them with real cooked Unreal `.pak` content, manifest metadata, and device-tested assets without padding files.
+The checked-in pack directories are intentionally small content stubs for the current client contract. They do not represent a finished multi-gigabyte Unreal world. The final AAB must replace them with real cooked Unreal `.pak` content, manifest metadata, and device-tested assets without padding files.
 
 ## Reliability rules
 
 Play Asset Delivery owns resumable transfer and package-level update behavior. The application adds a stable UI denominator, does not reset progress when a new pack reports its total, keeps the retry action visible for cancellation and confirmation states, checks free storage before starting, and never unlocks the production game on a direct APK that cannot resolve required Play pack locations.
 
-Prototype mode bypasses Play delivery and uses the existing local development preparation path so the lightweight offline APK remains testable. This is intentionally different from release behavior.
+There is no offline preparation path. If required Play content is unavailable, the online client remains at the resource center and does not enter a local world.
 
 ## Required production setup
 

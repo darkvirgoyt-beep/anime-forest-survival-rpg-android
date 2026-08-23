@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a standalone Android expansion OBB for offline/sideload testing.
+"""Build a standalone Android expansion OBB for production content delivery.
 
 Google Play releases should use the repository's AAB + Play Asset Delivery
-modules. This script exists for private APK channels, device labs, and
+modules. This script supports private APK channels, device labs, and
 legacy expansion-file workflows. It never pads an archive to a target size.
 """
 from __future__ import annotations
@@ -122,7 +122,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--output-dir", required=True, help="directory for main.<version>.<package>.obb")
     command.add_argument("--package-name", default="com.darvirgoyt.aethelgrad")
     command.add_argument("--version-code", type=int, default=int(os.environ.get("ANDROID_VERSION_CODE", "3")))
-    command.add_argument("--content-version", default="prototype-v1")
+    command.add_argument("--content-version", default="production-v1")
     return command
 
 

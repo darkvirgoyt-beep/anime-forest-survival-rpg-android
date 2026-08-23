@@ -1,6 +1,6 @@
 # Google Sign-In Device Troubleshooting
 
-The `CONTINUE WITH GOOGLE` screen uses Android Credential Manager and the explicit Google button flow. A visible cancellation can be a genuine user dismissal, but Android documents that unexpected cancellations can also reflect a relying-party configuration problem. The app now shows a safe action message rather than exposing token data or raw account information.
+The optional `SIGN IN WITH GOOGLE` link uses Android Credential Manager and the explicit Google button flow. AETHELGRAD enters an online guest session automatically; Google linking protects the account and cloud world. A visible cancellation can be a genuine user dismissal, but Android documents that unexpected cancellations can also reflect a relying-party configuration problem. The app now shows a safe action message rather than exposing token data or raw account information.
 
 | Player-facing diagnostic | Most likely next action |
 |---|---|
@@ -21,7 +21,7 @@ The current build workflow falls back to an Android debug certificate when prote
 
 ## Use the Correct GitHub Artifact
 
-`aethelgard-prototype-apk` is an offline development harness with the separate package `com.darvirgoyt.aethelgrad.prototype`. It is intentionally not an online-login test build and now launches directly into the local prototype world. To test the real Google sign-in and cloud-world backend, install only `forest-slice-release-apk` from the same successful GitHub Actions run as the `aethelgard-android-signing-certificate` artifact. Register the SHA-1 from that artifact against the release package `com.darvirgoyt.aethelgrad` in the Android OAuth client.
+Install only `forest-slice-release-apk` from the successful GitHub Actions run together with the `aethelgard-android-signing-certificate` artifact. The release package is `com.darvirgoyt.aethelgrad`, enters the online guest session automatically, and supports optional Google account linking. Register the SHA-1 from that certificate artifact against the same package in the Android OAuth client.
 
 ## Mobile Control Direction
 

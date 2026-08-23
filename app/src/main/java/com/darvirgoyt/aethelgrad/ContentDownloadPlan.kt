@@ -4,8 +4,8 @@ package com.darvirgoyt.aethelgrad
  * Production download envelope for the real cooked 3D Aethelgard experience.
  *
  * These are physical Play Asset Delivery pack targets, not padding. The
- * checked-in prototype contains tiny development bundles; a production build
- * must replace them with real cooked Unreal .pak content.
+ * online Android client requires the selected production content packs before
+ * it enters the world.
  */
 object ContentDownloadPlan {
     data class QualityEnvelope(

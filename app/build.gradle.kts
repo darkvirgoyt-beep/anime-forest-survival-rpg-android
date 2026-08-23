@@ -14,10 +14,6 @@ android {
     compileSdk = 35
     ndkVersion = "28.0.12433566"
 
-    buildFeatures {
-        buildConfig = true
-    }
-
     defaultConfig {
         applicationId = "com.darvirgoyt.aethelgrad"
         minSdk = 26
@@ -49,21 +45,11 @@ android {
 
     buildTypes {
         debug {
-            // All variants use the real online Google authentication flow.
-            buildConfigField("boolean", "PROTOTYPE_MODE", "false")
-        }
-        create("prototype") {
-            initWith(getByName("debug"))
-            // The prototype inherits the production application ID from defaultConfig.
-            // Only the version name is differentiated for local/device-lab installs.
-            versionNameSuffix = "-prototype"
-            buildConfigField("boolean", "PROTOTYPE_MODE", "false")
-            matchingFallbacks += listOf("debug")
+            // Debug builds use the same production online guest session boundary.
         }
         release {
             isDebuggable = false
             isMinifyEnabled = false
-            buildConfigField("boolean", "PROTOTYPE_MODE", "false")
             // GitHub CI uses protected secrets when configured; local builds remain debug-signed for test distribution.
             signingConfig = if (hasCiReleaseSigning) signingConfigs.getByName("ciRelease") else signingConfigs.getByName("debug")
             proguardFiles(

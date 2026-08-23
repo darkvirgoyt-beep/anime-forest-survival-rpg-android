@@ -1,6 +1,6 @@
 # Real online multiplayer architecture
 
-The current Android Kotlin/C++ build is a playable prototype. It is not yet a BGMI- or ARK-scale online game because it does not include a production backend, dedicated game-server fleet, matchmaking, persistence, moderation, telemetry, or server-side Play Games credential verification. The launch screen should therefore describe the current build honestly and must not display a fake authenticated state.
+The current Android Kotlin/C++ build is an online mobile client with guest authentication, cloud-session handling, co-op room contracts, and server-validated combat/inventory actions. It is not yet a BGMI- or ARK-scale online game because the repository does not include a dedicated real-time game-server fleet, matchmaking, moderation, telemetry, or a deployed public service. The launch screen must describe the current service boundary honestly and must not display a fake authenticated state.
 
 ## Required production flow
 
@@ -34,10 +34,10 @@ The Android client must never contain the Google web-client secret, service-acco
 | Approach | What it provides | Tradeoffs | Cost and setup |
 |---|---|---|---|
 | **Recommended: Unreal dedicated servers + identity/session API + database** | Authoritative real-time world simulation, server-owned combat and inventory, matchmaking, cloud saves, and a path to multi-region sessions. | Highest engineering and operations complexity; requires Unreal source build, server packaging, monitoring, and deployment. | Cloud hosting, database, logging, and bandwidth costs. Requires Play Console credentials, an HTTPS backend, and a server deployment account. |
-| **Lighter prototype: one managed real-time server plus identity API** | Faster first online co-op slice with a small number of players and persistent account data. | Not suitable for a large persistent ARK-like world or competitive scale; must migrate or shard later. | Lower initial cost and setup. Still requires Play Console configuration, backend secrets, database, and a persistent host. |
+| **Managed co-op service plus identity API** | Faster first online co-op slice with a small number of players and persistent account data. | Not suitable for a large persistent ARK-like world or competitive scale; must migrate or shard later. | Lower initial cost and setup. Still requires Play Console configuration, backend secrets, database, and a persistent host. |
 | **Local development server** | Two or more clients can test replication and gameplay contracts on a local network. | Not publicly reachable, not a production service, and not a substitute for matchmaking or cloud persistence. | Lowest cost; requires a developer machine and Unreal dedicated-server build. |
 
-A BGMI/ARK-style target should use the first approach. The Android prototype can remain as a harness while the Unreal tree becomes the production client and dedicated-server path; rewriting the prototype into a fake online layer would create security and maintenance problems.
+A BGMI/ARK-style target should use the first approach. The Android client can continue as the verified mobile online entry while the Unreal tree becomes the full production client and dedicated-server path; the current backend boundary must remain authoritative rather than accepting client-owned outcomes.
 
 ## Identity and account requirements
 
@@ -56,10 +56,10 @@ For the first real online milestone, implement one forest region, a four-player 
 | Area | Current status | Required before production |
 |---|---|---|
 | Android Play Games client | SDK integration and launch-state handling are implemented. | Play Console project ID, package credential, signing fingerprints, tester accounts, and device testing. |
-| Server-side auth exchange | Not implemented. | HTTPS API, server OAuth web-client credential, code exchange, identity verification, token issuance, secret storage, rate limits, and logs. |
+| Server-side auth exchange | Guest authentication, Google exchange, rotating sessions, and validation tests are implemented. | Deployed HTTPS service, production Google credentials, secret storage, rate limits, monitoring, and operational logs. |
 | Matchmaking/session allocation | Contract only. | Queue, party permissions, region selection, allocation, health checks, and reconnect handling. |
 | Unreal dedicated server | Source foundation exists; no packaged production server is delivered. | UE source build, server target, cooked content, deployment image, health endpoint, rollout and rollback process. |
-| Persistence | Contract and local data structures only. | Database schema, transactional save service, conflict policy, backups, migrations, and account deletion. |
+| Persistence | Guest/account sessions and cloud-world contracts exist; creature/camp state is not yet authoritative online. | Database-backed world persistence, conflict policy, backups, migrations, account deletion, and authoritative creature/base state. |
 
 ## Official references
 

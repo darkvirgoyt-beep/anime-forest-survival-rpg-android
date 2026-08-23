@@ -1,8 +1,8 @@
-# AETHELGRAD Prototype Mobile Control Test Plan
+# AETHELGRAD Online Mobile Control Test Plan
 
 ## Test build
 
-Install the direct `app-prototype.apk` from the `v0.3.0-prototype` prerelease. This is the offline prototype variant and can be tested without Google login or remote asset packs.
+Install `forest-slice-release-apk` from a successful GitHub Actions run. The release client requires network access, starts an online guest session automatically, and requires the selected production Play Asset Delivery content before entering the world. Optional Google linking can be tested from the account panel.
 
 ## Control acceptance matrix
 

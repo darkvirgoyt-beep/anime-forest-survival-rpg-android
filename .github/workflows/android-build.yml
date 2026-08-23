@@ -70,9 +70,10 @@ jobs:
           test -f tools/validate_asset_budget.py
           test -f tools/test_graphics_tier_contract.py
           test -f tools/test_production_foundation_contract.py
+          test -f tools/test_online_only_contract.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
@@ -94,6 +95,7 @@ jobs:
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           python3 tools/test_graphics_tier_contract.py
           python3 tools/test_production_foundation_contract.py
+          python3 tools/test_online_only_contract.py
 
   native-tests:
     runs-on: ubuntu-latest
@@ -203,7 +205,7 @@ jobs:
           AETHELGARD_RELEASE_KEY_PASSWORD: ${{ secrets.AETHELGARD_RELEASE_KEY_PASSWORD }}
         run: |
           python3 tools/validate_asset_budget.py
-          gradle bundleRelease assembleRelease assemblePrototype --stacktrace
+          gradle bundleRelease assembleRelease --stacktrace
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
 
       - name: Verify 16 KB native alignment
@@ -222,7 +224,7 @@ jobs:
             --output-dir build/expansion-obb \
             --package-name com.darvirgoyt.aethelgrad \
             --version-code 3 \
-            --content-version "prototype-${GITHUB_SHA}"
+            --content-version "production-${GITHUB_SHA}"
           python3 tools/verify_expansion_obb.py build/expansion-obb/main.3.com.darvirgoyt.aethelgrad.obb
 
       - name: Upload standalone expansion OBB artifact
@@ -245,12 +247,6 @@ jobs:
           name: forest-slice-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
-
-      - name: Upload offline prototype APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: aethelgard-prototype-apk
-          path: app/build/outputs/apk/prototype/app-prototype.apk
 
       - name: Upload signing certificate fingerprint
         uses: actions/upload-artifact@v4
