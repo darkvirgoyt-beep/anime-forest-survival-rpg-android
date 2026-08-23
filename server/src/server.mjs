@@ -1,97 +1,185 @@
-import crypto from "node:crypto";
 import express from "express";
 import pg from "pg";
+import { pathToFileURL } from "node:url";
+import {
+  createOpaqueToken,
+  hashSecret,
+  issueAccessToken,
+  loadRuntimeConfig,
+  validateServerAuthCode,
+  verifyAccessToken
+} from "./security.mjs";
 
 const { Pool } = pg;
-const app = express();
-const port = Number(process.env.PORT || 8080);
-const databaseUrl = process.env.DATABASE_URL;
-const googleClientId = process.env.GOOGLE_GAME_SERVER_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_GAME_SERVER_CLIENT_SECRET;
-const jwtSecret = process.env.GAME_SESSION_JWT_SECRET;
 
-if (!databaseUrl || !googleClientId || !googleClientSecret || !jwtSecret) {
-  throw new Error("DATABASE_URL, GOOGLE_GAME_SERVER_CLIENT_ID, GOOGLE_GAME_SERVER_CLIENT_SECRET, and GAME_SESSION_JWT_SECRET are required");
-}
-if (jwtSecret.length < 32) {
-  throw new Error("GAME_SESSION_JWT_SECRET must be at least 32 characters");
-}
+export function createOnlineService({ pool, config, fetchImpl = fetch }) {
+  const app = express();
+  app.disable("x-powered-by");
+  app.use(express.json({ limit: "16kb", strict: true }));
+  app.use((req, res, next) => {
+    const origin = req.get("origin");
+    if (origin && origin !== config.allowedOrigin) return res.status(403).json({ error: "origin_not_allowed" });
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", config.allowedOrigin);
+      res.setHeader("Vary", "Origin");
+    }
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
 
-const pool = new Pool({ connectionString: databaseUrl, max: 10, ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: true } : undefined });
-app.use(express.json({ limit: "16kb" }));
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", process.env.ALLOWED_ORIGIN || "*");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
-});
+  const requireSession = createSessionGuard({ pool, config });
 
-app.get("/healthz", async (_req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ ok: true, service: "aethelgard-online-services" });
-  } catch {
-    res.status(503).json({ ok: false, service: "aethelgard-online-services" });
-  }
-});
+  app.get("/healthz", async (_req, res) => {
+    try {
+      await pool.query("SELECT 1");
+      res.json({ ok: true, service: "aethelgard-online-services" });
+    } catch {
+      res.status(503).json({ ok: false, service: "aethelgard-online-services" });
+    }
+  });
 
-app.post("/v1/auth/play-games/exchange", async (req, res) => {
-  const serverAuthCode = req.body?.serverAuthCode;
-  if (typeof serverAuthCode !== "string" || serverAuthCode.length < 16 || serverAuthCode.length > 4096) {
-    return res.status(400).json({ error: "invalid_server_auth_code" });
-  }
+  app.post("/v1/auth/play-games/exchange", async (req, res) => {
+    const serverAuthCode = req.body?.serverAuthCode;
+    if (!validateServerAuthCode(serverAuthCode)) return res.status(400).json({ error: "invalid_server_auth_code" });
 
-  try {
-    const token = await exchangePlayGamesCode(serverAuthCode);
-    const player = await verifyPlayGamesPlayer(token.access_token);
-    const account = await upsertAccount(player);
-    const session = issueSession(account.id);
-    await pool.query(
-      "INSERT INTO sessions (account_id, token_hash, expires_at) VALUES ($1, $2, to_timestamp($3))",
-      [account.id, hash(session.token), session.expiresAt]
+    const codeHash = hashSecret(serverAuthCode);
+    const receipt = await pool.query(
+      "INSERT INTO authorization_code_receipts (code_hash, exchange_state) VALUES ($1, 'received') ON CONFLICT DO NOTHING RETURNING code_hash",
+      [codeHash]
     );
-    res.status(200).json({ sessionToken: session.token, accountId: account.id, expiresAt: new Date(session.expiresAt * 1000).toISOString() });
-  } catch (error) {
-    console.error("play_games_exchange_failed", error instanceof Error ? error.message : "unknown_error");
-    res.status(401).json({ error: "play_games_authentication_failed" });
-  }
-});
+    if (receipt.rowCount !== 1) return res.status(409).json({ error: "replayed_server_auth_code" });
 
-app.get("/v1/worlds", requireSession, async (_req, res) => {
-  const result = await pool.query(
-    "SELECT id, region, name, status, max_players, current_players FROM worlds WHERE status = 'online' ORDER BY region, name LIMIT 50"
-  );
-  res.json({ worlds: result.rows });
-});
+    try {
+      const googleToken = await exchangePlayGamesCode(serverAuthCode, config, fetchImpl);
+      const player = await verifyPlayGamesPlayer(googleToken.access_token, fetchImpl);
+      const account = await upsertAccount(pool, player);
+      const bundle = await createSessionBundle(pool, account.id, config);
+      await pool.query("UPDATE authorization_code_receipts SET exchange_state = 'verified' WHERE code_hash = $1", [codeHash]);
+      res.status(200).json({
+        accessToken: bundle.accessToken,
+        refreshToken: bundle.refreshToken,
+        tokenType: "Bearer",
+        accountId: account.id,
+        expiresAt: new Date(bundle.accessExpiresAt * 1000).toISOString(),
+        refreshExpiresAt: new Date(bundle.refreshExpiresAt * 1000).toISOString()
+      });
+    } catch (error) {
+      await pool.query(
+        "UPDATE authorization_code_receipts SET exchange_state = 'rejected', rejection_code = $2 WHERE code_hash = $1",
+        [codeHash, safeErrorCode(error)]
+      );
+      console.error("play_games_exchange_failed", safeErrorCode(error));
+      res.status(401).json({ error: "play_games_authentication_failed" });
+    }
+  });
 
-app.post("/v1/worlds", requireSession, async (req, res) => {
-  const region = typeof req.body?.region === "string" ? req.body.region.trim().slice(0, 32) : "asia";
-  const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 64) : "Aethelgard Forest";
-  if (!name) return res.status(400).json({ error: "world_name_required" });
-  const result = await pool.query(
-    "INSERT INTO worlds (region, name, status, max_players, current_players) VALUES ($1, $2, 'allocating', 4, 0) RETURNING id, region, name, status, max_players, current_players",
-    [region, name]
-  );
-  res.status(201).json({ world: result.rows[0] });
-});
+  app.post("/v1/auth/refresh", async (req, res) => {
+    const refreshToken = req.body?.refreshToken;
+    if (typeof refreshToken !== "string" || refreshToken.length < 32 || refreshToken.length > 512) {
+      return res.status(400).json({ error: "invalid_refresh_token" });
+    }
 
-app.use((error, _req, res, _next) => {
-  console.error("unhandled_request_error", error);
-  res.status(500).json({ error: "internal_server_error" });
-});
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query(
+        `SELECT id, account_id, refresh_expires_at, revoked_at
+         FROM sessions
+         WHERE refresh_token_hash = $1
+         FOR UPDATE`,
+        [hashSecret(refreshToken)]
+      );
+      if (result.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(401).json({ error: "invalid_refresh_session" });
+      }
 
-app.listen(port, () => console.log(`Aethelgard online services listening on :${port}`));
+      const current = result.rows[0];
+      if (current.revoked_at) {
+        await client.query(
+          "UPDATE sessions SET revoked_at = COALESCE(revoked_at, now()), revoked_reason = COALESCE(revoked_reason, 'refresh_reuse_detected') WHERE account_id = $1 AND revoked_at IS NULL",
+          [current.account_id]
+        );
+        await client.query("COMMIT");
+        return res.status(401).json({ error: "replayed_refresh_session" });
+      }
+      if (!current.refresh_expires_at || new Date(current.refresh_expires_at).getTime() <= Date.now()) {
+        await client.query("UPDATE sessions SET revoked_at = now(), revoked_reason = 'refresh_expired' WHERE id = $1", [current.id]);
+        await client.query("COMMIT");
+        return res.status(401).json({ error: "expired_refresh_session" });
+      }
 
-async function exchangePlayGamesCode(serverAuthCode) {
+      const next = await createSessionBundle(client, current.account_id, config, current.id);
+      await client.query(
+        "UPDATE sessions SET revoked_at = now(), revoked_reason = 'rotated', replaced_by_session_id = $2 WHERE id = $1",
+        [current.id, next.sessionId]
+      );
+      await client.query("COMMIT");
+      return res.status(200).json({
+        accessToken: next.accessToken,
+        refreshToken: next.refreshToken,
+        tokenType: "Bearer",
+        expiresAt: new Date(next.accessExpiresAt * 1000).toISOString(),
+        refreshExpiresAt: new Date(next.refreshExpiresAt * 1000).toISOString()
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("refresh_failed", safeErrorCode(error));
+      return res.status(500).json({ error: "session_refresh_failed" });
+    } finally {
+      client.release();
+    }
+  });
+
+  app.get("/v1/auth/session", requireSession, (req, res) => {
+    res.json({ accountId: req.accountId, sessionId: req.sessionId, status: "authenticated" });
+  });
+
+  app.post("/v1/auth/logout", requireSession, async (req, res) => {
+    await pool.query(
+      "UPDATE sessions SET revoked_at = now(), revoked_reason = 'player_logout' WHERE id = $1 AND account_id = $2 AND revoked_at IS NULL",
+      [req.sessionId, req.accountId]
+    );
+    res.status(204).end();
+  });
+
+  app.get("/v1/worlds", requireSession, async (_req, res) => {
+    const result = await pool.query(
+      "SELECT id, region, name, status, max_players, current_players FROM worlds WHERE status = 'online' ORDER BY region, name LIMIT 50"
+    );
+    res.json({ worlds: result.rows });
+  });
+
+  app.post("/v1/worlds", requireSession, async (req, res) => {
+    const region = typeof req.body?.region === "string" ? req.body.region.trim().slice(0, 32) : "asia";
+    const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 64) : "Aethelgard Forest";
+    if (!name) return res.status(400).json({ error: "world_name_required" });
+    const result = await pool.query(
+      "INSERT INTO worlds (region, name, status, max_players, current_players) VALUES ($1, $2, 'allocating', 4, 0) RETURNING id, region, name, status, max_players, current_players",
+      [region, name]
+    );
+    res.status(201).json({ world: result.rows[0] });
+  });
+
+  app.use((_req, res) => res.status(404).json({ error: "not_found" }));
+  app.use((error, _req, res, _next) => {
+    console.error("unhandled_request_error", safeErrorCode(error));
+    res.status(500).json({ error: "internal_server_error" });
+  });
+  return app;
+}
+
+export async function exchangePlayGamesCode(serverAuthCode, config, fetchImpl = fetch) {
   const body = new URLSearchParams({
-    client_id: googleClientId,
-    client_secret: googleClientSecret,
+    client_id: config.googleClientId,
+    client_secret: config.googleClientSecret,
     code: serverAuthCode,
     grant_type: "authorization_code",
     redirect_uri: ""
   });
-  const response = await fetch("https://oauth2.googleapis.com/token", {
+  const response = await fetchImpl("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body
@@ -102,8 +190,8 @@ async function exchangePlayGamesCode(serverAuthCode) {
   return payload;
 }
 
-async function verifyPlayGamesPlayer(accessToken) {
-  const response = await fetch("https://www.googleapis.com/games/v1/players/me", {
+export async function verifyPlayGamesPlayer(accessToken, fetchImpl = fetch) {
+  const response = await fetchImpl("https://www.googleapis.com/games/v1/players/me", {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
   });
   if (!response.ok) throw new Error(`google_player_verification_${response.status}`);
@@ -112,8 +200,8 @@ async function verifyPlayGamesPlayer(accessToken) {
   return player;
 }
 
-async function upsertAccount(player) {
-  const result = await pool.query(
+async function upsertAccount(db, player) {
+  const result = await db.query(
     `INSERT INTO accounts (provider, provider_player_id, display_name)
      VALUES ('google_play_games', $1, $2)
      ON CONFLICT (provider, provider_player_id)
@@ -124,48 +212,74 @@ async function upsertAccount(player) {
   return result.rows[0];
 }
 
-function issueSession(accountId) {
-  const now = Math.floor(Date.now() / 1000);
-  const expiresAt = now + 60 * 60;
-  const header = encode({ alg: "HS256", typ: "JWT" });
-  const payload = encode({ sub: accountId, iat: now, exp: expiresAt, iss: "aethelgard-online-services" });
-  const signingInput = `${header}.${payload}`;
-  const signature = crypto.createHmac("sha256", jwtSecret).update(signingInput).digest("base64url");
-  return { token: `${signingInput}.${signature}`, expiresAt };
+async function createSessionBundle(db, accountId, config, parentSessionId = null) {
+  const now = Date.now();
+  const refreshToken = createOpaqueToken();
+  const placeholder = createOpaqueToken();
+  const accessExpiresAt = Math.floor(now / 1000) + config.accessTtlSeconds;
+  const refreshExpiresAt = Math.floor(now / 1000) + config.refreshTtlSeconds;
+  const inserted = await db.query(
+    `INSERT INTO sessions (account_id, token_hash, expires_at, refresh_token_hash, refresh_expires_at, parent_session_id)
+     VALUES ($1, $2, to_timestamp($3), $4, to_timestamp($5), $6)
+     RETURNING id`,
+    [accountId, hashSecret(placeholder), hashSecret(refreshToken), refreshExpiresAt, parentSessionId]
+  );
+  const sessionId = inserted.rows[0].id;
+  const access = issueAccessToken({
+    accountId,
+    sessionId,
+    secret: config.sessionSecret,
+    now,
+    ttlSeconds: config.accessTtlSeconds
+  });
+  await db.query("UPDATE sessions SET token_hash = $2 WHERE id = $1", [sessionId, hashSecret(access.token)]);
+  return {
+    sessionId,
+    accessToken: access.token,
+    refreshToken,
+    accessExpiresAt,
+    refreshExpiresAt
+  };
 }
 
-async function requireSession(req, res, next) {
-  const authorization = req.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  const parts = token.split(".");
-  if (parts.length !== 3) return res.status(401).json({ error: "missing_session" });
-  try {
-    const expected = crypto.createHmac("sha256", jwtSecret).update(`${parts[0]}.${parts[1]}`).digest("base64url");
-    const actual = Buffer.from(parts[2]);
-    const expectedBytes = Buffer.from(expected);
-    if (actual.length !== expectedBytes.length || !crypto.timingSafeEqual(expectedBytes, actual)) {
-      return res.status(401).json({ error: "invalid_session" });
+function createSessionGuard({ pool, config }) {
+  return async (req, res, next) => {
+    const authorization = req.get("authorization") || "";
+    const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    try {
+      const payload = verifyAccessToken(accessToken, config.sessionSecret);
+      const active = await pool.query(
+        `SELECT id, account_id
+         FROM sessions
+         WHERE id = $1 AND account_id = $2 AND token_hash = $3 AND expires_at > now() AND revoked_at IS NULL
+         LIMIT 1`,
+        [payload.sid, payload.sub, hashSecret(accessToken)]
+      );
+      if (active.rowCount !== 1) return res.status(401).json({ error: "revoked_session" });
+      await pool.query("UPDATE sessions SET last_seen_at = now() WHERE id = $1", [payload.sid]);
+      req.accountId = payload.sub;
+      req.sessionId = Number(payload.sid);
+      next();
+    } catch (error) {
+      const code = safeErrorCode(error);
+      res.status(401).json({ error: code === "expired_session" ? "expired_session" : "invalid_session" });
     }
-    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-    if (payload.iss !== "aethelgard-online-services" || typeof payload.sub !== "string" || payload.exp <= Math.floor(Date.now() / 1000)) {
-      return res.status(401).json({ error: "expired_session" });
-    }
-    const result = await pool.query(
-      "SELECT account_id FROM sessions WHERE token_hash = $1 AND expires_at > now() LIMIT 1",
-      [hash(token)]
-    );
-    if (result.rowCount !== 1) return res.status(401).json({ error: "revoked_session" });
-    req.accountId = result.rows[0].account_id;
-    next();
-  } catch {
-    res.status(401).json({ error: "invalid_session" });
-  }
+  };
 }
 
-function encode(value) {
-  return Buffer.from(JSON.stringify(value)).toString("base64url");
+function safeErrorCode(error) {
+  return error instanceof Error && /^[a-z0-9_:-]{1,120}$/i.test(error.message) ? error.message : "unknown_error";
 }
 
-function hash(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const config = loadRuntimeConfig();
+  const pool = new Pool({
+    connectionString: config.databaseUrl,
+    max: 10,
+    ssl: config.databaseSsl ? { rejectUnauthorized: true } : undefined
+  });
+  const port = Number(process.env.PORT || 8080);
+  createOnlineService({ pool, config }).listen(port, () => {
+    console.log(`Aethelgard online services listening on :${port}`);
+  });
 }

@@ -7,6 +7,7 @@ import com.google.android.gms.games.GamesSignInClient
 import com.google.android.gms.games.PlayGames
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.Instant
 import java.util.concurrent.Executors
 
 
@@ -15,13 +16,18 @@ enum class SessionState {
     GUEST,
     SIGNING_IN,
     AUTHENTICATED,
+    DENIED,
+    CONFIGURATION_ERROR,
+    EXPIRED,
+    NETWORK_ERROR,
     ERROR
 }
 
 data class SessionSnapshot(
     val state: SessionState,
     val accountId: String? = null,
-    val message: String
+    val message: String,
+    val expiresAtEpochMs: Long? = null
 )
 
 /**
@@ -38,12 +44,16 @@ class AccountSessionManager {
     private var stateListener: ((SessionSnapshot) -> Unit)? = null
     private var serverClientId: String = ""
     private var authExchangeUrl: String = ""
-    private var gameSessionToken: String? = null
+    private var authRefreshUrl: String = ""
+    private var accessSessionToken: String? = null
+    private var refreshSessionToken: String? = null
+    private var accessExpiresAtEpochMs: Long? = null
 
     fun initialize(activity: Activity, onStateChanged: (SessionSnapshot) -> Unit) {
         stateListener = onStateChanged
         serverClientId = activity.getString(R.string.play_games_server_client_id)
         authExchangeUrl = activity.getString(R.string.auth_exchange_url)
+        authRefreshUrl = activity.getString(R.string.auth_refresh_url)
         gamesSignInClient = PlayGames.getGamesSignInClient(activity)
         publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Checking Google Play sign-in…"))
 
@@ -96,18 +106,18 @@ class AccountSessionManager {
     private fun requestServerSession() {
         if (serverClientId.startsWith("REPLACE_") || authExchangeUrl.startsWith("REPLACE_")) {
             publish(
-                SessionSnapshot(
-                    SessionState.ERROR,
-                    message = "Play Games is ready, but the server OAuth ID and HTTPS backend URL are not configured."
+                    SessionSnapshot(
+                        SessionState.CONFIGURATION_ERROR,
+                        message = "Play Games is ready, but the server OAuth ID and HTTPS backend URL are not configured."
                 )
             )
             return
         }
         if (!authExchangeUrl.startsWith("https://")) {
             publish(
-                SessionSnapshot(
-                    SessionState.ERROR,
-                    message = "The authentication backend must use HTTPS."
+                    SessionSnapshot(
+                        SessionState.CONFIGURATION_ERROR,
+                        message = "The authentication backend must use HTTPS."
                 )
             )
             return
@@ -119,7 +129,7 @@ class AccountSessionManager {
             if (!task.isSuccessful || task.result.isNullOrBlank()) {
                 publish(
                     SessionSnapshot(
-                        SessionState.ERROR,
+                        SessionState.DENIED,
                         message = "Could not obtain a secure Play Games server code. Check Play Console configuration."
                     )
                 )
@@ -153,28 +163,76 @@ class AccountSessionManager {
                     publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server rejected the Play Games login ($responseCode)."))
                     return@execute
                 }
-                val sessionToken = jsonString(response, "sessionToken")
+                val sessionToken = jsonString(response, "accessToken")
                 val accountId = jsonString(response, "accountId")
-                if (sessionToken.isNullOrBlank() || accountId.isNullOrBlank()) {
+                val refreshToken = jsonString(response, "refreshToken")
+                val expiresAt = parseIsoEpochMs(jsonString(response, "expiresAt"))
+                if (sessionToken.isNullOrBlank() || accountId.isNullOrBlank() || refreshToken.isNullOrBlank() || expiresAt == null) {
                     publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server returned an invalid session response."))
                     return@execute
                 }
-                gameSessionToken = sessionToken
+                accessSessionToken = sessionToken
+                refreshSessionToken = refreshToken
+                accessExpiresAtEpochMs = expiresAt
                 publishFromNetwork(
                     SessionSnapshot(
                         SessionState.AUTHENTICATED,
                         accountId = accountId,
-                        message = "Game server connected. Select a region to continue."
+                        message = "Game server connected. Select a region to continue.",
+                        expiresAtEpochMs = expiresAt
                     )
                 )
             } catch (_: Exception) {
-                publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server is unreachable. Check your connection and try again."))
+                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Game server is unreachable. Check your connection and try again."))
             }
         }
     }
 
+    /** Refreshes an in-memory rotating backend session before it expires. No refresh token is written to disk. */
+    fun refreshSession(): SessionSnapshot {
+        val refreshToken = refreshSessionToken
+        if (refreshToken.isNullOrBlank()) {
+            return publish(SessionSnapshot(SessionState.EXPIRED, message = "Your game session has expired. Sign in again to continue."))
+        }
+        if (authRefreshUrl.startsWith("REPLACE_") || !authRefreshUrl.startsWith("https://")) {
+            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS session refresh endpoint is not configured."))
+        }
+        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Refreshing secure game session…"))
+        networkExecutor.execute {
+            try {
+                val response = postJson(authRefreshUrl, "{\"refreshToken\":\"${escapeJson(refreshToken)}\"}")
+                if (response.statusCode !in 200..299) {
+                    clearSession()
+                    publishFromNetwork(SessionSnapshot(SessionState.EXPIRED, message = "Your game session has expired. Sign in again to continue."))
+                    return@execute
+                }
+                val accessToken = jsonString(response.body, "accessToken")
+                val rotatedRefresh = jsonString(response.body, "refreshToken")
+                val expiresAt = parseIsoEpochMs(jsonString(response.body, "expiresAt"))
+                if (accessToken.isNullOrBlank() || rotatedRefresh.isNullOrBlank() || expiresAt == null) {
+                    clearSession()
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server returned an invalid refreshed session."))
+                    return@execute
+                }
+                accessSessionToken = accessToken
+                refreshSessionToken = rotatedRefresh
+                accessExpiresAtEpochMs = expiresAt
+                publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, snapshot.accountId, "Game session refreshed.", expiresAt))
+            } catch (_: Exception) {
+                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Could not refresh the game session. Check your connection."))
+            }
+        }
+        return snapshot
+    }
+
+    fun currentAccessToken(): String? {
+        val expiresAt = accessExpiresAtEpochMs ?: return null
+        if (expiresAt <= System.currentTimeMillis() + 60_000L) return null
+        return accessSessionToken
+    }
+
     fun signOut(): SessionSnapshot {
-        gameSessionToken = null
+        clearSession()
         val next = SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out")
         return publish(next)
     }
@@ -193,6 +251,31 @@ class AccountSessionManager {
         mainHandler.post { publish(next) }
     }
 
+    private fun postJson(url: String, payload: String): HttpResponse {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+        }
+        connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+        val statusCode = connection.responseCode
+        val body = (if (statusCode in 200..299) connection.inputStream else connection.errorStream)
+            ?.bufferedReader()
+            ?.use { it.readText() }
+            .orEmpty()
+        connection.disconnect()
+        return HttpResponse(statusCode, body)
+    }
+
+    private fun clearSession() {
+        accessSessionToken = null
+        refreshSessionToken = null
+        accessExpiresAtEpochMs = null
+    }
+
     private fun escapeJson(value: String): String = value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
@@ -203,4 +286,12 @@ class AccountSessionManager {
         val pattern = Regex("\\\"${Regex.escape(key)}\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"")
         return pattern.find(json)?.groupValues?.getOrNull(1)
     }
+
+    private fun parseIsoEpochMs(value: String?): Long? = try {
+        value?.let { Instant.parse(it).toEpochMilli() }
+    } catch (_: Exception) {
+        null
+    }
+
+    private data class HttpResponse(val statusCode: Int, val body: String)
 }

@@ -19,9 +19,10 @@ Replace the placeholders in `app/src/main/res/values/strings.xml` with the Play 
 <string name="game_services_project_id" translatable="false">123456789012</string>
 <string name="play_games_server_client_id" translatable="false">123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com</string>
 <string name="auth_exchange_url" translatable="false">https://api.example.com/v1/auth/play-games/exchange</string>
+<string name="auth_refresh_url" translatable="false">https://api.example.com/v1/auth/refresh</string>
 ```
 
-The Android app sends the single-use Play Games server auth code to `POST /v1/auth/play-games/exchange`. The backend exchanges and verifies it; the app does not receive or store the web OAuth client secret.
+The Android app sends the single-use Play Games server auth code to `POST /v1/auth/play-games/exchange`. The backend exchanges and verifies it; the app does not receive or store the web OAuth client secret. The backend returns a short-lived access token and a rotating refresh token. The current milestone keeps both in memory only; a cold app restart performs a fresh Play Games exchange instead of persisting refresh credentials on the device.
 
 Do not put OAuth client secrets, service-account keys, or backend administrator credentials in this repository or in the APK.
 

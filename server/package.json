@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "node --watch src/server.mjs",
-    "start": "node src/server.mjs"
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs && node --check src/security.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "express": "^5.1.0",

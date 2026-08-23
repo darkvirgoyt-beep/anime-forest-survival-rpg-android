@@ -100,6 +100,31 @@ jobs:
             -o progression_test
           ./progression_test
 
+  online-service-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Validate online service configuration and security tests
+        working-directory: server
+        run: |
+          npm ci
+          npm run check
+          npm test
+          test -f sql/002_hardened_sessions.sql
+          grep -q 'GOOGLE_GAME_SERVER_CLIENT_SECRET' .env.example
+          grep -q 'GAME_ACCESS_TOKEN_TTL_SECONDS' .env.example
+          grep -q 'replayed_server_auth_code' src/server.mjs
+          grep -q 'replayed_refresh_session' src/server.mjs
+
   build:
     runs-on: ubuntu-latest
     steps:

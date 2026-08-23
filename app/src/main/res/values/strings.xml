@@ -13,4 +13,6 @@
     <string name="play_games_server_client_id" translatable="false">REPLACE_WITH_SERVER_WEB_OAUTH_CLIENT_ID</string>
     <!-- Use an HTTPS endpoint owned by the game backend. -->
     <string name="auth_exchange_url" translatable="false">REPLACE_WITH_HTTPS_AUTH_EXCHANGE_URL</string>
+    <!-- Use the matching HTTPS endpoint for refresh-token rotation. -->
+    <string name="auth_refresh_url" translatable="false">REPLACE_WITH_HTTPS_AUTH_REFRESH_URL</string>
 </resources>
