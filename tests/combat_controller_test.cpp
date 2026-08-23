@@ -51,9 +51,9 @@ int main() {
     assert(controller.stamina < staminaBeforeSprint);
 
     const forest::physics::WaterVolume stream{
-        {{{0.0f, -0.25f}, {0.30f, 0.30f}}}, -0.05f, {0.02f, 0.0f}, 0.80f, 3.0f
+        {{0.0f, -0.25f}, {0.30f, 0.30f}}, -0.05f, {0.02f, 0.0f}, 0.80f, 3.0f
     };
-    controller.body.position = {0.0f, -0.10f};
+    controller.body.position = {0.0f, -0.20f};
     controller.tick(walkInput, 1.0f / 60.0f, nullptr, 0, &stream, 1);
     assert(controller.body.water.overlapping);
     assert(controller.state == forest::controller::LocomotionState::Swim || controller.state == forest::controller::LocomotionState::Walk);
