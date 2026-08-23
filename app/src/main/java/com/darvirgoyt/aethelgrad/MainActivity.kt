@@ -1491,7 +1491,8 @@ class MainActivity : Activity(), SensorEventListener {
         val mapState = values.getOrNull(20)?.ifBlank { "MAP OFF" } ?: "MAP OFF"
         val towerState = values.getOrNull(21)?.replace('_', ' ')?.ifBlank { "TOWER READY" } ?: "TOWER READY"
         val emberling = values.getOrNull(22)?.replace('_', ' ')?.ifBlank { "EMBERLING WILD" } ?: "EMBERLING WILD"
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  $emberling  |  HP $health/100  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level/100  |  $xpLabel  |  W $wood  F $fiber  S $stone"
+        val target = values.getOrNull(23)?.replace('_', ' ')?.ifBlank { "NO TARGET" } ?: "NO TARGET"
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  $emberling  |  TARGET $target  |  HP $health/100  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level/100  |  $xpLabel  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(
             when {
                 levelPulse -> Color.rgb(255, 236, 157)
@@ -1501,7 +1502,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
         )
         val recoveryNotice = cloudRecoveryNotice
-        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  $phase  •  $weather  •  FOREST WARDEN HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
+        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  $phase  •  $weather  •  FOREST WARDEN HP $warden/100  •  $locomotion" else if (target != "NO TARGET") "$objective  •  $phase  •  $weather  •  TARGET $target  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 

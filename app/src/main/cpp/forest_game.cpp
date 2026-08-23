@@ -14,6 +14,7 @@
 #include "rpg/progression.h"
 #include "rpg/cloud_state.h"
 #include "rpg/emberling_companion.h"
+#include "mobs/mob_catalog.h"
 
 namespace {
 constexpr float PI = 3.14159265359f;
@@ -64,6 +65,66 @@ float gEnemyHitFlash = 0.0f;
 float gEnemyDefeatTimer = 0.0f;
 float gEnemyX = -0.18f;
 float gEnemyY = -0.08f;
+
+struct MobState {
+    forest::mobs::MobType type;
+    forest::physics::Vec2 spawn;
+    forest::physics::Vec2 position;
+    float health;
+    float hitFlash;
+    float attackCooldown;
+    float defeatTimer;
+};
+
+MobState gMobs[forest::mobs::kProfileCount] = {
+    {forest::mobs::MobType::ArcaneWizard, {-0.26f, 0.02f}, {-0.26f, 0.02f}, 46.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Barbarian, {-0.04f, -0.12f}, {-0.04f, -0.12f}, 92.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Cleric, {0.18f, 0.14f}, {0.18f, 0.14f}, 64.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Monk, {0.36f, -0.16f}, {0.36f, -0.16f}, 58.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Necromancer, {-0.38f, 0.22f}, {-0.38f, 0.22f}, 52.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Samurai, {0.05f, 0.28f}, {0.05f, 0.28f}, 76.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Artificer, {0.42f, 0.12f}, {0.42f, 0.12f}, 62.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::Druid, {-0.72f, 0.18f}, {-0.72f, 0.18f}, 70.0f, 0.0f, 0.0f, 0.0f}
+};
+
+void resetMobs() {
+    for (MobState& mob : gMobs) {
+        mob.position = mob.spawn;
+        mob.health = static_cast<float>(forest::mobs::profile(mob.type).maxHealth);
+        mob.hitFlash = 0.0f;
+        mob.attackCooldown = 0.0f;
+        mob.defeatTimer = 0.0f;
+    }
+}
+
+int nearestLivingMob() {
+    int nearest = -1;
+    float nearestDistance = 100.0f;
+    for (int i = 0; i < forest::mobs::kProfileCount; ++i) {
+        const MobState& mob = gMobs[i];
+        if (mob.health <= 0.0f) continue;
+        const float dx = mob.position.x - gPlayerX;
+        const float dy = mob.position.y - gPlayerY;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+        if (distance < nearestDistance) {
+            nearest = i;
+            nearestDistance = distance;
+        }
+    }
+    return nearest;
+}
+
+const char* nearestMobStatus() {
+    const int index = nearestLivingMob();
+    if (index < 0) return "NO_TARGET";
+    const MobState& mob = gMobs[index];
+    const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
+    std::ostringstream status;
+    status << mobProfile.displayName << '_' << static_cast<int>(std::round(mob.health));
+    static std::string value;
+    value = status.str();
+    return value.c_str();
+}
 
 enum class ViewMode {
     ThirdPerson,
@@ -482,6 +543,174 @@ void draw3DTree(const Mat4& viewProjection, float x, float z, float scale, float
     draw3DSphere(viewProjection, x - 0.24f * scale, 0.87f * scale, z + 0.08f, 0.29f * scale, 0.04f + tint, 0.18f + tint, 0.14f);
 }
 
+void draw3DMob(const Mat4& viewProjection, const MobState& mob, bool combatTarget) {
+    const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
+    const float scale = mobProfile.scale;
+    const float x = mob.position.x * 4.3f;
+    const float z = -mob.position.y * 4.0f;
+    const float flash = mob.hitFlash > 0.0f ? 0.28f : 0.0f;
+    const float skinR = std::min(1.0f, 0.72f + flash);
+    const float skinG = std::min(1.0f, 0.44f + flash * 0.55f);
+    const float skinB = std::min(1.0f, 0.30f + flash * 0.35f);
+    const float y = 0.02f * std::sin(gTime * 4.0f + static_cast<float>(static_cast<int>(mob.type)));
+
+    if (mob.health <= 0.0f) {
+        if (mob.defeatTimer > 0.0f) {
+            const float fade = std::clamp(mob.defeatTimer / 1.5f, 0.0f, 1.0f);
+            draw3DSphere(viewProjection, x, 0.18f + (1.0f - fade) * 0.45f, z, 0.16f * scale,
+                         0.32f, 0.76f, 0.86f, 0.18f * fade);
+        }
+        return;
+    }
+
+    // All archetypes share a readable contact shadow and a low-poly humanoid base.
+    draw3DBox(viewProjection, x, 0.026f, z, 0.48f * scale, 0.025f, 0.34f * scale,
+              0.015f, 0.025f, 0.035f, 0.50f);
+    draw3DCylinder(viewProjection, x - 0.075f * scale, 0.25f * scale, z,
+                   0.055f * scale, 0.44f * scale, 0.10f, 0.07f, 0.10f);
+    draw3DCylinder(viewProjection, x + 0.075f * scale, 0.25f * scale, z,
+                   0.055f * scale, 0.44f * scale, 0.10f, 0.07f, 0.10f);
+
+    switch (mob.type) {
+        case forest::mobs::MobType::ArcaneWizard:
+            draw3DBox(viewProjection, x, 0.70f * scale + y, z, 0.46f * scale, 0.72f * scale, 0.34f * scale,
+                      std::min(1.0f, 0.08f + flash), 0.14f, std::min(1.0f, 0.36f + flash));
+            draw3DSphere(viewProjection, x, 1.23f * scale + y, z, 0.20f * scale, skinR, skinG, skinB);
+            draw3DCylinder(viewProjection, x, 1.52f * scale + y, z, 0.17f * scale, 0.42f * scale,
+                           0.04f, 0.08f, 0.22f);
+            draw3DSphere(viewProjection, x, 1.76f * scale + y, z, 0.075f * scale, 0.22f, 0.72f, 1.0f, 0.94f);
+            draw3DCylinder(viewProjection, x + 0.30f * scale, 0.78f * scale + y, z,
+                           0.018f * scale, 1.18f * scale, 0.20f, 0.12f, 0.08f);
+            draw3DSphere(viewProjection, x + 0.30f * scale, 1.42f * scale + y, z, 0.085f * scale,
+                         0.24f, 0.86f, 1.0f, 0.90f);
+            break;
+        case forest::mobs::MobType::Barbarian:
+            draw3DBox(viewProjection, x, 0.73f * scale + y, z, 0.58f * scale, 0.70f * scale, 0.40f * scale,
+                      std::min(1.0f, 0.30f + flash), 0.12f, 0.07f);
+            draw3DSphere(viewProjection, x, 1.24f * scale + y, z, 0.22f * scale, skinR, skinG, skinB);
+            draw3DBox(viewProjection, x - 0.25f * scale, 0.88f * scale + y, z,
+                      0.18f * scale, 0.52f * scale, 0.22f * scale, 0.28f, 0.31f, 0.35f);
+            draw3DBox(viewProjection, x + 0.25f * scale, 0.88f * scale + y, z,
+                      0.18f * scale, 0.52f * scale, 0.22f * scale, 0.28f, 0.31f, 0.35f);
+            draw3DCylinder(viewProjection, x + 0.42f * scale, 0.98f * scale + y, z,
+                           0.022f * scale, 1.42f * scale, 0.20f, 0.12f, 0.07f);
+            draw3DBox(viewProjection, x + 0.42f * scale, 1.58f * scale + y, z,
+                      0.34f * scale, 0.34f * scale, 0.12f * scale, 0.46f, 0.47f, 0.50f);
+            draw3DBox(viewProjection, x + 0.58f * scale, 1.58f * scale + y, z,
+                      0.16f * scale, 0.26f * scale, 0.12f * scale, 0.58f, 0.59f, 0.62f);
+            break;
+        case forest::mobs::MobType::Cleric:
+            draw3DBox(viewProjection, x, 0.72f * scale + y, z, 0.48f * scale, 0.74f * scale, 0.34f * scale,
+                      std::min(1.0f, 0.80f + flash), std::min(1.0f, 0.82f + flash), std::min(1.0f, 0.86f + flash));
+            draw3DSphere(viewProjection, x, 1.25f * scale + y, z, 0.20f * scale, skinR, skinG, skinB);
+            draw3DCylinder(viewProjection, x, 1.50f * scale + y, z, 0.27f * scale, 0.035f * scale,
+                           0.98f, 0.74f, 0.25f);
+            draw3DCylinder(viewProjection, x + 0.30f * scale, 0.82f * scale + y, z,
+                           0.018f * scale, 1.35f * scale, 0.56f, 0.34f, 0.12f);
+            draw3DSphere(viewProjection, x + 0.30f * scale, 1.54f * scale + y, z, 0.095f * scale,
+                         1.0f, 0.82f, 0.28f, 0.95f);
+            draw3DBox(viewProjection, x, 0.82f * scale + y, z - 0.20f * scale,
+                      0.14f * scale, 0.32f * scale, 0.06f * scale, 0.96f, 0.70f, 0.20f);
+            break;
+        case forest::mobs::MobType::Monk:
+            draw3DBox(viewProjection, x, 0.72f * scale + y, z, 0.40f * scale, 0.62f * scale, 0.30f * scale,
+                      std::min(1.0f, 0.76f + flash), std::min(1.0f, 0.38f + flash * 0.4f), 0.08f);
+            draw3DSphere(viewProjection, x, 1.22f * scale + y, z, 0.19f * scale, skinR, skinG, skinB);
+            draw3DCylinder(viewProjection, x, 1.42f * scale + y, z, 0.18f * scale, 0.12f * scale,
+                           0.28f, 0.13f, 0.06f);
+            draw3DCylinder(viewProjection, x - 0.34f * scale, 0.83f * scale + y, z,
+                           0.016f * scale, 1.50f * scale, 0.38f, 0.22f, 0.10f);
+            draw3DSphere(viewProjection, x - 0.34f * scale, 1.60f * scale + y, z, 0.045f * scale,
+                         0.95f, 0.72f, 0.25f);
+            draw3DBox(viewProjection, x - 0.23f * scale, 0.88f * scale + y, z,
+                      0.08f * scale, 0.08f * scale, 0.48f * scale, skinR, skinG, skinB);
+            draw3DBox(viewProjection, x + 0.23f * scale, 0.88f * scale + y, z,
+                      0.08f * scale, 0.08f * scale, 0.48f * scale, skinR, skinG, skinB);
+            break;
+        case forest::mobs::MobType::Necromancer:
+            draw3DBox(viewProjection, x, 0.70f * scale + y, z, 0.56f * scale, 0.78f * scale, 0.38f * scale,
+                      std::min(1.0f, 0.18f + flash), 0.035f, std::min(1.0f, 0.26f + flash));
+            draw3DSphere(viewProjection, x, 1.25f * scale + y, z, 0.22f * scale, 0.16f, 0.08f, 0.20f);
+            draw3DCylinder(viewProjection, x, 1.28f * scale + y, z, 0.23f * scale, 0.36f * scale,
+                           0.09f, 0.035f, 0.13f);
+            draw3DCylinder(viewProjection, x + 0.33f * scale, 0.80f * scale + y, z,
+                           0.018f * scale, 1.42f * scale, 0.12f, 0.06f, 0.16f);
+            draw3DSphere(viewProjection, x + 0.33f * scale, 1.52f * scale + y, z, 0.10f * scale,
+                         0.36f, 0.98f, 0.42f, 0.86f);
+            draw3DSphere(viewProjection, x - 0.30f * scale, 0.62f * scale + y, z - 0.08f,
+                         0.085f * scale, 0.72f, 0.82f, 0.78f);
+            break;
+        case forest::mobs::MobType::Samurai:
+            draw3DBox(viewProjection, x, 0.74f * scale + y, z, 0.48f * scale, 0.70f * scale, 0.36f * scale,
+                      std::min(1.0f, 0.50f + flash), 0.06f, 0.08f);
+            draw3DSphere(viewProjection, x, 1.25f * scale + y, z, 0.20f * scale, skinR, skinG, skinB);
+            draw3DBox(viewProjection, x, 1.44f * scale + y, z, 0.42f * scale, 0.16f * scale, 0.36f * scale,
+                      0.10f, 0.13f, 0.20f);
+            draw3DBox(viewProjection, x, 1.57f * scale + y, z, 0.62f * scale, 0.08f * scale, 0.15f * scale,
+                      0.76f, 0.58f, 0.22f);
+            draw3DCylinder(viewProjection, x + 0.36f * scale, 0.95f * scale + y, z,
+                           0.014f * scale, 1.44f * scale, 0.12f, 0.08f, 0.06f);
+            draw3DBox(viewProjection, x + 0.36f * scale, 1.66f * scale + y, z,
+                      0.06f * scale, 0.62f * scale, 0.035f * scale, 0.84f, 0.88f, 0.92f);
+            draw3DBox(viewProjection, x + 0.36f * scale, 1.37f * scale + y, z,
+                      0.20f * scale, 0.04f * scale, 0.08f * scale, 0.96f, 0.72f, 0.22f);
+            break;
+        case forest::mobs::MobType::Artificer:
+            draw3DBox(viewProjection, x, 0.72f * scale + y, z, 0.48f * scale, 0.70f * scale, 0.36f * scale,
+                      std::min(1.0f, 0.50f + flash), 0.30f, 0.14f);
+            draw3DSphere(viewProjection, x, 1.25f * scale + y, z, 0.20f * scale, skinR, skinG, skinB);
+            draw3DSphere(viewProjection, x - 0.075f * scale, 1.30f * scale + y, z - 0.18f * scale,
+                         0.045f * scale, 0.20f, 0.52f, 0.68f);
+            draw3DSphere(viewProjection, x + 0.075f * scale, 1.30f * scale + y, z - 0.18f * scale,
+                         0.045f * scale, 0.20f, 0.52f, 0.68f);
+            draw3DBox(viewProjection, x + 0.31f * scale, 0.80f * scale + y, z,
+                      0.12f * scale, 0.24f * scale, 0.22f * scale, 0.12f, 0.16f, 0.18f);
+            draw3DCylinder(viewProjection, x + 0.37f * scale, 0.98f * scale + y, z,
+                           0.018f * scale, 0.86f * scale, 0.76f, 0.42f, 0.12f);
+            draw3DSphere(viewProjection, x + 0.37f * scale, 1.43f * scale + y, z, 0.07f * scale,
+                         0.98f, 0.58f, 0.16f);
+            break;
+        case forest::mobs::MobType::Druid:
+            draw3DBox(viewProjection, x, 0.72f * scale + y, z, 0.54f * scale, 0.76f * scale, 0.40f * scale,
+                      std::min(1.0f, 0.14f + flash), std::min(1.0f, 0.34f + flash * 0.45f), 0.18f);
+            draw3DSphere(viewProjection, x, 1.25f * scale + y, z, 0.21f * scale, 0.36f, 0.62f, 0.27f);
+            draw3DSphere(viewProjection, x, 1.17f * scale + y, z - 0.17f * scale, 0.14f * scale,
+                         0.12f, 0.30f, 0.14f);
+            draw3DSphere(viewProjection, x, 1.48f * scale + y, z, 0.23f * scale,
+                         0.08f, 0.22f, 0.12f);
+            draw3DCylinder(viewProjection, x + 0.36f * scale, 0.82f * scale + y, z,
+                           0.022f * scale, 1.52f * scale, 0.26f, 0.15f, 0.07f);
+            draw3DSphere(viewProjection, x + 0.36f * scale, 1.62f * scale + y, z, 0.10f * scale,
+                         0.30f, 0.74f, 0.28f);
+            // Small fox-like spirit companion, echoing the reference sheet.
+            draw3DSphere(viewProjection, x - 0.32f * scale, 0.34f * scale + y, z + 0.10f,
+                         0.10f * scale, 0.92f, 0.34f, 0.10f);
+            draw3DSphere(viewProjection, x - 0.32f * scale, 0.50f * scale + y, z + 0.10f,
+                         0.075f * scale, 0.98f, 0.48f, 0.14f);
+            break;
+    }
+
+    if (combatTarget) {
+        const float healthRatio = std::clamp(mob.health / static_cast<float>(mobProfile.maxHealth), 0.0f, 1.0f);
+        draw3DBox(viewProjection, x, 1.96f * scale, z, 0.52f * scale, 0.028f, 0.028f,
+                  0.02f, 0.04f, 0.06f, 0.92f);
+        draw3DBox(viewProjection, x - 0.26f * scale + 0.26f * scale * healthRatio,
+                  1.96f * scale, z, 0.52f * scale * healthRatio, 0.018f, 0.018f,
+                  0.28f, 0.90f, 0.52f, 0.98f);
+    }
+}
+
+void draw3DMobs(const Mat4& viewProjection) {
+    const int nearest = nearestLivingMob();
+    for (int i = 0; i < forest::mobs::kProfileCount; ++i) {
+        const MobState& mob = gMobs[i];
+        const float dx = mob.position.x - gPlayerX;
+        const float dy = mob.position.y - gPlayerY;
+        const bool combatTarget = i == nearest && std::sqrt(dx * dx + dy * dy) < 0.52f;
+        draw3DMob(viewProjection, mob, combatTarget);
+    }
+}
+
 void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
     const float jumpHeight = gController.body.verticalPosition;
     if (firstPerson) {
@@ -690,6 +919,7 @@ void draw3DWorld() {
         draw3DBox(viewProjection, -1.4f, 0.48f, 1.6f, 0.72f, 0.96f, 0.72f, 0.20f, 0.12f, 0.32f);
         draw3DBox(viewProjection, -1.4f, 1.18f, 1.6f, 0.88f, 0.18f, 0.88f, 0.58f, 0.28f, 0.77f);
     }
+    draw3DMobs(viewProjection);
     for (const CoOpPeer& peer : gCoOpPeers) draw3DPeer(viewProjection, peer, static_cast<int>(&peer - gCoOpPeers));
     draw3DEmberling(viewProjection);
     draw3DPlayer(viewProjection, firstPerson);
@@ -1095,6 +1325,56 @@ void drawForestWarden(float x, float y, float scale, bool combatTarget) {
 }
 
 
+void updateMobs(float deltaSeconds) {
+    for (MobState& mob : gMobs) {
+        const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
+        mob.hitFlash = std::max(0.0f, mob.hitFlash - deltaSeconds);
+        mob.attackCooldown = std::max(0.0f, mob.attackCooldown - deltaSeconds);
+        mob.defeatTimer = std::max(0.0f, mob.defeatTimer - deltaSeconds);
+        if (mob.health <= 0.0f) continue;
+
+        const float dx = gPlayerX - mob.position.x;
+        const float dy = gPlayerY - mob.position.y;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+        if (distance > mobProfile.attackRange * 0.82f && distance > 0.001f) {
+            const float travel = mobProfile.moveSpeed * deltaSeconds;
+            mob.position.x += dx / distance * travel;
+            mob.position.y += dy / distance * travel;
+            mob.position.x = std::clamp(mob.position.x, kSimulationMinX + 0.03f, kSimulationMaxX - 0.03f);
+            mob.position.y = std::clamp(mob.position.y, kSimulationMinY + 0.03f, kSimulationMaxY - 0.03f);
+        } else if (!gAuthoritativeOnline && distance <= mobProfile.attackRange && mob.attackCooldown <= 0.0f) {
+            gController.health = std::max(0.0f, gController.health - mobProfile.attackDamage / 100.0f);
+            mob.attackCooldown = mobProfile.attackCooldown;
+            gQuestPulse = std::max(gQuestPulse, 12);
+        }
+    }
+}
+
+void applyMobDamage(const forest::combat::Hitbox& hitbox, const forest::physics::Vec2& facing) {
+    const forest::physics::Aabb attackBox{
+        gController.body.position + hitbox.offset,
+        hitbox.halfExtents
+    };
+    for (MobState& mob : gMobs) {
+        if (mob.health <= 0.0f) continue;
+        const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
+        const float hitRadius = 0.075f * mobProfile.scale;
+        const forest::physics::Aabb mobBox{mob.position, {hitRadius, 0.10f * mobProfile.scale}};
+        if (!forest::combat::intersects(attackBox, mobBox)) continue;
+        mob.health = std::max(0.0f, mob.health - hitbox.damage * 100.0f);
+        mob.hitFlash = 0.15f;
+        gHitRegistered = true;
+        gCombat.confirmHit();
+        awardExperience(12);
+        if (mob.health <= 0.0f) {
+            mob.defeatTimer = 1.5f;
+            gQuestPulse = 120;
+        }
+        break;
+    }
+    (void)facing;
+}
+
 void simulatePhysicsStep() {
     applySynchronizedWorldTime();
     gTime += kPhysicsStep;
@@ -1106,6 +1386,7 @@ void simulatePhysicsStep() {
     const forest::controller::InputFrame input{-gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
+    updateMobs(kPhysicsStep);
     gCombat.tick(kPhysicsStep);
     if (gJumpBufferSeconds > 0.0f) {
         gJumpBufferSeconds = std::max(0.0f, gJumpBufferSeconds - kPhysicsStep);
@@ -1126,21 +1407,24 @@ void simulatePhysicsStep() {
             std::sin(gController.facingRadians)
         };
         const forest::combat::Hitbox hitbox = gCombat.currentHitbox(facing);
-        const forest::physics::Aabb attackBox{
-            gController.body.position + hitbox.offset,
-            hitbox.halfExtents
-        };
-        const forest::physics::Aabb enemyBox{{gEnemyX, gEnemyY}, {0.09f, 0.10f}};
-        if (forest::combat::intersects(attackBox, enemyBox)) {
-            gEnemyHealth = std::max(0.0f, gEnemyHealth - hitbox.damage * 100.0f);
-            gEnemyHitFlash = 0.12f;
-            gHitRegistered = true;
-            gCombat.confirmHit();
-            awardExperience(10);
-            if (gEnemyHealth <= 0.0f && !gProgression.wardenDefeated) {
-                gProgression.recordWardenDefeat();
-                gEnemyDefeatTimer = 1.5f;
-                gQuestPulse = 150;
+        applyMobDamage(hitbox, facing);
+        if (!gHitRegistered) {
+            const forest::physics::Aabb attackBox{
+                gController.body.position + hitbox.offset,
+                hitbox.halfExtents
+            };
+            const forest::physics::Aabb enemyBox{{gEnemyX, gEnemyY}, {0.09f, 0.10f}};
+            if (forest::combat::intersects(attackBox, enemyBox)) {
+                gEnemyHealth = std::max(0.0f, gEnemyHealth - hitbox.damage * 100.0f);
+                gEnemyHitFlash = 0.12f;
+                gHitRegistered = true;
+                gCombat.confirmHit();
+                awardExperience(10);
+                if (gEnemyHealth <= 0.0f && !gProgression.wardenDefeated) {
+                    gProgression.recordWardenDefeat();
+                    gEnemyDefeatTimer = 1.5f;
+                    gQuestPulse = 150;
+                }
             }
         }
     }
@@ -1320,6 +1604,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gEnemyHealth = kForestWardenMaxHealth;
     gEnemyHitFlash = 0.0f;
     gEnemyDefeatTimer = 0.0f;
+    resetMobs();
     gJumpBufferSeconds = 0.0f;
     gLevelPulse = 0;
     gQuestPulse = 0;
@@ -1576,7 +1861,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << (gViewMode == ViewMode::FirstPerson ? "FIRST_PERSON" : "THIRD_PERSON") << '|'
           << (gWorldMapVisible ? "MAP_ON" : "MAP_OFF") << '|'
           << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY") << '|'
-          << forest::rpg::emberlingStatus(gEmberling);
+          << forest::rpg::emberlingStatus(gEmberling) << '|'
+          << nearestMobStatus();
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }
