@@ -2,6 +2,7 @@ package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
@@ -140,7 +141,6 @@ class MainActivity : Activity(), SensorEventListener {
     )
     private var resourcePreparationComplete = false
     private var resourceTierChooserVisible = false
-    private var offlinePrototypeMode = false
     private var pendingWorldEntry: (() -> Unit)? = null
     private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
@@ -286,7 +286,7 @@ class MainActivity : Activity(), SensorEventListener {
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // Every build enters the production online guest flow; no offline world exists.
+        // Every build enters the production online guest flow; online session is mandatory.
         onboardingOverlay.visibility = View.VISIBLE
         if (networkOnline) beginOnlineStartup()
     }
@@ -788,7 +788,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
-        if (offlinePrototypeMode || !networkOnline) return
+        if (!networkOnline) return
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
             setPlayerName("GUEST")
             authenticationTransitionStarted = true
@@ -2002,7 +2002,6 @@ class MainActivity : Activity(), SensorEventListener {
                 activeCoOpRoom = null
                 activeCloudWorld = null
                 currentPlayerProfile = null
-                offlinePrototypeMode = false
                 authenticationTransitionStarted = false
                 guestSignInAttempted = false
                 cloudRecoveryNotice = null
@@ -2022,41 +2021,181 @@ class MainActivity : Activity(), SensorEventListener {
     private fun showResourceTierChooser(onChosen: (ContentDownloadPlan.ResourceTier) -> Unit) {
         val tiers = ContentDownloadPlan.ResourceTier.values()
         var chosenTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
-        val labels = tiers.map { tier ->
-            val title = if (tier == ContentDownloadPlan.ResourceTier.HIGH) "HIGH RESOURCES  •  ${tier.storageLabel}" else "LOW RESOURCES  •  ${tier.storageLabel}"
-            val downloadSize = ContentDownloadPlan.totalGiBLabelFor(tier)
-            "$title\n${tier.description}\nCOMPLETE DOWNLOAD: $downloadSize"
-        }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("CHOOSE WORLD RESOURCE DOWNLOAD")
-            .setMessage("The APK is only the small game launcher. Choose which complete world package to download before entering Aethelgard. This controls texture quality, foliage density, compiled graphics, character photos, and storage use.")
-            .setSingleChoiceItems(labels, tiers.indexOf(chosenTier)) { _, which -> chosenTier = tiers[which] }
-            .setPositiveButton("DOWNLOAD SELECTED") { _, _ -> onChosen(chosenTier) }
-            .setCancelable(false)
-            .show()
-    }
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
-    private fun activateOfflinePrototype() {
-        offlinePrototypeMode = true
-        pendingWorldEntry = null
-        resourcePreparationComplete = true
-        markProductionContentReady()
-        assetPatchOverlay?.let { overlay ->
-            rootContainer.removeView(overlay)
-            assetPatchOverlay = null
+        val backdrop = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(205, 2, 8, 13))
+            setPadding(dp(22), dp(18), dp(22), dp(18))
         }
-        onboardingOverlay.visibility = View.GONE
-        if (::gameView.isInitialized) {
-            gameView.queueEvent {
-                NativeGameBridge.clearCoOpPeers()
-                NativeGameBridge.setAuthoritativeOnline(false)
-                NativeGameBridge.setMove(0f, 0f)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(28), dp(22), dp(28), dp(22))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(17, 31, 39), Color.rgb(6, 14, 21))
+            ).apply {
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.rgb(161, 120, 58))
             }
         }
-        enterWorldThroughCinematic {
-            if (::coOpStatusLabel.isInitialized) {
-                coOpStatusLabel.text = "OFFLINE PROTOTYPE  •  LOCAL WORLD"
+        val eyebrow = TextView(this).apply {
+            text = "AETHELGARD  /  ONLINE CONTENT"
+            textSize = 10f
+            letterSpacing = 0.16f
+            setTextColor(Color.rgb(209, 171, 94))
+            gravity = Gravity.CENTER
+        }
+        val title = TextView(this).apply {
+            text = "SELECT GRAPHICS QUALITY"
+            textSize = 25f
+            letterSpacing = 0.06f
+            typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(244, 239, 223))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, 0)
+        }
+        val subtitle = TextView(this).apply {
+            text = "Choose your visual detail and download size before entering the online world."
+            textSize = 12f
+            setTextColor(Color.rgb(173, 196, 196))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, dp(14))
+        }
+        val cards = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        val cardViews = mutableMapOf<ContentDownloadPlan.ResourceTier, LinearLayout>()
+        val selectedLabels = mutableMapOf<ContentDownloadPlan.ResourceTier, TextView>()
+        lateinit var continueButton: Button
+
+        fun cardBackground(tier: ContentDownloadPlan.ResourceTier, selected: Boolean) = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            if (selected) intArrayOf(Color.rgb(61, 49, 28), Color.rgb(29, 34, 35)) else intArrayOf(Color.rgb(20, 37, 44), Color.rgb(10, 20, 27))
+        ).apply {
+            cornerRadius = dp(14).toFloat()
+            setStroke(dp(if (selected) 2 else 1), if (selected) Color.rgb(246, 204, 119) else Color.rgb(72, 96, 98))
+        }
+
+        fun addQualityCard(tier: ContentDownloadPlan.ResourceTier) {
+            val envelope = ContentDownloadPlan.qualityEnvelopeFor(tier)
+            val isHigh = tier == ContentDownloadPlan.ResourceTier.HIGH
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(16), dp(14), dp(16), dp(14))
+                isClickable = true
+                isFocusable = true
             }
+            val nameRow = LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val name = TextView(this).apply {
+                text = if (isHigh) "HIGH GRAPHICS" else "LOW GRAPHICS"
+                textSize = 16f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setTextColor(if (isHigh) Color.rgb(255, 220, 150) else Color.rgb(182, 226, 211))
+            }
+            val size = TextView(this).apply {
+                text = ContentDownloadPlan.totalGiBLabelFor(tier)
+                textSize = 15f
+                gravity = Gravity.END
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(244, 239, 223))
+            }
+            nameRow.addView(name, LinearLayout.LayoutParams(0, dp(28), 1f))
+            nameRow.addView(size, LinearLayout.LayoutParams(dp(62), dp(28)))
+            card.addView(nameRow)
+
+            val descriptor = TextView(this).apply {
+                text = if (isHigh) "FULL DETAIL  •  BEST VISUAL QUALITY" else "DATA-SAVER  •  LIGHTER DOWNLOAD"
+                textSize = 9f
+                letterSpacing = 0.10f
+                setTextColor(if (isHigh) Color.rgb(237, 188, 107) else Color.rgb(139, 207, 184))
+                setPadding(0, 0, 0, dp(8))
+            }
+            card.addView(descriptor)
+
+            val details = TextView(this).apply {
+                text = if (isHigh) {
+                    "High-resolution textures\nDense foliage and richer lighting\nFull effects, shaders, audio and cinematics"
+                } else {
+                    "Lower-resolution textures\nSimpler foliage and lighter effects\nSmaller content pack for less storage"
+                }
+                textSize = 11f
+                setTextColor(Color.rgb(210, 221, 218))
+                setLineSpacing(0f, 1.15f)
+            }
+            card.addView(details, LinearLayout.LayoutParams(-1, dp(68)))
+
+            val technical = TextView(this).apply {
+                text = "${envelope.foliageDensity}% foliage  •  ${envelope.effectScalePercent}% effects\n${envelope.shadowQuality}  •  ${envelope.waterQuality}"
+                textSize = 9f
+                setTextColor(Color.rgb(147, 170, 172))
+                setPadding(0, dp(8), 0, 0)
+            }
+            card.addView(technical, LinearLayout.LayoutParams(-1, dp(42)))
+
+            val selected = TextView(this).apply {
+                text = "SELECTED"
+                textSize = 9f
+                letterSpacing = 0.13f
+                gravity = Gravity.CENTER
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(27, 24, 17))
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(8).toFloat()
+                    setColor(Color.rgb(239, 193, 104))
+                }
+            }
+            selectedLabels[tier] = selected
+            card.addView(selected, LinearLayout.LayoutParams(-1, dp(24)).apply { topMargin = dp(8) })
+            cardViews[tier] = card
+            card.setOnClickListener {
+                chosenTier = tier
+                cardViews.forEach { (candidate, candidateView) ->
+                    val active = candidate == chosenTier
+                    candidateView.background = cardBackground(candidate, active)
+                    selectedLabels[candidate]?.visibility = if (active) View.VISIBLE else View.INVISIBLE
+                }
+                continueButton.text = "CONTINUE WITH ${chosenTier.name}  •  ${ContentDownloadPlan.totalGiBLabelFor(chosenTier)}"
+            }
+            cards.addView(card, LinearLayout.LayoutParams(0, dp(206), 1f).apply {
+                if (!isHigh) rightMargin = dp(8) else leftMargin = dp(8)
+            })
+        }
+
+        tiers.forEach(::addQualityCard)
+        val footer = TextView(this).apply {
+            text = "LOW = less detail, less storage  •  HIGH = richer detail, larger download"
+            textSize = 10f
+            setTextColor(Color.rgb(148, 177, 178))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(14), 0, dp(10))
+        }
+        continueButton = cinematicButton("CONTINUE WITH ${chosenTier.name}  •  ${ContentDownloadPlan.totalGiBLabelFor(chosenTier)}", true) {
+            dialog.dismiss()
+            onChosen(chosenTier)
+        }
+        continueButton.textSize = 11f
+        panel.addView(eyebrow, LinearLayout.LayoutParams(-1, dp(18)))
+        panel.addView(title, LinearLayout.LayoutParams(-1, dp(38)))
+        panel.addView(subtitle, LinearLayout.LayoutParams(-1, dp(36)))
+        panel.addView(cards, LinearLayout.LayoutParams(-1, dp(214)))
+        panel.addView(footer, LinearLayout.LayoutParams(-1, dp(34)))
+        panel.addView(continueButton, LinearLayout.LayoutParams(-1, dp(44)))
+        backdrop.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
+        dialog.setContentView(backdrop)
+        dialog.setCancelable(false)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        dialog.window?.attributes = dialog.window?.attributes?.apply { dimAmount = 0.40f }
+        dialog.show()
+        dialog.window?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT)
+        cardViews.forEach { (tier, card) ->
+            val active = tier == chosenTier
+            card.background = cardBackground(tier, active)
+            selectedLabels[tier]?.visibility = if (active) View.VISIBLE else View.INVISIBLE
         }
     }
 
@@ -2109,8 +2248,6 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(146, 168, 171))
             setPadding(0, dp(18), 0, 0)
         }
-        val offline = actionButton("PLAY OFFLINE PROTOTYPE") { activateOfflinePrototype() }
-        offline.visibility = View.GONE
         val retry = actionButton("RETRY ASSET PREPARATION") { }
         retry.visibility = View.GONE
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
@@ -2118,8 +2255,7 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(progress, LinearLayout.LayoutParams(dp(430), dp(28)))
         panel.addView(details, LinearLayout.LayoutParams(-1, dp(48)))
         panel.addView(note, LinearLayout.LayoutParams(-1, dp(60)))
-        panel.addView(offline, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
-        panel.addView(retry, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        panel.addView(retry, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
         overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
         rootContainer.addView(overlay)
         assetPatchOverlay = overlay
@@ -2136,68 +2272,55 @@ class MainActivity : Activity(), SensorEventListener {
 
         lateinit var startPreparation: () -> Unit
         startPreparation = {
-            offline.visibility = View.GONE
             retry.visibility = View.GONE
             progress.progress = 0
-            if (!assetPacks.isPlayAssetDeliveryInstall()) {
-                status.text = "PLAY ASSET DELIVERY UNAVAILABLE"
-                details.text = "This direct APK includes the offline prototype world and cannot receive Play Asset Delivery packs."
-                note.text = "Tap PLAY OFFLINE PROTOTYPE to enter now. Install the Play Store/internal-test AAB later for downloadable production content."
-                note.setTextColor(Color.rgb(255, 205, 145))
-                offline.visibility = View.VISIBLE
-            } else {
-                var failureShown = false
+            var failureShown = false
             assetPacks.requestProductionContent(resourceTier) { event ->
-                    if (event.failed) {
-                        if (!failureShown) {
-                            failureShown = true
-                            status.text = "Full resources are required before start"
-                            details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
-                            note.text = when {
-                                event.errorCode == -2 -> "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
-                                event.errorCode == -100 -> "This direct APK cannot receive Play Asset Delivery packs. Tap PLAY OFFLINE PROTOTYPE, or install the Play Store/internal-test AAB for production content."
-                                else -> "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs, or use the offline prototype in this direct APK."
-                            }
-                            note.setTextColor(Color.rgb(255, 180, 150))
-                            progress.progress = 0
-                            if (event.errorCode == -100) {
-                                offline.visibility = View.VISIBLE
-                            } else {
-                                retry.visibility = View.VISIBLE
-                            }
+                if (event.failed) {
+                    if (!failureShown) {
+                        failureShown = true
+                        status.text = "FULL PRODUCTION CONTENT REQUIRED"
+                        details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
+                        note.text = if (event.errorCode == -2) {
+                            "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
+                        } else {
+                            "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resources. This online client cannot enter without its production content."
                         }
-                    } else {
-                        val downloaded = event.bytesDownloaded / (1024 * 1024)
-                        val total = event.totalBytes / (1024 * 1024)
-                        when {
-                            event.complete -> {
-                                val envelope = ContentDownloadPlan.qualityEnvelopeFor(resourceTier)
-                                status.text = "${envelope.id.uppercase()} CONTENT READY"
-                                details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
-                            }
-                            event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
-                                status.text = "Waiting for Wi-Fi"
-                                details.text = "Connect to Wi-Fi to continue downloading the selected ${resourceTier.storageLabel} package."
-                            }
-                            event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
-                                status.text = "Download confirmation required"
-                                details.text = "Confirm the large Play download in Google Play, then press retry."
-                                retry.visibility = View.VISIBLE
-                            }
-                            event.status == AssetPackStatus.CANCELED -> {
-                                status.text = "Download canceled"
-                                details.text = "Your game is locked until the compiled graphics and shaders finish downloading."
-                                retry.visibility = View.VISIBLE
-                            }
-                            else -> {
-                                status.text = "Downloading compiled graphics and shaders…"
-                                details.text = if (total > 0) "$downloaded MB / $total MB ${resourceTier.name.lowercase()} resources downloaded from Play Asset Delivery." else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, shaders, world sectors, and character resources…"
-                            }
-                        }
-                        progress.progress = event.percent
-                        if (event.complete) finishPreparation()
+                        note.setTextColor(Color.rgb(255, 180, 150))
+                        progress.progress = 0
+                        retry.visibility = View.VISIBLE
                     }
-            }
+                } else {
+                    val downloaded = event.bytesDownloaded / (1024 * 1024)
+                    val total = event.totalBytes / (1024 * 1024)
+                    when {
+                        event.complete -> {
+                            val envelope = ContentDownloadPlan.qualityEnvelopeFor(resourceTier)
+                            status.text = "${envelope.id.uppercase()} CONTENT READY"
+                            details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
+                        }
+                        event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
+                            status.text = "Waiting for Wi-Fi"
+                            details.text = "Connect to Wi-Fi to continue downloading the selected ${resourceTier.storageLabel} package."
+                        }
+                        event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
+                            status.text = "Download confirmation required"
+                            details.text = "Confirm the large Play download in Google Play, then press retry."
+                            retry.visibility = View.VISIBLE
+                        }
+                        event.status == AssetPackStatus.CANCELED -> {
+                            status.text = "Download canceled"
+                            details.text = "Your game is locked until the compiled graphics and shaders finish downloading."
+                            retry.visibility = View.VISIBLE
+                        }
+                        else -> {
+                            status.text = "Downloading compiled graphics and shaders…"
+                            details.text = if (total > 0) "$downloaded MB / $total MB ${resourceTier.name.lowercase()} resources downloaded from Play Asset Delivery." else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, shaders, world sectors, and character resources…"
+                        }
+                    }
+                    progress.progress = event.percent
+                    if (event.complete) finishPreparation()
+                }
             }
         }
         retry.setOnClickListener { startPreparation() }

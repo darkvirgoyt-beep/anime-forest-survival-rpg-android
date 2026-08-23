@@ -77,8 +77,8 @@ jobs:
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'isPlayAssetDeliveryInstall' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'PLAY OFFLINE PROTOTYPE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'FULL PRODUCTION CONTENT REQUIRED' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'SELECT GRAPHICS QUALITY' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           grep -q 'void draw3DPlayer' app/src/main/cpp/forest_game.cpp

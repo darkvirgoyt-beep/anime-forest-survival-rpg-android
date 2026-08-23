@@ -111,8 +111,8 @@ def assert_source_contract(repo: Path) -> None:
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
         ("resource-center title", "DOWNLOAD ${resourceTier.name} 3D CONTENT", main),
-        ("resource-tier chooser", "CHOOSE WORLD RESOURCE DOWNLOAD", main),
-        ("low-resource option", "LOW RESOURCES", main),
+        ("resource-tier chooser", "SELECT GRAPHICS QUALITY", main),
+        ("low-resource option", "LOW GRAPHICS", main),
         ("compiled graphics copy", "compiled graphics and shaders", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
         ("tier pack selection", "packNamesFor(tier)", catalog),

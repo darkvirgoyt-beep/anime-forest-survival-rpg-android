@@ -72,8 +72,8 @@ int gGraphicsQuality = 2; // 0=Low, 1=Medium, 2=High, 3=Ultra, 4=Max
 bool gContentTierReady = false;
 
 int effectiveGraphicsQuality() {
-    // Never show high-end effects against missing streamed content. The small
-    // fallback scene remains readable until the selected PAD tier is mounted.
+    // Never show high-end effects against missing streamed content. The minimal
+    // scene remains readable until the selected PAD tier is mounted.
     return gContentTierReady ? gGraphicsQuality : std::min(gGraphicsQuality, 1);
 }
 float gHunger = 0.82f;
@@ -1093,7 +1093,8 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
 }
 
 void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
-    if (gGraphicsQuality < 3) return;
+    const int quality = effectiveGraphicsQuality();
+    if (quality < 3) return;
 
     // A denser premium pass adds small authored-looking landmarks without
     // increasing the bootstrap APK. Real production meshes replace these
@@ -1102,14 +1103,14 @@ void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
         {-6.4f, 1.46f, -2.4f}, {-4.9f, 1.22f, 2.9f}, {-2.7f, 1.10f, 3.7f},
         {2.9f, 1.18f, 3.1f}, {5.8f, 1.36f, 1.7f}, {6.2f, 1.08f, -2.5f}
     };
-    const int canopyCount = gGraphicsQuality >= 4 ? 6 : 4;
+    const int canopyCount = quality >= 4 ? 6 : 4;
     for (int i = 0; i < canopyCount; ++i) {
         const float pulse = 0.97f + 0.035f * std::sin(gTime * 0.8f + static_cast<float>(i));
         draw3DSphere(viewProjection, canopy[i][0], canopy[i][1] * pulse, canopy[i][2], 0.38f + 0.05f * (i % 2),
                      0.05f * daylight, 0.25f * daylight, 0.18f * daylight, 0.72f);
     }
 
-    const int fireflies = 8 + gGraphicsQuality * 5;
+    const int fireflies = 8 + quality * 5;
     for (int i = 0; i < fireflies; ++i) {
         const float seed = static_cast<float>(i) * 1.731f;
         const float x = -6.5f + std::fmod(seed * 2.7f + gTime * 0.08f, 13.0f);
