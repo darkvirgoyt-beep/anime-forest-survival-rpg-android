@@ -219,6 +219,17 @@ class AssetPackCatalog(context: Context) {
         )
     }
 
+    /**
+     * Play Asset Delivery is available only when the app was installed by Google Play
+     * (including internal testing). A directly sideloaded APK has no delivery session,
+     * so attempting fetch() there produces the opaque -100 error.
+     */
+    fun isPlayAssetDeliveryInstall(): Boolean = try {
+        appContext.packageManager.getInstallerPackageName(appContext.packageName) == "com.android.vending"
+    } catch (_: Exception) {
+        false
+    }
+
     fun isReady(packName: String): Boolean = manager.getPackLocation(packName) != null
 
     fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)

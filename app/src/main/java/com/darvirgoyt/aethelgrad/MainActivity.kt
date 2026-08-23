@@ -123,6 +123,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var worldLoadingOverlay: View? = null
     private var resourcePreparationComplete = false
     private var resourceTierChooserVisible = false
+    private var offlinePrototypeMode = false
     private var pendingWorldEntry: (() -> Unit)? = null
     private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
@@ -767,7 +768,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
-        if (!networkOnline) return
+        if (offlinePrototypeMode || !networkOnline) return
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
             setPlayerName("GUEST")
             authenticationTransitionStarted = true
@@ -1900,6 +1901,7 @@ class MainActivity : Activity(), SensorEventListener {
                 activeCoOpRoom = null
                 activeCloudWorld = null
                 currentPlayerProfile = null
+                offlinePrototypeMode = false
                 authenticationTransitionStarted = false
                 guestSignInAttempted = false
                 cloudRecoveryNotice = null
@@ -1931,6 +1933,30 @@ class MainActivity : Activity(), SensorEventListener {
             .setPositiveButton("DOWNLOAD SELECTED") { _, _ -> onChosen(chosenTier) }
             .setCancelable(false)
             .show()
+    }
+
+    private fun activateOfflinePrototype() {
+        offlinePrototypeMode = true
+        pendingWorldEntry = null
+        resourcePreparationComplete = true
+        markProductionContentReady()
+        assetPatchOverlay?.let { overlay ->
+            rootContainer.removeView(overlay)
+            assetPatchOverlay = null
+        }
+        onboardingOverlay.visibility = View.GONE
+        if (::gameView.isInitialized) {
+            gameView.queueEvent {
+                NativeGameBridge.clearCoOpPeers()
+                NativeGameBridge.setAuthoritativeOnline(false)
+                NativeGameBridge.setMove(0f, 0f)
+            }
+        }
+        enterWorldThroughCinematic {
+            if (::coOpStatusLabel.isInitialized) {
+                coOpStatusLabel.text = "OFFLINE PROTOTYPE  •  LOCAL WORLD"
+            }
+        }
     }
 
     private fun showAssetPatchOverlay(onReady: () -> Unit = {}) {
@@ -1982,6 +2008,8 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(146, 168, 171))
             setPadding(0, dp(18), 0, 0)
         }
+        val offline = actionButton("PLAY OFFLINE PROTOTYPE") { activateOfflinePrototype() }
+        offline.visibility = View.GONE
         val retry = actionButton("RETRY ASSET PREPARATION") { }
         retry.visibility = View.GONE
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
@@ -1989,7 +2017,8 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(progress, LinearLayout.LayoutParams(dp(430), dp(28)))
         panel.addView(details, LinearLayout.LayoutParams(-1, dp(48)))
         panel.addView(note, LinearLayout.LayoutParams(-1, dp(60)))
-        panel.addView(retry, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
+        panel.addView(offline, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
+        panel.addView(retry, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
         rootContainer.addView(overlay)
         assetPatchOverlay = overlay
@@ -2006,23 +2035,35 @@ class MainActivity : Activity(), SensorEventListener {
 
         lateinit var startPreparation: () -> Unit
         startPreparation = {
+            offline.visibility = View.GONE
             retry.visibility = View.GONE
             progress.progress = 0
-            var failureShown = false
+            if (!assetPacks.isPlayAssetDeliveryInstall()) {
+                status.text = "PLAY ASSET DELIVERY UNAVAILABLE"
+                details.text = "This direct APK includes the offline prototype world and cannot receive Play Asset Delivery packs."
+                note.text = "Tap PLAY OFFLINE PROTOTYPE to enter now. Install the Play Store/internal-test AAB later for downloadable production content."
+                note.setTextColor(Color.rgb(255, 205, 145))
+                offline.visibility = View.VISIBLE
+            } else {
+                var failureShown = false
             assetPacks.requestProductionContent(resourceTier) { event ->
                     if (event.failed) {
                         if (!failureShown) {
                             failureShown = true
                             status.text = "Full resources are required before start"
                             details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
-                            note.text = if (event.errorCode == -2) {
-                                "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
-                            } else {
-                                "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs. A direct APK cannot unlock the production world."
+                            note.text = when {
+                                event.errorCode == -2 -> "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
+                                event.errorCode == -100 -> "This direct APK cannot receive Play Asset Delivery packs. Tap PLAY OFFLINE PROTOTYPE, or install the Play Store/internal-test AAB for production content."
+                                else -> "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs, or use the offline prototype in this direct APK."
                             }
                             note.setTextColor(Color.rgb(255, 180, 150))
                             progress.progress = 0
-                            retry.visibility = View.VISIBLE
+                            if (event.errorCode == -100) {
+                                offline.visibility = View.VISIBLE
+                            } else {
+                                retry.visibility = View.VISIBLE
+                            }
                         }
                     } else {
                         val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2055,6 +2096,7 @@ class MainActivity : Activity(), SensorEventListener {
                         progress.progress = event.percent
                         if (event.complete) finishPreparation()
                     }
+            }
             }
         }
         retry.setOnClickListener { startPreparation() }
