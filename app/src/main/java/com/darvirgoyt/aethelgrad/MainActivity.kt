@@ -162,6 +162,19 @@ class MainActivity : Activity(), SensorEventListener {
         accountSession.initialize(this, ::applyAccountSnapshot)
     }
 
+<<<<<<< HEAD
+=======
+    override fun onDestroy() {
+        hudHandler.removeCallbacks(hudUpdater)
+        hudHandler.removeCallbacks(cloudSaveUpdater)
+        accountSession.shutdown()
+        if (::assetDelivery.isInitialized) assetDelivery.shutdown()
+        if (::assetPacks.isInitialized) assetPacks.close()
+        if (::audio.isInitialized) audio.release()
+        super.onDestroy()
+    }
+
+>>>>>>> ffd8816 (Fix asset delivery Android build integration)
     private fun detectSupportedTargetFps(): List<Int> {
         val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
         val maxRefreshRate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -267,8 +280,8 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         accountSession.shutdown()
-        if (::assetPacks.isInitialized) assetPacks.close()
         if (::assetDelivery.isInitialized) assetDelivery.shutdown()
+        if (::assetPacks.isInitialized) assetPacks.close()
         if (::audio.isInitialized) audio.release()
         super.onDestroy()
     }
