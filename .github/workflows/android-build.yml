@@ -55,7 +55,7 @@ jobs:
           test -f app/src/main/java/com/darkvirgoyt/forestslice/ServerDirectory.kt
           test -f app/src/main/java/com/darkvirgoyt/forestslice/CharacterCreationModel.kt
           grep -q 'GOOGLE PLAY SIGN-IN' app/src/main/java/com/darkvirgoyt/forestslice/MainActivity.kt
-          grep -q 'BuildConfig.DEBUG' app/src/main/java/com/darkvirgoyt/forestslice/MainActivity.kt
+          grep -q 'ApplicationInfo.FLAG_DEBUGGABLE' app/src/main/java/com/darkvirgoyt/forestslice/MainActivity.kt
           grep -q 'ONLINE ONLY' app/src/main/java/com/darkvirgoyt/forestslice/MainActivity.kt
           grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
           grep -q 'AddBondProgress' Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
