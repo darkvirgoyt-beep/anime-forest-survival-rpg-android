@@ -30,6 +30,8 @@ Configure the deployment environment with the matching `GOOGLE_ID_TOKEN_AUDIENCE
 
 The repository contains a deployable Node/PostgreSQL backend source tree, but no live deployment, database, domain, or user OAuth identifiers have been configured. An APK remains configuration-blocked until all three values above point to a deployed HTTPS backend and the matching Web client ID.
 
+For the current managed development backend, the Android test build uses the non-secret Web OAuth audience `1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com` and the temporary HTTPS service base `https://3000-i6040xmjz90odduzrpnt3-1b82c801.sg1.manus.computer`. This test domain must be replaced with the final published service URL before public release.
+
 ## Later Play Games upgrade
 
 Once a Play Console account and Play Games Services game configuration exist, add the game-server Web OAuth client ID and secret only to the backend deployment. The existing `/v1/auth/play-games/exchange` route can then be enabled as a provider-specific upgrade. Keep standard Google account identifiers and Play Games identifiers separate; they are distinct provider records by design.

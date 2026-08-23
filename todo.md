@@ -14,3 +14,6 @@
 - [x] Replace the Android Play Games-only login attempt with a standard Google Sign-In token exchange flow
 - [x] Document the required Android and Web OAuth clients, backend secrets, deployment, and Play Games upgrade path
 - [x] Validate the standard Google Sign-In backend and Android release build through automated tests and CI
+- [x] Provision a managed HTTPS standard-Google-sign-in development backend with database-backed Aethelgard sessions
+- [ ] Publish the managed backend on a stable production HTTPS domain before public release
+- [x] Connect the Android login configuration to the managed backend after the Web OAuth client ID is created

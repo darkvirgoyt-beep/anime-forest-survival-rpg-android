@@ -7,10 +7,10 @@
     <string name="ambience_volume">Ambience Volume</string>
     <string name="voice_volume">Voice Volume</string>
     <string name="gyro_unsupported">GYRO: UNSUPPORTED</string>
-    <!-- Use the Web OAuth client ID for the backend audience, never an Android OAuth client ID or a client secret. -->
-    <string name="google_web_client_id" translatable="false">REPLACE_WITH_WEB_OAUTH_CLIENT_ID</string>
-    <!-- Use the deployed HTTPS endpoint owned by the game backend. -->
-    <string name="auth_exchange_url" translatable="false">REPLACE_WITH_HTTPS_GOOGLE_ID_TOKEN_EXCHANGE_URL</string>
-    <!-- Use the matching HTTPS endpoint for refresh-token rotation. -->
-    <string name="auth_refresh_url" translatable="false">REPLACE_WITH_HTTPS_AUTH_REFRESH_URL</string>
+    <!-- Non-secret Web OAuth client ID used as the backend-verified Google ID-token audience. -->
+    <string name="google_web_client_id" translatable="false">1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com</string>
+    <!-- Temporary managed HTTPS endpoint for the current test login deployment. Replace with the published custom-domain URL before public release. -->
+    <string name="auth_exchange_url" translatable="false">https://3000-i6040xmjz90odduzrpnt3-1b82c801.sg1.manus.computer/api/game-auth/exchange</string>
+    <!-- Matching HTTPS endpoint for rotating in-memory refresh sessions. -->
+    <string name="auth_refresh_url" translatable="false">https://3000-i6040xmjz90odduzrpnt3-1b82c801.sg1.manus.computer/api/game-auth/refresh</string>
 </resources>
