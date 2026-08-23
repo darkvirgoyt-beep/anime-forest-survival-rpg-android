@@ -34,6 +34,10 @@ The primary road runs from Forest Camp through Farming Village, crosses the fore
 
 The map is a precise 100×100 km design reference, not a claim that the current lightweight prototype already contains authored 3D terrain, navigation meshes, streaming cells, or final collision. Those belong to the production world pass.
 
-## Map image
+## Map images and night lighting
 
-The deterministic map image is stored at `docs/world_maps/world_map_100x100.png`, with its source at `docs/world_maps/world_map_100x100.py`. Its axes are labeled in kilometers. It is safe to use as a design and implementation reference because all coordinates, labels, biome boundaries, and landmarks are project-authored.
+The original deterministic coordinate map is stored at `docs/world_maps/world_map_100x100.png`, with its source at `docs/world_maps/world_map_100x100.py`. Its axes are labeled in kilometers.
+
+The polished isometric design reference is stored at `docs/world_maps/world_map_3d_100x100km.png`, with its source at `docs/world_maps/world_map_3d_100x100km.py`. It adds raised terrain, ocean depth, mountains, roads, water bodies, landmarks, fast-travel stones, and a majestic night sky with stars and a crescent moon. A standalone night-lighting reference is available at `docs/world_maps/night_sky_reference.png`, with its source at `/home/ubuntu/night_sky_reference.py` during authoring.
+
+Both map images are project-authored design references: the 100×100 km coordinates, labels, biome boundaries, and landmarks are preserved, while the night-sky treatment is a visual direction for a future runtime day/night presentation. The current lightweight Android prototype does not yet contain authored 3D terrain or a streamed 10,000 km² runtime world.
