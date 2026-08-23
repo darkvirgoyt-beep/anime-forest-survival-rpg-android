@@ -2,6 +2,7 @@ package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -166,6 +167,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -1014,13 +1016,17 @@ class MainActivity : Activity(), SensorEventListener {
             textSize = 13f
             setTextColor(Color.WHITE)
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            setSingleLine(true)
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
         questLabel = TextView(this).apply {
             text = "THE FIRST EMBER  -  Aurora arrives - gather 3 caches for the camp"
             textSize = 13f
             setTextColor(Color.rgb(255, 226, 164))
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
-            setPadding(0, 0, dp(24), dp(24))
+            setSingleLine(true)
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, 0, dp(24), 0)
         }
         gyroButton = actionButton("GYRO: OFF") {
             audio.playEffect("ui")
@@ -1028,9 +1034,9 @@ class MainActivity : Activity(), SensorEventListener {
             gameView.queueEvent { NativeGameBridge.setGyroEnabled(gyroEnabled) }
             updateGyroButton()
         }
-        top.addView(title)
-        top.addView(stateLabel)
-        top.addView(gyroButton, LinearLayout.LayoutParams(dp(142), dp(44)).apply { leftMargin = dp(18) })
+        top.addView(title, LinearLayout.LayoutParams(-2, -1))
+        top.addView(stateLabel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = dp(16); rightMargin = dp(10) })
+        top.addView(gyroButton, LinearLayout.LayoutParams(dp(142), dp(44)))
         overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
         overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply { topMargin = dp(54) })
 
@@ -1110,8 +1116,12 @@ class MainActivity : Activity(), SensorEventListener {
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.BOTTOM or Gravity.END
-            setPadding(0, dp(12), 0, dp(4))
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            background = GradientDrawable().apply {
+                setColor(Color.argb(34, 0, 0, 0))
+                cornerRadius = dp(16).toFloat()
+            }
         }
         val sprintSlide = actionButton("SPRINT / SLIDE") { }
         sprintSlide.setOnTouchListener { _, event ->
@@ -1134,15 +1144,21 @@ class MainActivity : Activity(), SensorEventListener {
         val gather = actionButton("GATHER") { submitAuthoritativeInventory("gather") }
         val craft = actionButton("CRAFT") { submitAuthoritativeInventory("craft") }
         val settings = actionButton("GRAPHICS / FPS") { showGraphicsSettings() }
-        actions.addView(sprintSlide, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(attack, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(heavy, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(jump, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(dodge, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(gather, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(craft, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
-        actions.addView(settings, LinearLayout.LayoutParams(dp(150), dp(50)))
-        overlay.addView(actions, FrameLayout.LayoutParams(-1, -1))
+        fun controlRow(first: View, second: View): LinearLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(first, LinearLayout.LayoutParams(0, dp(50), 1f).apply { rightMargin = dp(4) })
+            addView(second, LinearLayout.LayoutParams(0, dp(50), 1f).apply { leftMargin = dp(4) })
+        }
+        fun rowParams(): LinearLayout.LayoutParams = LinearLayout.LayoutParams(-1, dp(50)).apply { bottomMargin = dp(6) }
+        actions.addView(controlRow(sprintSlide, attack), rowParams())
+        actions.addView(controlRow(heavy, jump), rowParams())
+        actions.addView(controlRow(dodge, gather), rowParams())
+        actions.addView(controlRow(craft, settings), LinearLayout.LayoutParams(-1, dp(50)))
+        overlay.addView(actions, FrameLayout.LayoutParams(dp(360), -2, Gravity.BOTTOM or Gravity.END).apply {
+            rightMargin = dp(16)
+            bottomMargin = dp(16)
+        })
         return overlay
     }
 
