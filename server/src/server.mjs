@@ -22,6 +22,7 @@ import {
 
 const { Pool } = pg;
 const googleIdTokenVerifier = new OAuth2Client();
+const MAX_COOP_PLAYERS = 4;
 
 export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoogleIdTokenImpl = verifyGoogleIdToken }) {
   const app = express();
@@ -237,7 +238,7 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     if (roomResult.rowCount !== 1) return res.status(404).json({ error: "room_not_found" });
     const room = roomResult.rows[0];
     const active = await pool.query("SELECT COUNT(*)::int AS count FROM coop_members WHERE room_id = $1 AND account_id <> $2 AND is_active = TRUE AND last_seen_at > now() - interval '20 seconds'", [room.id, req.accountId]);
-    if (Number(active.rows[0]?.count || 0) >= room.max_players) return res.status(409).json({ error: "room_full" });
+    if (Number(active.rows[0]?.count || 0) >= MAX_COOP_PLAYERS) return res.status(409).json({ error: "room_full", maxPlayers: MAX_COOP_PLAYERS });
     await pool.query(
       `INSERT INTO coop_members (room_id, account_id, is_active) VALUES ($1, $2, TRUE)
        ON CONFLICT (room_id, account_id) DO UPDATE SET is_active = TRUE, last_seen_at = now()`,
@@ -262,6 +263,8 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     const roomId = roomResult.rows[0].id;
     const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
     if (membership.rowCount !== 1) return res.status(403).json({ error: "room_membership_required" });
+    const active = await pool.query("SELECT COUNT(*)::int AS count FROM coop_members WHERE room_id = $1 AND account_id <> $2 AND is_active = TRUE AND last_seen_at > now() - interval '20 seconds'", [roomId, req.accountId]);
+    if (Number(active.rows[0]?.count || 0) >= MAX_COOP_PLAYERS) return res.status(409).json({ error: "room_full", maxPlayers: MAX_COOP_PLAYERS });
     await pool.query("UPDATE coop_members SET is_active = TRUE, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
     const room = await getCoOpRoom(pool, code, req.accountId);
     if (!room) return res.status(404).json({ error: "room_not_found" });
@@ -829,8 +832,8 @@ async function createCoOpRoom(pool, accountId, region, worldName = "Aethelgard S
     const code = randomBytes(3).toString("hex").toUpperCase();
     try {
       const created = await pool.query(
-        "INSERT INTO coop_rooms (code, region, world_name, created_by) VALUES ($1, $2, $3, $4) RETURNING id",
-        [code, region, worldName, accountId]
+        "INSERT INTO coop_rooms (code, region, world_name, created_by, max_players) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        [code, region, worldName, accountId, MAX_COOP_PLAYERS]
       );
       if (created.rowCount === 1) {
         await pool.query("INSERT INTO coop_members (room_id, account_id, is_active) VALUES ($1, $2, TRUE)", [created.rows[0].id, accountId]);
@@ -869,7 +872,8 @@ async function getCoOpRoom(pool, code, accountId) {
   const current = await pool.query(
     `SELECT account_id, player_x, player_y, at_tower, tower_revision
      FROM coop_members WHERE room_id = $1 AND is_active = TRUE AND last_seen_at > now() - interval '20 seconds'
-     ORDER BY last_seen_at DESC`,
+     ORDER BY last_seen_at DESC
+     LIMIT 4`,
     [room.id]
   );
   const refreshed = await pool.query("SELECT world_time, tower_revision, boss_health, combat_revision FROM coop_rooms WHERE id = $1", [room.id]);
@@ -879,7 +883,7 @@ async function getCoOpRoom(pool, code, accountId) {
       region: room.region,
       worldName: room.world_name || "Aethelgard Shared World",
       ownerAccountId: room.created_by,
-      maxPlayers: room.max_players,
+      maxPlayers: MAX_COOP_PLAYERS,
       worldTime: Number(refreshed.rows[0]?.world_time || room.world_time || 0),
       towerRevision: Number(refreshed.rows[0]?.tower_revision || room.tower_revision || 0),
       bossHealth: Number(refreshed.rows[0]?.boss_health ?? room.boss_health ?? 100),

@@ -11,6 +11,10 @@ REQUIRED = (
     ("app/build.gradle.kts", "release {", "release build contract"),
     (".github/workflows/android-build.yml", "gradle bundleRelease assembleRelease", "release CI build"),
     ("tools/build_expansion_obb.py", "production-v1", "production content version"),
+    ("server/src/server.mjs", "MAX_COOP_PLAYERS = 4", "strict four-player server cap"),
+    ("server/src/server.mjs", "maxPlayers: MAX_COOP_PLAYERS", "four-player room snapshot"),
+    ("server/test/coop_room_simulation.test.mjs", "reconnect_capacity_rejected", "durable reconnect cap regression"),
+    ("docs/MULTIPLAYER_WORKFLOW.md", "max_players = 4", "documented four-player cap"),
 )
 
 FORBIDDEN = (

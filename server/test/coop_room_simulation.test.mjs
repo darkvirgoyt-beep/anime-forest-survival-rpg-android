@@ -512,6 +512,15 @@ try {
   assert.equal(savedAfterLeave.status, 200);
   assert.deepEqual(savedAfterLeave.payload.progressionState, { level: 3, xp: 240, unlocked: ["campfire"] });
 
+  const replacement = await request(baseUrl, tokenE, `/v1/coop/rooms/${code}/join`, "POST", {});
+  assert.equal(replacement.status, 200);
+  assert.equal(replacement.payload.room.maxPlayers, 4);
+  assert.equal(replacement.payload.participants.length, 4);
+  const blockedReconnect = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/reconnect`, "POST", {});
+  assert.equal(blockedReconnect.status, 409);
+  assert.equal(blockedReconnect.payload.maxPlayers, 4);
+  const replacementLeave = await request(baseUrl, tokenE, `/v1/coop/rooms/${code}/leave`, "DELETE");
+  assert.equal(replacementLeave.status, 204);
   const reconnectAfterLeave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/reconnect`, "POST", {});
   assert.equal(reconnectAfterLeave.status, 200);
   const building = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/buildings`, "POST", {
@@ -548,7 +557,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     roomCode: code,
-    checks: ["room_created", "future_room_targets_seeded", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "companion_capture_validated", "companion_capture_retry_idempotent", "companion_command_revision_conflict_rejected", "companion_command_retry_validated", "capture_range_and_health_and_fiber_rejected", "camp_materials_and_range_rejected", "camp_placement_validated", "camp_retry_idempotent", "camp_revision_conflict_rejected", "camp_removal_validated", "authority_state_reloaded", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated", "player_save_persisted", "player_save_conflict_rejected", "leave_preserved_membership", "reconnect_restored_membership", "building_persisted", "world_owner_enforced", "world_save_conflict_rejected", "world_reload_includes_building"]
+    checks: ["room_created", "future_room_targets_seeded", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "companion_capture_validated", "companion_capture_retry_idempotent", "companion_command_revision_conflict_rejected", "companion_command_retry_validated", "capture_range_and_health_and_fiber_rejected", "camp_materials_and_range_rejected", "camp_placement_validated", "camp_retry_idempotent", "camp_revision_conflict_rejected", "camp_removal_validated", "authority_state_reloaded", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated", "player_save_persisted", "player_save_conflict_rejected", "leave_preserved_membership", "reconnect_capacity_rejected", "reconnect_restored_membership", "building_persisted", "world_owner_enforced", "world_save_conflict_rejected", "world_reload_includes_building"]
   }, null, 2));
 } finally {
   await new Promise(resolve => server.close(resolve));
