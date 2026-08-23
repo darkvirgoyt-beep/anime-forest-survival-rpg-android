@@ -121,6 +121,23 @@ class MainActivity : Activity(), SensorEventListener {
     private var assetPatchOverlay: View? = null
     private var cinematicEntryOverlay: View? = null
     private var worldLoadingOverlay: View? = null
+    private var worldLoadingCard: View? = null
+    private var worldLoadingProgress: ProgressBar? = null
+    private var worldLoadingStatus: TextView? = null
+    private var worldLoadingSkip: Button? = null
+    private var playerSkippedLoadingPresentation = false
+    private var worldEntryRevealed = false
+    private var worldLoadingStartedAtMs = 0L
+    private var pendingWorldReadyAction: (() -> Unit)? = null
+    private var rendererReadyForWorld = false
+    private var characterTextureReadyForWorld = false
+    private var worldStateReadyForWorld = false
+    private val worldLoadingTasks = linkedMapOf(
+        "renderer" to WorldLoadingTask("AWAKENING THE WILDERNESS", 28),
+        "texture" to WorldLoadingTask("WEAVING THE WAYFARER", 20),
+        "content" to WorldLoadingTask("MOUNTING FOREST MEMORY", 32),
+        "world" to WorldLoadingTask("RESTORING THE HORIZON", 20)
+    )
     private var resourcePreparationComplete = false
     private var resourceTierChooserVisible = false
     private var offlinePrototypeMode = false
@@ -242,7 +259,7 @@ class MainActivity : Activity(), SensorEventListener {
         audio.playMusic()
 
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
-        gameView = GameSurfaceView(this)
+        gameView = GameSurfaceView(this) { markWorldLoadingTaskReady("renderer") }
         assetPacks = AssetPackCatalog(this)
         gameView.applyTargetFps(selectedTargetFps)
         gameView.applyGraphicsTier(selectedGraphicsTier)
@@ -260,6 +277,7 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
         loadHeroineCharacterTexture()
+        if (resourcePreparationComplete) markWorldLoadingTaskReady("content")
         updateGyroButton()
         registerGyro()
         networkProbeHost = Uri.parse(getString(R.string.api_base_url)).host.orEmpty()
@@ -283,6 +301,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun markProductionContentReady() {
         if (resourcePreparationComplete) return
         resourcePreparationComplete = true
+        markWorldLoadingTaskReady("content")
         val readyTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
         applyGraphicsTier(readyTier.graphicsTierIndex)
         if (::gameView.isInitialized) {
@@ -457,6 +476,7 @@ class MainActivity : Activity(), SensorEventListener {
         gameView.queueEvent {
             NativeGameBridge.setPlayerCharacterTexture(bitmap.width, bitmap.height, pixels)
             bitmap.recycle()
+            runOnUiThread { markWorldLoadingTaskReady("texture") }
         }
     }
 
@@ -813,6 +833,8 @@ class MainActivity : Activity(), SensorEventListener {
     /** Developer-only guest mode skips account setup and opens the online world immediately. */
     private fun enterGuestOnlineWorld() {
         if (!requireOnline("ONLINE WORLD")) return
+        worldStateReadyForWorld = true
+        markWorldLoadingTaskReady("world")
         enterWorldThroughCinematic {
             onboardingOverlay.visibility = View.GONE
             gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
@@ -932,6 +954,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun showWorldLoading(onWorldReady: () -> Unit) {
+        beginWorldLoading(onWorldReady)
         val overlay = FrameLayout(this).apply {
             alpha = 0f
             setBackgroundColor(Color.rgb(4, 18, 20))
@@ -963,7 +986,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(245, 238, 217))
         }
         val status = TextView(this).apply {
-            text = "CARRYING THE FIRST EMBER INTO WISTERIA FOREST…"
+            text = "PREPARING WISTERIA FOREST…"
             textSize = 9f
             gravity = Gravity.CENTER
             letterSpacing = 0.10f
@@ -971,27 +994,101 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(10))
         }
         val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            isIndeterminate = true
-            indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.rgb(232, 184, 90))
+            isIndeterminate = false
+            max = 100
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(232, 184, 90))
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(46, 62, 58))
         }
+        val skip = cinematicButton("CONTINUE WHILE PREPARING  ›", false) { skipLoadingPresentation() }
         card.addView(ember, LinearLayout.LayoutParams(-1, dp(54)))
         card.addView(title, LinearLayout.LayoutParams(-1, dp(36)))
         card.addView(status, LinearLayout.LayoutParams(-1, dp(34)))
         card.addView(progress, LinearLayout.LayoutParams(-1, dp(5)))
+        card.addView(skip, LinearLayout.LayoutParams(dp(330), dp(42)).apply { topMargin = dp(18) })
         overlay.addView(card, FrameLayout.LayoutParams(dp(500), -2, Gravity.CENTER))
 
         worldLoadingOverlay = overlay
+        worldLoadingCard = card
+        worldLoadingProgress = progress
+        worldLoadingStatus = status
+        worldLoadingSkip = skip
         rootContainer.addView(overlay)
-        overlay.animate().alpha(1f).setDuration(180L).withEndAction {
-            rootContainer.postDelayed({
-                onWorldReady()
+        overlay.animate().alpha(1f).setDuration(180L).withEndAction { refreshWorldLoadingPresentation() }.start()
+    }
+
+    private data class WorldLoadingTask(val label: String, val weight: Int, var ready: Boolean = false)
+
+    /** Records a real engine, texture, content, or world-state callback for the entry progress meter. */
+    private fun markWorldLoadingTaskReady(id: String) {
+        when (id) {
+            "renderer" -> rendererReadyForWorld = true
+            "texture" -> characterTextureReadyForWorld = true
+            "content" -> resourcePreparationComplete = true
+            "world" -> worldStateReadyForWorld = true
+        }
+        worldLoadingTasks[id]?.ready = true
+        refreshWorldLoadingPresentation()
+    }
+
+    private fun beginWorldLoading(onWorldReady: () -> Unit) {
+        pendingWorldReadyAction = onWorldReady
+        worldEntryRevealed = false
+        playerSkippedLoadingPresentation = false
+        worldLoadingStartedAtMs = System.currentTimeMillis()
+        worldLoadingTasks["renderer"]?.ready = rendererReadyForWorld
+        worldLoadingTasks["texture"]?.ready = characterTextureReadyForWorld
+        worldLoadingTasks["content"]?.ready = resourcePreparationComplete
+        worldLoadingTasks["world"]?.ready = worldStateReadyForWorld
+    }
+
+    private fun refreshWorldLoadingPresentation() {
+        if (pendingWorldReadyAction == null || worldEntryRevealed) return
+        val totalWeight = worldLoadingTasks.values.sumOf { it.weight }.coerceAtLeast(1)
+        val readyWeight = worldLoadingTasks.values.filter { it.ready }.sumOf { it.weight }
+        val percent = (readyWeight * 100 / totalWeight).coerceIn(0, 100)
+        val nextTask = worldLoadingTasks.values.firstOrNull { !it.ready }
+        worldLoadingProgress?.progress = percent
+        worldLoadingStatus?.text = when {
+            playerSkippedLoadingPresentation && nextTask != null -> "PREPARING IN BACKGROUND  •  $percent%"
+            nextTask != null -> "${nextTask.label}  •  $percent%"
+            else -> "PATH REMEMBERED  •  100%"
+        }
+        if (worldLoadingTasks.values.all { it.ready }) revealWorldWhenReady()
+    }
+
+    /** Hides the large loading card without treating unfinished startup tasks as complete. */
+    private fun skipLoadingPresentation() {
+        if (worldEntryRevealed) return
+        playerSkippedLoadingPresentation = true
+        worldLoadingSkip?.isEnabled = false
+        worldLoadingSkip?.text = "PREPARING IN BACKGROUND"
+        worldLoadingCard?.animate()?.alpha(0.34f)?.scaleX(0.94f)?.scaleY(0.94f)?.setDuration(180L)?.start()
+        refreshWorldLoadingPresentation()
+    }
+
+    private fun revealWorldWhenReady() {
+        if (worldEntryRevealed) return
+        val elapsed = System.currentTimeMillis() - worldLoadingStartedAtMs
+        val remainingMinimumPresentation = (420L - elapsed).coerceAtLeast(0L)
+        rootContainer.postDelayed({
+            if (worldEntryRevealed || !worldLoadingTasks.values.all { it.ready }) return@postDelayed
+            worldEntryRevealed = true
+            val onWorldReady = pendingWorldReadyAction ?: return@postDelayed
+            pendingWorldReadyAction = null
+            onWorldReady()
+            val overlay = worldLoadingOverlay
+            if (overlay != null) {
                 overlay.animate().alpha(0f).setDuration(260L).withEndAction {
                     rootContainer.removeView(overlay)
                     if (worldLoadingOverlay === overlay) worldLoadingOverlay = null
+                    worldLoadingCard = null
+                    worldLoadingProgress = null
+                    worldLoadingStatus = null
+                    worldLoadingSkip = null
                 }.start()
-            }, 1160L)
-        }.start()
+            }
+        }, remainingMinimumPresentation)
     }
 
     private fun connectGuestToOnlineRoom() {
@@ -1217,6 +1314,8 @@ class MainActivity : Activity(), SensorEventListener {
                                     return@runOnUiThread
                                 }
                                 activeCloudWorld = recoveredWorld
+                                worldStateReadyForWorld = true
+                                markWorldLoadingTaskReady("world")
                                 enterWorldThroughCinematic {
                                     rootContainer.removeView(overlay)
                                     characterSetupOverlay = null
@@ -1252,6 +1351,8 @@ class MainActivity : Activity(), SensorEventListener {
                                     return@createInitialCloudWorld
                                 }
                                 activeCloudWorld = world
+                                worldStateReadyForWorld = true
+                                markWorldLoadingTaskReady("world")
                                 validation.setTextColor(Color.rgb(164, 231, 190))
                                 validation.text = "Cloud world protected. Entering Aethelgard…"
                                 rootContainer.postDelayed({
@@ -2448,8 +2549,8 @@ private class CinematicLoginBackdropView(context: Context) : View(context) {
     }
 }
 
-private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
-    private val renderer = GameRenderer()
+private class GameSurfaceView(context: Context, onRendererReady: () -> Unit) : GLSurfaceView(context) {
+    private val renderer = GameRenderer { post { onRendererReady() } }
     private var targetFps = 60
     private var surfaceReady = false
     private var activeLookPointerId = MotionEvent.INVALID_POINTER_ID
@@ -2815,7 +2916,7 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     }
 }
 
-private class GameRenderer : GLSurfaceView.Renderer {
+private class GameRenderer(private val onRendererReady: () -> Unit) : GLSurfaceView.Renderer {
     var targetFps: Int = 60
     var graphicsTier: Int = 2
     private var lastFrameNanos = 0L
@@ -2827,6 +2928,7 @@ private class GameRenderer : GLSurfaceView.Renderer {
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         NativeGameBridge.init(1, 1)
         NativeGameBridge.setGraphicsQuality(graphicsTier)
+        onRendererReady()
         lastFrameNanos = System.nanoTime()
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         GLES30.glEnable(GLES30.GL_BLEND)
