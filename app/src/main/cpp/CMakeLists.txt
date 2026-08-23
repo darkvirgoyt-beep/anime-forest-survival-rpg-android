@@ -9,6 +9,7 @@ add_library(forestgame SHARED
     physics/physics.cpp
     controller/third_person_controller.cpp
     combat/combat_system.cpp
+    rpg/progression.cpp
 )
 
 target_compile_options(forestgame PRIVATE -Wall -Wextra -Wpedantic)

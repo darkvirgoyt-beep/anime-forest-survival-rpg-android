@@ -8,6 +8,8 @@
 
 The current slice renders a stylized forest scene through OpenGL ES 3, includes an original hero silhouette, animals, resource landmarks, a day/night ambience pulse, mobile joystick movement, attack feedback, gathering, and a basic craft action. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future local save wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
 
+The Aethelargd RPG layer now adds a deterministic progression loop: the **The First Ember** quest tracks three resource caches, an ember-kit craft, and a forest-warden defeat; gathering, combat hits, crafting, and the quest reward grant XP; level thresholds are surfaced in the live HUD; and the warden has a readable health bar, hit flash, defeat feedback, and quest completion state. The progression rules live in `app/src/main/cpp/rpg/progression.*` and are covered by a native regression test.
+
 ## Brand and audio assets
 
 The launcher is branded as **Aethelgard: Wild Horizons – Crafting** and uses `assets/ui/aethelgard_game_icon.png`. The generated audio bank is cataloged in [`assets/audio/AUDIO_MANIFEST.md`](assets/audio/AUDIO_MANIFEST.md). The Android harness loads the forest exploration track and gameplay/UI Foley through `GameAudio`, with persistent Master, Music, Effects, Ambience, and Mute controls. The Unreal path uses `UForestSliceAudioSubsystem` as the settings boundary.
@@ -41,7 +43,7 @@ The sandbox used to create this repository does not include the Android SDK or G
 
 ## Controls
 
-The left virtual joystick moves the hero. Right-side drag controls camera orbit. `JUMP` applies a grounded impulse, `DODGE` applies a stamina-gated burst, `ATTACK` shows native combat feedback, `GATHER` rewards nearby resource collection, and `CRAFT` consumes wood and fiber when available. The gyro toggle is enabled only when Android reports a gyroscope; otherwise it is visibly disabled as `GYRO: UNSUPPORTED`. The prototype keeps inventory values in the native layer for the next UI-binding pass.
+The left virtual joystick moves the hero. Right-side drag controls camera orbit. `JUMP` applies a grounded impulse, `DODGE` applies a stamina-gated burst, `ATTACK` shows native combat feedback, `GATHER` rewards nearby resource collection and XP, and `CRAFT` consumes wood and fiber when available. Gather three nearby caches to unlock the ember-kit objective, craft once to reveal the forest warden objective, then defeat the warden with the attack combo. The live HUD shows HP, stamina, hunger, level, XP, inventory, warden health, and quest state. The gyro toggle is enabled only when Android reports a gyroscope; otherwise it is visibly disabled as `GYRO: UNSUPPORTED`.
 
 ## Production blueprint and GDD map
 

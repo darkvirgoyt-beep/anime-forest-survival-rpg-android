@@ -70,6 +70,12 @@ jobs:
             app/src/main/cpp/combat/combat_system.cpp \
             -o combat_controller_test
           ./combat_controller_test
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/progression_test.cpp \
+            app/src/main/cpp/rpg/progression.cpp \
+            -o progression_test
+          ./progression_test
 
   build:
     runs-on: ubuntu-latest
