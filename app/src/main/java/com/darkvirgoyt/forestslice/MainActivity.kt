@@ -308,7 +308,7 @@ class MainActivity : Activity(), SensorEventListener {
             isFillViewport = true
             clipToPadding = false
             setPadding(0, dp(16), 0, dp(16))
-            addView(panel, ScrollView.LayoutParams(-1, -2))
+            addView(panel, FrameLayout.LayoutParams(-1, -2))
         }
         overlay.addView(scroll, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER).apply {
             leftMargin = dp(24)
