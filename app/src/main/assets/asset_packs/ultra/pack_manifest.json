@@ -1,0 +1,7 @@
+{
+  "packId": "aethelgard.ultra",
+  "runtimeFormat": "aethelgard-cooked-v1",
+  "tier": "ultra",
+  "content": ["procedural_fallback_materials", "enhanced_weather_effects", "ultra_lod_policy"],
+  "note": "Development payload only; production builds replace this with signed cooked 3D bundles."
+}

@@ -79,6 +79,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var supportedTargetFps = listOf(60)
     private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
     private lateinit var audio: GameAudio
+    private lateinit var assetDelivery: AssetDeliveryManager
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
     private lateinit var onboardingOverlay: View
@@ -137,6 +138,7 @@ class MainActivity : Activity(), SensorEventListener {
             .takeIf { it in supportedTargetFps } ?: (supportedTargetFps.maxOrNull() ?: 60)
         selectedGraphicsTier = graphicsPreferences.getInt("graphics_tier", 2).coerceIn(0, 4)
         audio = GameAudio(this)
+        assetDelivery = AssetDeliveryManager(this)
         audio.playMusic()
 
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
@@ -158,6 +160,14 @@ class MainActivity : Activity(), SensorEventListener {
         updateGyroButton()
         registerGyro()
         accountSession.initialize(this, ::applyAccountSnapshot)
+    }
+
+    override fun onDestroy() {
+        hudHandler.removeCallbacks(hudUpdater)
+        hudHandler.removeCallbacks(cloudSaveUpdater)
+        if (::assetDelivery.isInitialized) assetDelivery.shutdown()
+        if (::audio.isInitialized) audio.release()
+        super.onDestroy()
     }
 
     private fun detectSupportedTargetFps(): List<Int> {
@@ -873,7 +883,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val title = TextView(this).apply {
-            text = "PREPARING AETHELGARD  •  3D ASSET PATCH"
+            text = "PREPARING AETHELGARD  •  COOKED 3D ASSET PACK"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
@@ -892,55 +902,53 @@ class MainActivity : Activity(), SensorEventListener {
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 56, 61))
         }
         val details = TextView(this).apply {
-            text = "Mobile-safe base installed; optional world packs are prepared after verification."
+            text = "Resolving the selected device graphics tier…"
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(161, 190, 187))
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "Production path: download signed bundles, verify SHA-256, unpack compressed textures/meshes, build shader caches, then mount the selected 3D asset tier."
+            text = "Runtime bundles are pre-cooked offline. Android verifies, unpacks, and mounts them; it does not compile the authoring project on-device."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
             setPadding(0, dp(18), 0, 0)
         }
+        val retry = actionButton("RETRY ASSET PREPARATION")
+        retry.visibility = View.GONE
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
         panel.addView(status, LinearLayout.LayoutParams(-1, dp(46)))
         panel.addView(progress, LinearLayout.LayoutParams(dp(430), dp(28)))
         panel.addView(details, LinearLayout.LayoutParams(-1, dp(48)))
         panel.addView(note, LinearLayout.LayoutParams(-1, dp(60)))
+        panel.addView(retry, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
         overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
         rootContainer.addView(overlay)
         assetPatchOverlay = overlay
 
-        val steps = listOf(
-            "Checking signed asset manifest…" to "Base APK verified. Optional high-fidelity packs are available for selection.",
-            "Downloading 3D world bundle…" to "Terrain, foliage, characters, creatures, and VFX bundle queued.",
-            "Verifying SHA-256 checksums…" to "Package integrity verified before mounting.",
-            "Unpacking compressed render assets…" to "Textures, meshes, materials, and animation data prepared.",
-            "Building device shader cache…" to "Graphics tier ${graphicsTierName(selectedGraphicsTier)} selected at $selectedTargetFps FPS.",
-            "Ready — entering Aethelgard…" to "Runtime will stream only the cells and quality tier required by this device."
-        )
-        var stepIndex = 0
-        val progressRunnable = object : Runnable {
-            override fun run() {
-                val entry = steps[stepIndex]
-                status.text = entry.first
-                details.text = entry.second
-                progress.progress = ((stepIndex + 1) * 100 / steps.size).coerceAtMost(100)
-                stepIndex += 1
-                if (stepIndex < steps.size) {
-                    hudHandler.postDelayed(this, 520L)
-                } else {
+        lateinit var startPreparation: () -> Unit
+        startPreparation = {
+            retry.visibility = View.GONE
+            progress.progress = 0
+            assetDelivery.prepareForTier(selectedGraphicsTier) { event ->
+                status.text = event.title
+                details.text = event.detail
+                progress.progress = event.percent
+                if (event.state == AssetDeliveryManager.State.READY) {
                     hudHandler.postDelayed({
                         rootContainer.removeView(overlay)
                         assetPatchOverlay = null
-                    }, 650L)
+                    }, 450L)
+                } else if (event.state == AssetDeliveryManager.State.FAILED) {
+                    note.text = event.error ?: "The bundle was rejected. Check the connection or manifest."
+                    note.setTextColor(Color.rgb(255, 180, 150))
+                    retry.visibility = View.VISIBLE
                 }
             }
         }
-        hudHandler.post(progressRunnable)
+        retry.setOnClickListener { startPreparation() }
+        startPreparation()
     }
 
     private fun showGraphicsSettings() {

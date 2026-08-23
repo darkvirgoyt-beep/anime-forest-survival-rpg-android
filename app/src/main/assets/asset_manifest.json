@@ -1,0 +1,60 @@
+{
+  "manifestVersion": 1,
+  "catalogId": "aethelgard-dev-catalog",
+  "signature": {
+    "algorithm": "ed25519",
+    "value": "DEVELOPMENT_ONLY_REPLACE_WITH_SERVER_SIGNATURE"
+  },
+  "packs": [
+    {
+      "tier": "low",
+      "version": "dev-1",
+      "source": "asset://asset_packs/low.zip",
+      "sha256": "dd8e00d87687a5494fee1848718ca0caf3bdbfbd579406310435103e5e57e47f",
+      "byteSize": 331,
+      "runtimeFormat": "aethelgard-cooked-v1",
+      "maxUnpackedBytes": 1048576,
+      "maxFileCount": 64
+    },
+    {
+      "tier": "medium",
+      "version": "dev-1",
+      "source": "asset://asset_packs/medium.zip",
+      "sha256": "8c97667eb91bbfe6b6cb320a32ca4aa478e10ad5738c972e607fc209e322cf20",
+      "byteSize": 335,
+      "runtimeFormat": "aethelgard-cooked-v1",
+      "maxUnpackedBytes": 2097152,
+      "maxFileCount": 96
+    },
+    {
+      "tier": "high",
+      "version": "dev-1",
+      "source": "asset://asset_packs/high.zip",
+      "sha256": "dcd90a916f3d151dfded617fe92b6ca2357bbb1d4952cef68c0e165e259a1f52",
+      "byteSize": 332,
+      "runtimeFormat": "aethelgard-cooked-v1",
+      "maxUnpackedBytes": 4194304,
+      "maxFileCount": 128
+    },
+    {
+      "tier": "ultra",
+      "version": "dev-1",
+      "source": "asset://asset_packs/ultra.zip",
+      "sha256": "982c316a43141f99c8545209266ffd128efbe3262f493db2e9370e1125d19536",
+      "byteSize": 335,
+      "runtimeFormat": "aethelgard-cooked-v1",
+      "maxUnpackedBytes": 8388608,
+      "maxFileCount": 160
+    },
+    {
+      "tier": "max",
+      "version": "dev-1",
+      "source": "asset://asset_packs/max.zip",
+      "sha256": "d4b8c3ae55c0c6cb29bc1eccd5e5faf02714b8af95fb2eceaf47e4feb99126e7",
+      "byteSize": 332,
+      "runtimeFormat": "aethelgard-cooked-v1",
+      "maxUnpackedBytes": 16777216,
+      "maxFileCount": 192
+    }
+  ]
+}

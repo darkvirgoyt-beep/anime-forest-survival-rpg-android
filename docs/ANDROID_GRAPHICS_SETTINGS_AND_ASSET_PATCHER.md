@@ -18,9 +18,9 @@ The renderer requests the target cadence through Android’s `Surface.setFrameRa
 
 ## Asset patch flow
 
-After character setup, the prototype now displays a post-install preparation overlay. The flow communicates the intended production sequence: inspect a signed asset manifest, download the selected 3D world bundle, verify SHA-256 checksums, unpack compressed meshes/textures/materials/animations, build a device shader cache, and mount only the selected quality tier.
+After character setup, the app now displays a post-install preparation overlay backed by `AssetDeliveryManager`. The manager reads a catalog, verifies its Ed25519 signature when configured for production, resolves the selected tier, downloads with HTTP range-resume support, verifies the exact archive byte count and SHA-256 digest, extracts through canonical-path checks and file/size limits, writes a mount marker, and exposes a ready state to the UI. The development build includes tiny `asset://` bundles so this flow can be exercised deterministically without a CDN.
 
-The current overlay is a **prototype flow and visual contract**, not a live content-delivery service. It does not yet download real remote bundles or compile Unreal assets on the device. In production, signed asset packs should be delivered through a CDN or platform-compatible asset-delivery system, verified before use, decompressed into app-controlled storage, and mounted through an engine asset registry. Android should not be expected to compile a complete high-end game’s authoring assets from scratch; platform-specific cooked bundles and prebuilt shader variants are the safer path.
+The delivery system is an **asset-delivery foundation**, not a finished high-end content service. A production catalog should be hosted over HTTPS with a real Ed25519 signature and signed, pre-cooked runtime bundles. Android should verify, decompress, and mount those bundles; it should not compile a complete Unreal authoring project from scratch. Prebuilt platform-specific mesh, texture, animation, and shader variants are the safer path for an ARK/Wuthering-Waves-scale experience.
 
 ## 3D boundary
 
