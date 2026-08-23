@@ -109,11 +109,20 @@ class AssetPackCatalog(context: Context) {
     }
 
     private fun emitProductionProgress(states: Map<String, Progress>, onProgress: (ProductionProgress) -> Unit) {
-        val totalBytes = states.values.sumOf { it.totalBytes }
+        val reportedTotalBytes = states.values.sumOf { it.totalBytes }
         val bytesDownloaded = states.values.sumOf { it.bytesDownloaded }
         val failed = states.values.firstOrNull { it.status == AssetPackStatus.FAILED }
         val complete = productionPackNames.all { packName ->
             states[packName]?.status == AssetPackStatus.COMPLETED || isReady(packName)
+        }
+        // Play reports packs independently. Until every pack has reported its
+        // real total, use the production envelope as a stable denominator so
+        // discovering another pack cannot make the visible bar move backward.
+        val allTotalsKnown = productionPackNames.all { (states[it]?.totalBytes ?: 0L) > 0L }
+        val totalBytes = if (allTotalsKnown) {
+            reportedTotalBytes
+        } else {
+            maxOf(reportedTotalBytes, ContentDownloadPlan.totalMiB.toLong() * 1024L * 1024L)
         }
         val percent = when {
             complete -> 100
