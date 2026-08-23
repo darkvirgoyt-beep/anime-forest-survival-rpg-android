@@ -69,9 +69,10 @@ jobs:
           test -f assets/asset_budget.json
           test -f tools/validate_asset_budget.py
           test -f tools/test_graphics_tier_contract.py
+          test -f tools/test_production_foundation_contract.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
@@ -92,93 +93,7 @@ jobs:
           python3 tools/validate_asset_budget.py
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           python3 tools/test_graphics_tier_contract.py
-          grep -q 'ACCOUNT LINK' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'SIGN IN WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'AndroidKeyStore' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'restorePersistedSession' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'clearPersistedSession' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          ! grep -q 'VIEW ART REFERENCES' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'Connecting to Aethelgard online' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'requestGuestSignIn' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'requestProductionContent' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'resourceTier.storageLabel' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'ContentDownloadPlan.totalMiBFor(resourceTier)' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'full3dTargetMiB' app/src/main/assets/asset_manifest.json
-          grep -q '1.52f' app/src/main/cpp/controller/third_person_controller.cpp
-          ! grep -q 'DEV GUEST' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
-          grep -q 'AddBondProgress' Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
-          grep -q 'SweepMultiByChannel' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
-          grep -q 'FindComponentByClass<UForestSliceHealthComponent>' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
-          grep -q 'InteractionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
-          grep -q 'QuickSlotComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
-          ! grep -q 'float Stamina' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'EngineAssociation.*5.6' Unreal/ForestSlice.uproject
-          grep -q 'bSupportsVulkan=True' Unreal/Config/DefaultEngine.ini
-          grep -q 'RequestHeavyAttack' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
-          grep -q 'GenerateAroundLocation' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
-          grep -q 'RestoreFromSleep' Unreal/Source/ForestSlice/Private/ForestSliceSurvivalComponent.cpp
-          grep -q 'RequestSleep' Unreal/Source/ForestSlice/Private/ForestSliceWorldClock.cpp
-          grep -q 'SetGyroSensorSupport' Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
-          grep -q 'StartGooglePlaySignIn' Unreal/Source/ForestSlice/Public/ForestSliceAccountSubsystem.h
-          grep -q 'toggleViewMode' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'currentPlayerName' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'setPlayerName' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          ! grep -q 'text = "AETHELGRAD  •  DAY 1  •  DAY"' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'teleportToTower' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'drawTeleportationTower' app/src/main/cpp/forest_game.cpp
-          grep -q 'draw3DHighQualityDetails' app/src/main/cpp/forest_game.cpp
-          grep -q 'uQuality' app/src/main/cpp/forest_game.cpp
-          grep -q 'collisionIterations' app/src/main/cpp/physics/physics.cpp || grep -q 'iteration < 3' app/src/main/cpp/physics/physics.cpp
-          grep -q 'airControl = 0.48f' app/src/main/cpp/physics/physics.h
-          grep -q 'highFidelityFeatures' app/src/main/assets/asset_manifest.json
-          test -f docs/HIGH_END_MOBILE_FIDELITY.md
-          grep -q 'MaxCameraOrbitDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'MinCameraPitchDegrees' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'bDoCollisionTest' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
-          grep -q 'DigAtLocation' Unreal/Source/ForestSlice/Public/ForestSliceGroundPlanningComponent.h
-          grep -q 'UndergroundContentActor' Unreal/Source/ForestSlice/Public/ForestSliceGroundPlanningComponent.h
-          grep -q 'TriggerVirtualPlanGround' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'TriggerVirtualCreateFarmContour' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'TriggerVirtualPlantSeed' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'AwardGrindingXP' Unreal/Source/ForestSlice/Public/ForestSliceProgressionComponent.h
-          grep -q '100000' app/src/main/cpp/rpg/progression.cpp
-          grep -q 'kPlayerMaxHealthHp = 100' app/src/main/cpp/forest_game.cpp
-          grep -q 'ProgressionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
-          grep -q 'leftZoneFraction' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'drawPrototypeTerrainChunks' app/src/main/cpp/forest_game.cpp
-          grep -q 'interactEmberling' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'Emberling Companion Milestone' docs/EMBERLING_COMPANION_MILESTONE.md
-          grep -q 'GroundInstances' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
-          grep -q 'DetailInstances' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
-          grep -q 'DetailsPerChunk = 96' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
-          grep -q 'GroundAcceleration' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'CameraRotationLagSpeed' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'GetChunkPresentationAlpha' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
-          grep -q 'InitializeMapLayout' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
-          grep -q 'GetBiomeAtWorldLocation' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
-          grep -q 'UForestSliceInventoryComponent' Unreal/Source/ForestSlice/Public/ForestSliceInventoryComponent.h
-          grep -q 'TryCollect' Unreal/Source/ForestSlice/Private/ForestSliceResourceNodeComponent.cpp
-          grep -q 'ServerTriggerVirtualCollect' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
-          grep -q 'GatherPressed' Unreal/Source/ForestSlice/Public/ForestSliceMobileHUD.h
-          grep -q 'checkProductionPreflight' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'StatFs' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'minimumFreeSpaceMiB' app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt
-          grep -q 'WAITING_FOR_WIFI' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'REQUIRES_USER_CONFIRMATION' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'requestProductionContent' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'reconnectCoOpRoom' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
-          grep -q 'RECONNECTING' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'reconnect' server/src/server.mjs
-          grep -q 'room_full' server/src/server.mjs
-          grep -q 'max_players INTEGER NOT NULL DEFAULT 4' server/sql/003_coop_rendezvous.sql
-          grep -q 'MaxCoopMembers = 4' Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
-          grep -q 'AddOrReconnectMember' Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
-          grep -q 'CanStartCoopSession' Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
-          test -f docs/MULTIPLAYER_WORKFLOW.md
+          python3 tools/test_production_foundation_contract.py
 
   native-tests:
     runs-on: ubuntu-latest
