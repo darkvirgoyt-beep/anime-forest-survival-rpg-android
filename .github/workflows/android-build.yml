@@ -73,7 +73,7 @@ jobs:
           test -f tools/publish_internal_test.py
           python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
-          grep -q 'installedAndroidOAuthIdentity' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           test -f app/src/main/cpp/mobs/mob_catalog.h
