@@ -647,7 +647,7 @@ class MainActivity : Activity(), SensorEventListener {
                     else -> {
                         val downloaded = event.bytesDownloaded / (1024 * 1024)
                         val total = event.totalBytes / (1024 * 1024)
-                        progressiveContentNotice = "$label  •  ${event.percent}%  •  ${downloaded} / ${total.coerceAtLeast(size)} MB"
+                        progressiveContentNotice = "$label  •  ${event.percent}%  •  ${downloaded} / ${total.coerceAtLeast(size.toLong())} MB"
                     }
                 }
             }
