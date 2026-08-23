@@ -94,6 +94,9 @@ jobs:
           grep -q 'ACCOUNT LINK' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'SIGN IN WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'AndroidKeyStore' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'restorePersistedSession' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'clearPersistedSession' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'VIEW ART REFERENCES' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt

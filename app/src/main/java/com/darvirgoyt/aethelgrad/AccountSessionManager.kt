@@ -23,7 +23,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.SecureRandom
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import java.util.Locale
 import java.time.Instant
 import java.util.concurrent.Executors
@@ -120,6 +128,12 @@ class AccountSessionManager {
     private var refreshSessionToken: String? = null
     private var accessExpiresAtEpochMs: Long? = null
 
+    private companion object {
+        const val SESSION_PREFS = "aethelgard_session"
+        const val SESSION_BLOB = "encrypted_session"
+        const val SESSION_KEY_ALIAS = "aethelgard_session_key"
+    }
+
     fun initialize(activity: Activity, onStateChanged: (SessionSnapshot) -> Unit) {
         this.activity = activity
         stateListener = onStateChanged
@@ -136,7 +150,9 @@ class AccountSessionManager {
             publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS online game service is not configured."))
             return
         }
-        publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Opening Aethelgard online as a guest…"))
+        if (!restorePersistedSession()) {
+            publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Sign in to continue to Aethelgard online."))
+        }
     }
 
     /** Starts an online guest session without opening an account picker or asking for Gmail. */
@@ -166,6 +182,7 @@ class AccountSessionManager {
                 accessSessionToken = bundle.accessToken
                 refreshSessionToken = bundle.refreshToken
                 accessExpiresAtEpochMs = bundle.expiresAt
+                persistSession(bundle.accountId, bundle.refreshToken, true)
                 publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, bundle.accountId, "Guest session ready. Entering Aethelgard online…", bundle.expiresAt, true))
             } catch (_: Exception) {
                 publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Online guest service is unreachable. Check your connection and try again.", isGuest = true))
@@ -247,6 +264,7 @@ class AccountSessionManager {
                 accessSessionToken = sessionToken
                 refreshSessionToken = refreshToken
                 accessExpiresAtEpochMs = expiresAt
+                persistSession(accountId, refreshToken, false)
                 publishFromNetwork(
                     SessionSnapshot(
                         SessionState.AUTHENTICATED,
@@ -262,7 +280,7 @@ class AccountSessionManager {
         }
     }
 
-    /** Refreshes an in-memory rotating backend session before it expires. No refresh token is written to disk. */
+    /** Refreshes the rotating backend session; the refresh token is stored only in Android Keystore-backed encrypted storage. */
     fun refreshSession(): SessionSnapshot {
         val refreshToken = refreshSessionToken
         if (refreshToken.isNullOrBlank()) {
@@ -275,9 +293,13 @@ class AccountSessionManager {
         networkExecutor.execute {
             try {
                 val response = postJson(authRefreshUrl, "{\"refreshToken\":\"${escapeJson(refreshToken)}\"}")
-                if (response.statusCode !in 200..299) {
-                    clearSession()
-                    publishFromNetwork(SessionSnapshot(SessionState.EXPIRED, message = "Your game session has expired. Sign in again to continue."))
+                if (!response.isJson() || response.statusCode !in 200..299) {
+                    if (response.statusCode == 401) {
+                        clearSession()
+                        publishFromNetwork(SessionSnapshot(SessionState.EXPIRED, message = "Your game session has expired. Sign in again to continue."))
+                    } else {
+                        publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, snapshot.accountId, "Could not restore your game session. Check your connection and try again.", isGuest = snapshot.isGuest))
+                    }
                     return@execute
                 }
                 val accessToken = jsonString(response.body, "accessToken")
@@ -291,6 +313,7 @@ class AccountSessionManager {
                 accessSessionToken = accessToken
                 refreshSessionToken = rotatedRefresh
                 accessExpiresAtEpochMs = expiresAt
+                persistSession(snapshot.accountId, rotatedRefresh, snapshot.isGuest)
                 publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, snapshot.accountId, "Game session refreshed.", expiresAt, snapshot.isGuest))
             } catch (_: Exception) {
                 publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Could not refresh the game session. Check your connection."))
@@ -738,10 +761,88 @@ class AccountSessionManager {
     private fun publishCombatResult(callback: (AuthoritativeCombatResult?, String?) -> Unit, result: AuthoritativeCombatResult?, error: String?) = mainHandler.post { callback(result, error) }
     private fun publishInventoryResult(callback: (AuthoritativeInventoryResult?, String?) -> Unit, result: AuthoritativeInventoryResult?, error: String?) = mainHandler.post { callback(result, error) }
 
+    private fun restorePersistedSession(): Boolean {
+        val owner = activity ?: return false
+        return try {
+            val encoded = owner.getSharedPreferences(SESSION_PREFS, Activity.MODE_PRIVATE)
+                .getString(SESSION_BLOB, null) ?: return false
+            val payload = decryptSession(encoded) ?: return false
+            val root = JSONObject(payload)
+            val accountId = root.optString("accountId").takeIf { it.isNotBlank() } ?: return false
+            val refreshToken = root.optString("refreshToken").takeIf { it.isNotBlank() } ?: return false
+            val isGuest = root.optBoolean("isGuest", false)
+            refreshSessionToken = refreshToken
+            publish(SessionSnapshot(SessionState.SIGNING_IN, accountId, "Restoring your secure game session…", isGuest = isGuest))
+            refreshSession()
+            true
+        } catch (_: Exception) {
+            clearPersistedSession()
+            false
+        }
+    }
+
+    private fun persistSession(accountId: String?, refreshToken: String, isGuest: Boolean) {
+        val owner = activity ?: return
+        if (accountId.isNullOrBlank() || refreshToken.isBlank()) return
+        runCatching {
+            val payload = JSONObject()
+                .put("accountId", accountId)
+                .put("refreshToken", refreshToken)
+                .put("isGuest", isGuest)
+                .toString()
+            owner.getSharedPreferences(SESSION_PREFS, Activity.MODE_PRIVATE)
+                .edit()
+                .putString(SESSION_BLOB, encryptSession(payload))
+                .apply()
+        }
+    }
+
+    private fun clearPersistedSession() {
+        activity?.getSharedPreferences(SESSION_PREFS, Activity.MODE_PRIVATE)
+            ?.edit()
+            ?.remove(SESSION_BLOB)
+            ?.apply()
+    }
+
+    private fun sessionKey(): SecretKey {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (keyStore.getKey(SESSION_KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
+            init(
+                KeyGenParameterSpec.Builder(
+                    SESSION_KEY_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                )
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setUserAuthenticationRequired(false)
+                    .build()
+            )
+        }.generateKey()
+    }
+
+    private fun encryptSession(payload: String): String {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, sessionKey())
+        val encrypted = cipher.iv + cipher.doFinal(payload.toByteArray(Charsets.UTF_8))
+        return Base64.encodeToString(encrypted, Base64.NO_WRAP)
+    }
+
+    private fun decryptSession(encoded: String): String? {
+        val encrypted = Base64.decode(encoded, Base64.DEFAULT)
+        if (encrypted.size <= 12) return null
+        val iv = encrypted.copyOfRange(0, 12)
+        val ciphertext = encrypted.copyOfRange(12, encrypted.size)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, sessionKey(), GCMParameterSpec(128, iv))
+        return cipher.doFinal(ciphertext).toString(Charsets.UTF_8)
+    }
+
     private fun clearSession() {
         accessSessionToken = null
         refreshSessionToken = null
         accessExpiresAtEpochMs = null
+        clearPersistedSession()
     }
 
     private fun escapeJson(value: String): String = value
