@@ -47,6 +47,7 @@ int gAttackPulse = 0;
 int gDodgePulse = 0;
 int gLevelPulse = 0;
 int gQuestPulse = 0;
+float gJumpBufferSeconds = 0.0f;
 int gGraphicsQuality = 2; // 0=Low, 1=Medium, 2=High, 3=Ultra, 4=Max
 float gHunger = 0.82f;
 double gPhysicsAccumulator = 0.0;
@@ -1106,6 +1107,10 @@ void simulatePhysicsStep() {
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
     gCombat.tick(kPhysicsStep);
+    if (gJumpBufferSeconds > 0.0f) {
+        gJumpBufferSeconds = std::max(0.0f, gJumpBufferSeconds - kPhysicsStep);
+        if (gController.jump()) gJumpBufferSeconds = 0.0f;
+    }
     gEnemyHitFlash = std::max(0.0f, gEnemyHitFlash - kPhysicsStep);
     gEnemyDefeatTimer = std::max(0.0f, gEnemyDefeatTimer - kPhysicsStep);
     gTowerGlow = std::max(0.0f, gTowerGlow - kPhysicsStep);
@@ -1315,6 +1320,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gEnemyHealth = kForestWardenMaxHealth;
     gEnemyHitFlash = 0.0f;
     gEnemyDefeatTimer = 0.0f;
+    gJumpBufferSeconds = 0.0f;
     gLevelPulse = 0;
     gQuestPulse = 0;
     gGraphicsQuality = 2;
@@ -1477,7 +1483,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_heavyAttack(JNIEnv*, jobject) {
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_jump(JNIEnv*, jobject) {
-    gController.jump();
+    // Preserve a short input window so a tap made at the exact landing frame is
+    // still consumed on the next grounded simulation tick.
+    gJumpBufferSeconds = 0.16f;
 }
 
 extern "C" JNIEXPORT void JNICALL

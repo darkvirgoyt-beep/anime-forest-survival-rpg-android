@@ -1079,7 +1079,7 @@ class MainActivity : Activity(), SensorEventListener {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(28), dp(16), dp(28), 0)
+            setPadding(dp(126), dp(16), dp(136), 0)
         }
         val title = TextView(this).apply {
             text = if (BuildConfig.PROTOTYPE_MODE) {
@@ -1116,8 +1116,16 @@ class MainActivity : Activity(), SensorEventListener {
         }
         top.addView(title, LinearLayout.LayoutParams(-2, -1))
         top.addView(stateLabel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = dp(16); rightMargin = dp(10) })
-        top.addView(gyroButton, LinearLayout.LayoutParams(dp(142), dp(44)))
         overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
+        overlay.addView(CircularMiniMapView(this), FrameLayout.LayoutParams(dp(94), dp(94), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(10)
+            leftMargin = dp(16)
+        })
+        overlay.addView(gyroButton, FrameLayout.LayoutParams(dp(118), dp(38), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(72)
+            rightMargin = dp(18)
+        })
+        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
         overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply { topMargin = dp(54) })
 
         val profileBadge = ImageView(this).apply {
@@ -1134,7 +1142,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(10)
-            rightMargin = dp(176)
+            rightMargin = dp(18)
         })
 
         var firstPerson = false
@@ -1211,16 +1219,11 @@ class MainActivity : Activity(), SensorEventListener {
                 cornerRadius = dp(16).toFloat()
             }
         }
-        val sprintSlide = gameplayButton("↯  SPRINT") { }
+        val sprintSlide = roundControlButton("SPRINT") { }
         sprintSlide.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> gameView.queueEvent { NativeGameBridge.setSprintHeld(true) }
-                MotionEvent.ACTION_UP -> {
-                    gameView.queueEvent {
-                        NativeGameBridge.setSprintHeld(false)
-                        NativeGameBridge.slide()
-                    }
-                }
+                MotionEvent.ACTION_UP -> gameView.queueEvent { NativeGameBridge.setSprintHeld(false) }
                 MotionEvent.ACTION_CANCEL -> gameView.queueEvent { NativeGameBridge.setSprintHeld(false) }
             }
             true
@@ -1797,6 +1800,24 @@ class MainActivity : Activity(), SensorEventListener {
             cornerRadius = 18f
             setColor(Color.rgb(238, 194, 112))
             setStroke(2, Color.rgb(255, 230, 168))
+        }
+    }
+
+    private fun roundControlButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
+        text = label
+        textSize = 11f
+        isAllCaps = false
+        minHeight = 0
+        minimumHeight = 0
+        minWidth = 0
+        minimumWidth = 0
+        setPadding(dp(6), 0, dp(6), 0)
+        setTextColor(Color.rgb(255, 239, 193))
+        setOnClickListener { onClick() }
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.argb(230, 22, 37, 43))
+            setStroke(dp(2), Color.rgb(226, 184, 101))
         }
     }
 
