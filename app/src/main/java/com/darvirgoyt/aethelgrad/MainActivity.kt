@@ -548,7 +548,6 @@ class MainActivity : Activity(), SensorEventListener {
         if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
         accountSession.shutdown()
         if (::networkMonitor.isInitialized) networkMonitor.stop()
-        if (::assetDelivery.isInitialized) assetDelivery.shutdown()
         if (::assetPacks.isInitialized) assetPacks.close()
         if (::audio.isInitialized) audio.release()
         super.onDestroy()
