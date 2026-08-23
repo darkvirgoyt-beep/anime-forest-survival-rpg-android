@@ -8,4 +8,4 @@
 - [x] Calculate the current Android debug signing SHA-1 and SHA-256 for Google OAuth registration
 - [x] Create an original, legally clean Aethelgard cinematic login background asset without using the supplied reference image
 - [x] Integrate the original background asset into the Android login experience with a procedural fallback and dark UI-safe vignette
-- [ ] Validate the packaged background asset in the Android release build and public CI
+- [x] Validate the packaged background asset in the Android release build and public CI
