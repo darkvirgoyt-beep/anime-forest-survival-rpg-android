@@ -2405,7 +2405,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The online client starts the expansion automatically. Play Asset Delivery resumes the selected ${resourceTier.storageLabel} package after restart. Gameplay remains locked until the selected production pack is ready."
+            text = "The online client starts the expansion automatically: compiled graphics, world sectors, shaders, VFX, audio, and gameplay resources are delivered by Play Asset Delivery and resume after restart. Gameplay remains locked until the selected production pack is ready. For direct APK testing, place the matching OBB in Android/obb/${packageName} or install the signed Play AAB."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
