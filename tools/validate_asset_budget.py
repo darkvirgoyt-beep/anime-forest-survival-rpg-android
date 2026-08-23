@@ -45,12 +45,24 @@ def main() -> int:
     if planned_total != int(manifest["target_total_mib"]):
         raise SystemExit(f"manifest total mismatch: packs={planned_total} target_total_mib={manifest['target_total_mib']}")
 
+    missing_roots = [
+        (root / pack["module"] / "src" / "main" / "assets")
+        for pack in packs
+        if not (root / pack["module"] / "src" / "main" / "assets").is_dir()
+    ]
+    if missing_roots:
+        print("ERROR: required asset-pack content roots are missing:")
+        for path in missing_roots:
+            print(f"  - {path.relative_to(root)}")
+        print("Create each directory and keep a tracked .gitkeep until real authored assets are added.")
+        return 4
+
     actual_total = 0
     print(f"AETHELGRAD asset budget: planned={planned_total} MiB ({mib(planned_total * 1024 * 1024):.2f} MiB)")
     print("pack,delivery,target_mib,actual_mib,status")
     for pack in packs:
         pack_path = root / pack["module"] / "src" / "main" / "assets"
-        actual_bytes = directory_bytes(pack_path) if pack_path.exists() else 0
+        actual_bytes = directory_bytes(pack_path)
         actual_total += actual_bytes
         actual_mib = mib(actual_bytes)
         status = "OK" if actual_mib <= float(pack["target_mib"]) else "OVER_BUDGET"
