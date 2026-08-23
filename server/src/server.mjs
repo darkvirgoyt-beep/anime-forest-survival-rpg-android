@@ -9,6 +9,7 @@ import {
   issueAccessToken,
   loadRuntimeConfig,
   validateGoogleIdToken,
+  validateGuestKey,
   validateServerAuthCode,
   verifyAccessToken
 } from "./security.mjs";
@@ -101,6 +102,28 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     } catch (error) {
       console.error("google_id_token_exchange_failed", safeErrorCode(error));
       res.status(401).json({ error: "google_id_token_authentication_failed" });
+    }
+  });
+
+  app.post("/v1/auth/guest", async (req, res) => {
+    const guestKey = req.body?.guestKey;
+    if (!validateGuestKey(guestKey)) return res.status(400).json({ error: "invalid_guest_key" });
+
+    try {
+      const account = await upsertGuestAccount(pool, guestKey);
+      const bundle = await createSessionBundle(pool, account.id, config);
+      res.status(200).json({
+        accessToken: bundle.accessToken,
+        refreshToken: bundle.refreshToken,
+        tokenType: "Bearer",
+        accountId: account.id,
+        accountType: "guest",
+        expiresAt: new Date(bundle.accessExpiresAt * 1000).toISOString(),
+        refreshExpiresAt: new Date(bundle.refreshExpiresAt * 1000).toISOString()
+      });
+    } catch (error) {
+      console.error("guest_authentication_failed", safeErrorCode(error));
+      res.status(503).json({ error: "guest_authentication_unavailable" });
     }
   });
 
@@ -535,6 +558,19 @@ async function upsertGoogleAccount(db, identity) {
      DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()
      RETURNING id`,
     [identity.subject, String(identity.displayName || "Wayfarer").slice(0, 80)]
+  );
+  return result.rows[0];
+}
+
+async function upsertGuestAccount(db, guestKey) {
+  const guestKeyHash = hashSecret(guestKey);
+  const result = await db.query(
+    `INSERT INTO accounts (provider, provider_player_id, display_name)
+     VALUES ('guest', $1, 'Guest Wayfarer')
+     ON CONFLICT (provider, provider_player_id)
+     DO UPDATE SET updated_at = now()
+     RETURNING id`,
+    [guestKeyHash]
   );
   return result.rows[0];
 }

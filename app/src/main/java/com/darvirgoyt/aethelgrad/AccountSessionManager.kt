@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import androidx.core.content.ContextCompat
 import androidx.credentials.CredentialManager
 import androidx.credentials.CredentialManagerCallback
@@ -24,6 +25,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.Locale
 import java.time.Instant
 import java.util.concurrent.Executors
@@ -43,7 +45,8 @@ data class SessionSnapshot(
     val state: SessionState,
     val accountId: String? = null,
     val message: String,
-    val expiresAtEpochMs: Long? = null
+    val expiresAtEpochMs: Long? = null,
+    val isGuest: Boolean = false
 )
 
 data class CloudWorldManifest(
@@ -111,7 +114,9 @@ class AccountSessionManager {
     private var stateListener: ((SessionSnapshot) -> Unit)? = null
     private var googleWebClientId: String = ""
     private var authExchangeUrl: String = ""
+    private var guestAuthUrl: String = ""
     private var authRefreshUrl: String = ""
+    private var guestKey: String? = null
     private var accessSessionToken: String? = null
     private var refreshSessionToken: String? = null
     private var accessExpiresAtEpochMs: Long? = null
@@ -121,19 +126,47 @@ class AccountSessionManager {
         stateListener = onStateChanged
         googleWebClientId = activity.getString(R.string.google_web_client_id)
         authExchangeUrl = activity.getString(R.string.auth_exchange_url)
+        guestAuthUrl = authExchangeUrl.substringBeforeLast("/exchange") + "/guest"
         authRefreshUrl = activity.getString(R.string.auth_refresh_url)
+        guestKey = activity.getSharedPreferences("aethelgard_guest_identity", Activity.MODE_PRIVATE)
+            .getString("guest_key", null)
         credentialManager = CredentialManager.create(activity)
 
-        if (!hasCompleteConfiguration()) {
-            publish(
-                SessionSnapshot(
-                    SessionState.CONFIGURATION_ERROR,
-                    message = "Google sign-in is prepared, but the Web OAuth client ID and HTTPS backend URL are not configured."
-                )
-            )
+        if (!hasGuestConfiguration()) {
+            publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS online game service is not configured."))
             return
         }
-        publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Google sign-in is required to continue."))
+        publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Opening Aethelgard online as a guest…"))
+    }
+
+    /** Starts an online guest session without opening an account picker or asking for Gmail. */
+    fun requestGuestSignIn(): SessionSnapshot {
+        if (!hasGuestConfiguration()) {
+            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS online game service is not configured."))
+        }
+        val key = guestKey ?: createGuestKey().also {
+            guestKey = it
+            activity?.getSharedPreferences("aethelgard_guest_identity", Activity.MODE_PRIVATE)
+                ?.edit()?.putString("guest_key", it)?.apply()
+        }
+        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Connecting to Aethelgard online…", isGuest = true))
+        networkExecutor.execute {
+            try {
+                val response = postJson(guestAuthUrl, JSONObject().put("guestKey", key).toString())
+                val bundle = parseSessionBundle(response)
+                if (response.statusCode !in 200..299 || bundle == null) {
+                    publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Online guest service is unavailable. Check your connection and try again.", isGuest = true))
+                    return@execute
+                }
+                accessSessionToken = bundle.accessToken
+                refreshSessionToken = bundle.refreshToken
+                accessExpiresAtEpochMs = bundle.expiresAt
+                publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, bundle.accountId, "Guest session ready. Entering Aethelgard online…", bundle.expiresAt, true))
+            } catch (_: Exception) {
+                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Online guest service is unreachable. Check your connection and try again.", isGuest = true))
+            }
+        }
+        return snapshot
     }
 
     fun requestGoogleSignIn(): SessionSnapshot {
@@ -142,8 +175,8 @@ class AccountSessionManager {
         if (owner == null || manager == null) {
             return publish(SessionSnapshot(SessionState.ERROR, message = "Google sign-in is not initialized. Restart the game and try again."))
         }
-        if (!hasCompleteConfiguration()) {
-            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Configure the Web OAuth client ID and HTTPS game backend before signing in."))
+        if (!hasGoogleConfiguration()) {
+            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Optional Google sign-in is not configured. Guest mode remains available."))
         }
 
         publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Choose a Google account to connect…"))
@@ -277,7 +310,7 @@ class AccountSessionManager {
                 accessSessionToken = accessToken
                 refreshSessionToken = rotatedRefresh
                 accessExpiresAtEpochMs = expiresAt
-                publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, snapshot.accountId, "Game session refreshed.", expiresAt))
+                publishFromNetwork(SessionSnapshot(SessionState.AUTHENTICATED, snapshot.accountId, "Game session refreshed.", expiresAt, snapshot.isGuest))
             } catch (_: Exception) {
                 publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Could not refresh the game session. Check your connection."))
             }
@@ -615,10 +648,30 @@ class AccountSessionManager {
         networkExecutor.shutdownNow()
     }
 
-    private fun hasCompleteConfiguration(): Boolean =
-        !googleWebClientId.startsWith("REPLACE_") &&
+    private fun hasGuestConfiguration(): Boolean =
+        !guestAuthUrl.startsWith("REPLACE_") &&
+            !authRefreshUrl.startsWith("REPLACE_") &&
+            guestAuthUrl.startsWith("https://") &&
+            authRefreshUrl.startsWith("https://")
+
+    private fun hasGoogleConfiguration(): Boolean =
+        hasGuestConfiguration() &&
+            !googleWebClientId.startsWith("REPLACE_") &&
             !authExchangeUrl.startsWith("REPLACE_") &&
             authExchangeUrl.startsWith("https://")
+
+    private fun createGuestKey(): String = Base64.encodeToString(ByteArray(32).also { SecureRandom().nextBytes(it) }, Base64.NO_WRAP or Base64.NO_PADDING or Base64.URL_SAFE)
+
+    private fun parseSessionBundle(response: HttpResponse): SessionBundle? {
+        val root = JSONObject(response.body)
+        val accessToken = root.optString("accessToken").takeIf { it.isNotBlank() }
+        val refreshToken = root.optString("refreshToken").takeIf { it.isNotBlank() }
+        val accountId = root.optString("accountId").takeIf { it.isNotBlank() }
+        val expiresAt = parseIsoEpochMs(root.optString("expiresAt"))
+        return if (accessToken != null && refreshToken != null && accountId != null && expiresAt != null) {
+            SessionBundle(accessToken, refreshToken, accountId, expiresAt)
+        } else null
+    }
 
     private fun cloudEndpoint(path: String): String = authExchangeUrl.substringBeforeLast("/exchange") + path
 
@@ -705,5 +758,6 @@ class AccountSessionManager {
         null
     }
 
+    private data class SessionBundle(val accessToken: String, val refreshToken: String, val accountId: String, val expiresAt: Long)
     private data class HttpResponse(val statusCode: Int, val body: String)
 }

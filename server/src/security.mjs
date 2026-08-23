@@ -38,6 +38,10 @@ export function validateGoogleIdToken(value) {
   return typeof value === "string" && value.length >= 100 && value.length <= 16_384 && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
+export function validateGuestKey(value) {
+  return typeof value === "string" && value.length >= 32 && value.length <= 128 && /^[A-Za-z0-9_-]+$/.test(value);
+}
+
 export function hashSecret(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }

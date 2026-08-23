@@ -1,12 +1,12 @@
 # Aethelgard online services
 
-This service is the first production boundary for **Aethelgard: Wild Horizons – Crafting**. It verifies a player’s Google account identity on the server, creates an internal account, issues a short-lived game session, synchronizes co-op room state, and validates the current shared combat and inventory actions. Full authoritative movement, hit detection, and high-frequency replication still belong in a dedicated game server.
+This service is the online boundary for **Aethelgard: Wild Horizons – Crafting**. It supports guest-first entry, optional Google account authentication, internal sessions, co-op room state, and server-validated shared combat and inventory actions. The current Android release opens directly into an online guest session; full authoritative movement, hit detection, and high-frequency replication still belong in a dedicated game server.
 
 ## Local development
 
 1. Install Node.js 22 and PostgreSQL 16, or run the included Docker Compose file.
 2. Copy `.env.example` to `.env`. Set `GOOGLE_ID_TOKEN_AUDIENCE` to the **Web OAuth client ID** from Google Cloud and create a random `GAME_SESSION_JWT_SECRET` of at least 32 characters. Never commit `.env`.
-3. Start PostgreSQL and apply `sql/001_init.sql`, `sql/002_hardened_sessions.sql`, `sql/003_coop_rendezvous.sql`, and `sql/004_authoritative_gameplay.sql`.
+3. Start PostgreSQL and apply `sql/001_init.sql`, `sql/002_hardened_sessions.sql`, `sql/003_coop_rendezvous.sql`, `sql/004_authoritative_gameplay.sql`, and `sql/005_guest_accounts.sql` in order.
 4. Install dependencies and start the service:
 
 ```bash
@@ -15,6 +15,12 @@ npm start
 ```
 
 The health endpoint is `GET http://localhost:8080/healthz`. The Android app intentionally rejects non-HTTPS authentication endpoints in release-style builds, so use a real HTTPS domain for a device test.
+
+## Guest-first authentication
+
+The Android client generates a cryptographically random guest key on first launch and stores it only in the app’s private preferences. It sends the key over HTTPS to `POST /v1/auth/guest`; the server stores only its SHA-256 hash, upserts a normal internal account with provider `guest`, and returns the same short-lived access token plus rotating refresh token used by every other client. Reinstalling the app creates a new guest identity unless the platform backup restores the private preference. A guest can play online immediately without a Gmail account or account picker.
+
+Guest keys are bearer credentials for the anonymous profile, so they must never be logged, placed in URLs, or sent over HTTP. Production deployments should add rate limiting, abuse controls, and an account-linking flow before exposing guest progression to public users.
 
 ## Standard Google account authentication
 
@@ -51,6 +57,7 @@ The initial API is deliberately narrow:
 | Endpoint | Purpose |
 |---|---|
 | `GET /healthz` | Liveness and database readiness check. |
+| `POST /v1/auth/guest` | Create or resume an anonymous online account from a hashed guest key. |
 | `POST /v1/auth/google-id-token/exchange` | Verify a Google ID token server-side and create an internal game session. |
 | `POST /v1/auth/refresh` | Rotate an active game refresh session. |
 | `POST /v1/auth/play-games/exchange` | Optional future Play Games server-code exchange. |

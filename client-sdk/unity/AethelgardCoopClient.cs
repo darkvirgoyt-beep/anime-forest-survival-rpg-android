@@ -13,6 +13,7 @@ namespace Aethelgard.Net
         public string refreshToken;
         public string tokenType;
         public string accountId;
+        public string accountType;
         public string expiresAt;
         public string refreshExpiresAt;
     }
@@ -86,6 +87,13 @@ namespace Aethelgard.Net
     {
         public string idToken;
         public GoogleIdTokenRequest(string value) { idToken = value; }
+    }
+
+    [Serializable]
+    private sealed class GuestKeyRequest
+    {
+        public string guestKey;
+        public GuestKeyRequest(string value) { guestKey = value; }
     }
 
     [Serializable]
@@ -172,6 +180,16 @@ namespace Aethelgard.Net
         public async Task<AuthBundle> ExchangeGoogleIdTokenAsync(string idToken)
         {
             AuthBundle bundle = await SendJsonAsync<AuthBundle>("POST", "/v1/auth/google-id-token/exchange", new GoogleIdTokenRequest(idToken), false);
+            SetTokens(bundle);
+            AuthBundleReceived?.Invoke(bundle);
+            return bundle;
+        }
+
+        public async Task<AuthBundle> AuthenticateGuestAsync(string guestKey)
+        {
+            if (string.IsNullOrEmpty(guestKey) || !System.Text.RegularExpressions.Regex.IsMatch(guestKey, "^[A-Za-z0-9_-]{32,128}$"))
+                throw new ArgumentException("guestKey must be a base64url secret with 32-128 characters");
+            AuthBundle bundle = await SendJsonAsync<AuthBundle>("POST", "/v1/auth/guest", new GuestKeyRequest(guestKey), false);
             SetTokens(bundle);
             AuthBundleReceived?.Invoke(bundle);
             return bundle;

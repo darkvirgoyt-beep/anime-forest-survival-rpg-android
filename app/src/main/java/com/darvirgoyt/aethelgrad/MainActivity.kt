@@ -111,6 +111,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var cloudRecoveryNotice: String? = null
     private var activeCoOpRoom: CoOpRoomSnapshot? = null
     private var coOpHeartbeatInFlight = false
+    private var guestRoomConnectInFlight = false
     private var lastCoOpTowerRevision = 0
     private var coOpRequestCounter = 0L
     private lateinit var coOpStatusLabel: TextView
@@ -206,10 +207,11 @@ class MainActivity : Activity(), SensorEventListener {
             // Google credential whose Android OAuth package deliberately differs.
             onboardingOverlay.visibility = View.GONE
         } else {
-            // The release package remains online-only. Content preparation and
-            // character/world entry happen only after authentication succeeds.
+            // The release package remains online-only, but entry is guest-first:
+            // it connects silently and never opens a Gmail account picker.
             onboardingOverlay.visibility = View.VISIBLE
             accountSession.initialize(this, ::applyAccountSnapshot)
+            accountSession.requestGuestSignIn()
         }
     }
 
@@ -316,7 +318,12 @@ class MainActivity : Activity(), SensorEventListener {
         updateGyroButton()
         hudHandler.postDelayed(hudUpdater, 350L)
         hudHandler.postDelayed(cloudSaveUpdater, 45_000L)
-        if (activeCoOpRoom != null) hudHandler.postDelayed(coOpUpdater, 1_000L)
+        if (activeCoOpRoom != null) {
+            hudHandler.postDelayed(coOpUpdater, 1_000L)
+        } else if (accountSession.snapshot.state == SessionState.AUTHENTICATED && accountSession.snapshot.isGuest) {
+            gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
+            connectGuestToOnlineRoom()
+        }
     }
 
     override fun onDestroy() {
@@ -424,14 +431,14 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "Sign in securely to continue to character setup and your cloud world."
+            text = "Connecting automatically as a guest. No Gmail required."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "ONLINE ONLY / ONLINE LOGIN  •  Checking your Google account…"
+            text = "ONLINE ONLY / GUEST SESSION  •  Connecting…"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
@@ -448,12 +455,14 @@ class MainActivity : Activity(), SensorEventListener {
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.rgb(220, 182, 101))
             isChecked = false
         }
-        val google = cinematicButton("✦  CONTINUE WITH GOOGLE", true) {
+        val google = cinematicButton("✦  OPTIONAL GOOGLE LINK", true) {
             accountSession.requestGoogleSignIn()
         }.apply {
+            visibility = View.GONE
             isEnabled = false
             alpha = 0.5f
         }
+        consent.visibility = View.GONE
         consent.setOnCheckedChangeListener { _, checked ->
             google.isEnabled = checked
             google.alpha = if (checked) 1f else 0.5f
@@ -544,6 +553,11 @@ class MainActivity : Activity(), SensorEventListener {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
+        if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
+            authenticationTransitionStarted = true
+            if (BuildConfig.PROTOTYPE_MODE) enterGuestOnlineWorld() else showAssetPatchOverlay(::enterGuestOnlineWorld)
+            return
+        }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -569,7 +583,27 @@ class MainActivity : Activity(), SensorEventListener {
         )
     }
 
-    /** The login panel is intentionally sign-in only. A verified backend session advances here automatically. */
+    /** Guest mode skips account setup and opens the online world immediately. */
+    private fun enterGuestOnlineWorld() {
+        onboardingOverlay.visibility = View.GONE
+        gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
+        connectGuestToOnlineRoom()
+    }
+
+    private fun connectGuestToOnlineRoom() {
+        if (guestRoomConnectInFlight || activeCoOpRoom != null) return
+        guestRoomConnectInFlight = true
+        accountSession.createCoOpRoom(selectedServer.id) { room, error ->
+            guestRoomConnectInFlight = false
+            if (room != null) {
+                startCoOpRoom(room)
+            } else if (::coOpStatusLabel.isInitialized) {
+                coOpStatusLabel.text = "ONLINE WORLD  •  ${error ?: "Room service unavailable; retry from CO-OP ROOM."}"
+            }
+        }
+    }
+
+    /** The login panel remains available only for optional account linking; guest launch never reaches it. */
     private fun showCharacterSetup(accountId: String?, recoveredProfile: PlayerProfile? = null, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
         runOnUiThread {
             if (characterSetupOverlay != null) return@runOnUiThread

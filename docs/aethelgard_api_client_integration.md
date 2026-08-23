@@ -8,7 +8,7 @@ This document describes the current HTTP contract implemented by the AETHELGRAD 
 
 ## 1. Transport and authentication
 
-The Android client must send `Content-Type: application/json` for JSON requests and must use an `Authorization: Bearer <accessToken>` header for every authenticated endpoint. The access token is issued after Google ID-token exchange or the optional Play Games exchange. The service verifies the token signature, issuer, audience, expiry, session ID, account ID, stored token hash, and revocation state before allowing access.[1] [2]
+The Android client must send `Content-Type: application/json` for JSON requests and must use an `Authorization: Bearer <accessToken>` header for every authenticated endpoint. The access token is issued after guest authentication, Google ID-token exchange, or the optional Play Games exchange. The service verifies the token signature, issuer, audience, expiry, session ID, account ID, stored token hash, and revocation state before allowing access.[1] [2]
 
 The current token contract uses issuer `aethelgard-online-services`, audience `aethelgard-android`, account subject `sub`, session ID `sid`, issued-at `iat`, and expiry `exp`. The default access-token lifetime is 900 seconds; refresh sessions default to 30 days and are rotated on use. A client should refresh before expiry and discard a refresh token after a successful rotation.
 
@@ -20,11 +20,37 @@ The current token contract uses issuer `aethelgard-online-services`, audience `a
 
 ## 2. Environment and deployment prerequisites
 
-The service requires `DATABASE_URL`, `GOOGLE_ID_TOKEN_AUDIENCE`, `GAME_SESSION_JWT_SECRET`, and `ALLOWED_ORIGIN`. The session secret must contain at least 32 characters. Apply the schema export in this order: `001_init`, `002_hardened_sessions`, `003_coop_rendezvous`, and `004_authoritative_gameplay`.
+The service requires `DATABASE_URL`, `GOOGLE_ID_TOKEN_AUDIENCE`, `GAME_SESSION_JWT_SECRET`, and `ALLOWED_ORIGIN`. The session secret must contain at least 32 characters. Apply the schema export in this order: `001_init`, `002_hardened_sessions`, `003_coop_rendezvous`, `004_authoritative_gameplay`, and `005_guest_accounts`.
 
 The Android release client rejects non-HTTPS authentication endpoints. The service should therefore be deployed behind TLS, with PostgreSQL connectivity, secret storage, rate limiting, audit logging, backups, and a migration process before external testing.
 
 ## 3. Authentication endpoints
+
+### `POST /v1/auth/guest`
+
+Creates or resumes an anonymous online account. The client generates a random 32-byte base64url key, stores it in platform-private storage, and sends it only over HTTPS. The server stores only the SHA-256 hash and returns the normal session bundle:
+
+```json
+{
+  "guestKey": "<32-byte-base64url-key>"
+}
+```
+
+A successful response is `200 OK`:
+
+```json
+{
+  "accessToken": "<signed-access-token>",
+  "refreshToken": "<opaque-refresh-token>",
+  "tokenType": "Bearer",
+  "accountId": "<uuid>",
+  "accountType": "guest",
+  "expiresAt": "2026-08-23T13:00:00.000Z",
+  "refreshExpiresAt": "2026-09-22T12:45:00.000Z"
+}
+```
+
+Malformed keys return `400 invalid_guest_key`. A guest session can immediately create or join a co-op tower room; no Gmail account or account picker is required.
 
 ### `POST /v1/auth/google-id-token/exchange`
 

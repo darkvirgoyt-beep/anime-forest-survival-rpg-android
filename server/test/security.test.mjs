@@ -8,6 +8,7 @@ import {
   issueAccessToken,
   loadRuntimeConfig,
   validateGoogleIdToken,
+  validateGuestKey,
   validateServerAuthCode,
   verifyAccessToken
 } from "../src/security.mjs";
@@ -41,6 +42,48 @@ test("Google ID token validator rejects malformed values before verification", (
   assert.equal(validateGoogleIdToken("short"), false);
   assert.equal(validateGoogleIdToken(`${"a".repeat(34)}.${"b".repeat(34)}.${"c".repeat(34)}`), true);
   assert.equal(validateGoogleIdToken(`${"a".repeat(34)}.${"b".repeat(34)}.not valid`), false);
+});
+
+test("guest key validator accepts only opaque base64url keys", () => {
+  assert.equal(validateGuestKey("short"), false);
+  assert.equal(validateGuestKey("g".repeat(32)), true);
+  assert.equal(validateGuestKey("g".repeat(31)), false);
+  assert.equal(validateGuestKey("g".repeat(32) + "/"), false);
+});
+
+test("guest authentication upserts an anonymous account and issues a normal game session", async () => {
+  let nextSessionId = 1;
+  let receivedGuestHash = null;
+  const pool = {
+    async query(sql, params = []) {
+      if (sql.includes("INSERT INTO accounts")) {
+        receivedGuestHash = params[0];
+        return { rowCount: 1, rows: [{ id: "guest-account-1" }] };
+      }
+      if (sql.includes("INSERT INTO sessions")) return { rowCount: 1, rows: [{ id: nextSessionId++ }] };
+      return { rowCount: 1, rows: [] };
+    }
+  };
+  const app = createOnlineService({ pool, config: loadRuntimeConfig(validConfig) });
+  const server = http.createServer(app);
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const url = `http://127.0.0.1:${server.address().port}/v1/auth/guest`;
+  try {
+    const invalid = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ guestKey: "short" }) });
+    assert.equal(invalid.status, 400);
+
+    const guestKey = "g".repeat(43);
+    const accepted = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ guestKey }) });
+    const payload = await accepted.json();
+    assert.equal(accepted.status, 200);
+    assert.equal(payload.accountId, "guest-account-1");
+    assert.equal(payload.accountType, "guest");
+    assert.ok(payload.accessToken);
+    assert.ok(payload.refreshToken);
+    assert.equal(receivedGuestHash, hashSecret(guestKey));
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
 });
 
 test("access tokens expire and tampered tokens are rejected", () => {

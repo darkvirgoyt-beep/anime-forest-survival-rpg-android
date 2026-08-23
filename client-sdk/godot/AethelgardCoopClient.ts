@@ -10,6 +10,7 @@ export type AuthBundle = {
   refreshToken: string;
   tokenType: "Bearer";
   accountId: string;
+  accountType?: "guest" | "google";
   expiresAt: string;
   refreshExpiresAt: string;
 };
@@ -119,6 +120,14 @@ export class AethelgardCoopClient {
 
   async exchangeGoogleIdToken(idToken: string): Promise<AuthBundle> {
     const bundle = await this.request<AuthBundle>("POST", "/v1/auth/google-id-token/exchange", { idToken }, false);
+    this.setTokens(bundle);
+    this.onAuthBundle?.(bundle);
+    return bundle;
+  }
+
+  async authenticateGuest(guestKey: string): Promise<AuthBundle> {
+    if (!/^[A-Za-z0-9_-]{32,128}$/.test(guestKey)) throw new Error("guestKey must be a base64url secret with 32-128 characters");
+    const bundle = await this.request<AuthBundle>("POST", "/v1/auth/guest", { guestKey }, false);
     this.setTokens(bundle);
     this.onAuthBundle?.(bundle);
     return bundle;

@@ -129,3 +129,15 @@ CREATE TABLE IF NOT EXISTS coop_action_receipts (
 );
 
 CREATE INDEX IF NOT EXISTS coop_action_receipts_created_idx ON coop_action_receipts(created_at);
+
+-- 005_guest_accounts.sql
+-- Guest keys are never stored in raw form; provider_player_id contains SHA-256(guestKey).
+CREATE INDEX IF NOT EXISTS accounts_guest_provider_lookup_idx
+    ON accounts(provider, provider_player_id)
+    WHERE provider = 'guest';
+
+COMMENT ON COLUMN accounts.provider_player_id IS
+    'Stable provider subject; for provider=guest this is a SHA-256 hash of the client-held guest key.';
+
+COMMENT ON COLUMN accounts.display_name IS
+    'Server-controlled display name; guest accounts start as Guest Wayfarer and may later be profiled.';
