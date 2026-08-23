@@ -68,8 +68,13 @@ jobs:
           test -f app/src/main/res/drawable/aethelgard_profile_gold.xml
           test -f assets/asset_budget.json
           test -f tools/validate_asset_budget.py
+          test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
           python3 -m py_compile tools/test_resource_center.py tools/publish_internal_test.py
+          bash -n tools/check_16kb_alignment.sh
+          grep -q 'installedAndroidOAuthIdentity' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
+          grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           test -f assetpack_core/build.gradle.kts
           test -f assetpack_forest/build.gradle.kts
           test -f assetpack_voice/build.gradle.kts
@@ -218,7 +223,7 @@ jobs:
 
       - name: Install Android build tools
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.0.12077973"
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;28.0.12433566"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -243,6 +248,11 @@ jobs:
           python3 tools/validate_asset_budget.py
           gradle bundleRelease assembleRelease assemblePrototype --stacktrace
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
+
+      - name: Verify 16 KB native alignment
+        env:
+          ANDROID_NDK_VERSION: "28.0.12433566"
+        run: tools/check_16kb_alignment.sh app/build/outputs/apk/release/app-release.apk
 
       - name: Upload direct APK artifact
         uses: actions/upload-artifact@v4

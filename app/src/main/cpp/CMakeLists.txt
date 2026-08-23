@@ -13,6 +13,12 @@ add_library(forestgame SHARED
 )
 
 target_compile_options(forestgame PRIVATE -Wall -Wextra -Wpedantic)
+# NDK r27 and lower need explicit 16 KB ELF alignment; keep these flags
+# explicit so the library remains aligned even if a CI image is downgraded.
+target_link_options(forestgame PRIVATE
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
+)
 target_include_directories(forestgame PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(forestgame

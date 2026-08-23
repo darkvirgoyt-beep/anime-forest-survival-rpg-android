@@ -1,6 +1,8 @@
 package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
@@ -21,6 +23,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
+import java.util.Locale
 import java.time.Instant
 import java.util.concurrent.Executors
 
@@ -165,7 +169,7 @@ class AccountSessionManager {
                 }
 
                 override fun onError(error: GetCredentialException) {
-                    publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error)))
+                    publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error, owner)))
                 }
             }
         )
@@ -173,13 +177,41 @@ class AccountSessionManager {
     }
 
     /** Maps provider failures to safe player-facing actions; token/account details are never logged or displayed. */
-    private fun describeGoogleCredentialFailure(error: GetCredentialException): String = when (error) {
-        is NoCredentialException -> "No usable Google account is available. Add or re-authenticate a Google account on this phone, then try again."
-        is GetCredentialProviderConfigurationException -> "Google sign-in services are unavailable on this device. Update Google Play services and the game, then try again."
-        is GetCredentialUnsupportedException -> "This device does not support the required Google credential service. Update Android and Google Play services, then try again."
-        is GetCredentialInterruptedException -> "Google sign-in was interrupted. Re-open the game and try again."
-        is GetCredentialCancellationException -> "Google sign-in ended before the game server. If you did not close it, register this installed APK's SHA-1 with package com.darvirgoyt.aethelgrad in the Android OAuth client, then retry."
-        else -> "Google sign-in could not complete (${error::class.java.simpleName}). Verify the Android OAuth package name and SHA-1 fingerprint, then try again."
+    private fun describeGoogleCredentialFailure(error: GetCredentialException, owner: Activity): String {
+        val installedIdentity = installedAndroidOAuthIdentity(owner)
+        return when (error) {
+            is NoCredentialException -> "No usable Google account is available. Add or re-authenticate a Google account on this phone, then try again."
+            is GetCredentialProviderConfigurationException -> "Google sign-in services are unavailable on this device. Update Google Play services and the game, then try again."
+            is GetCredentialUnsupportedException -> "This device does not support the required Google credential service. Update Android and Google Play services, then try again."
+            is GetCredentialInterruptedException -> "Google sign-in was interrupted. Re-open the game and try again."
+            is GetCredentialCancellationException -> "Google sign-in ended before the game server. Register $installedIdentity in the Android OAuth client, then retry."
+            else -> "Google sign-in could not complete (${error::class.java.simpleName}). Verify $installedIdentity in Google Cloud, then try again."
+        }
+    }
+
+    /** Returns public OAuth registration data for this exact installed APK, never a secret. */
+    private fun installedAndroidOAuthIdentity(owner: Activity): String {
+        return try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                owner.packageManager.getPackageInfo(owner.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            } else {
+                @Suppress("DEPRECATION")
+                owner.packageManager.getPackageInfo(owner.packageName, PackageManager.GET_SIGNATURES)
+            }
+            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.signingInfo?.apkContentsSigners ?: emptyArray()
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.signatures ?: emptyArray()
+            }
+            val fingerprint = signatures.firstOrNull()?.let { signature ->
+                MessageDigest.getInstance("SHA-1").digest(signature.toByteArray())
+                    .joinToString(":") { byte -> "%02X".format(Locale.US, byte.toInt() and 0xFF) }
+            } ?: "unavailable"
+            "package ${owner.packageName}, SHA-1 $fingerprint"
+        } catch (_: Exception) {
+            "package ${owner.packageName}, SHA-1 unavailable"
+        }
     }
 
     private fun exchangeGoogleIdToken(idToken: String) {

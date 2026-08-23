@@ -12,6 +12,7 @@ val hasCiReleaseSigning = listOf(ciKeystorePath, ciKeystorePassword, ciKeyAlias,
 android {
     namespace = "com.darvirgoyt.aethelgrad"
     compileSdk = 35
+    ndkVersion = "28.0.12433566"
 
     buildFeatures {
         buildConfig = true
@@ -58,6 +59,7 @@ android {
             matchingFallbacks += listOf("debug")
         }
         release {
+            isDebuggable = false
             isMinifyEnabled = false
             buildConfigField("boolean", "PROTOTYPE_MODE", "false")
             // GitHub CI uses protected secrets when configured; local builds remain debug-signed for test distribution.

@@ -6,10 +6,10 @@ The `CONTINUE WITH GOOGLE` screen uses Android Credential Manager and the explic
 |---|---|
 | No usable Google account | Add or reauthenticate a Google account on the phone, then retry. |
 | Google credential services unavailable | Update Google Play services and the Aethelgard APK. |
-| Google sign-in ended before the game server | In Google Cloud Console, verify the Android OAuth client has package `com.darvirgoyt.aethelgrad` and the SHA-1 certificate fingerprint for the exact installed APK. Do not enable the custom URI scheme. |
+| Google sign-in ended before the game server | Copy the package name and SHA-1 fingerprint shown in the app’s error message into the Android OAuth client in Google Cloud Console, then retry. Do not enable the custom URI scheme. |
 | Interrupted | Re-open the app and retry once. |
 
-The backend cannot fix a failed Android credential request because that failure occurs before an ID token is issued or sent to `/api/game-auth/exchange`. The backend health endpoint only proves that server configuration is ready.
+The backend cannot fix a failed Android credential request because that failure occurs before an ID token is issued or sent to `/api/game-auth/exchange`. The backend health endpoint only proves that server configuration is ready. The new diagnostic computes the public signing certificate SHA-1 from the installed APK at runtime; it never displays a token, account identifier, or private key.
 
 ## Release-Certificate Requirement
 
