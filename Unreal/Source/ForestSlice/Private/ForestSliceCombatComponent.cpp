@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "ForestSliceSurvivalComponent.h"
 
 UForestSliceCombatComponent::UForestSliceCombatComponent()
 {
@@ -110,6 +111,11 @@ void UForestSliceCombatComponent::BeginAttack(bool bHeavy)
 {
     const FForestSliceAttackDefinition* Attack = bHeavy ? &HeavyAttack : GetCurrentAttack();
     if (!Attack) return;
+    if (GetOwner()->HasAuthority()) {
+        if (UForestSliceSurvivalComponent* Survival = GetOwner()->FindComponentByClass<UForestSliceSurvivalComponent>()) {
+            if (!Survival->ConsumeStamina(Attack->StaminaCost)) return;
+        }
+    }
     CombatPhase = EForestSliceCombatPhase::Startup;
     PhaseTimer = Attack->StartupSeconds;
     CombatEvent.Broadcast(Attack->AttackId, ComboIndex, 0.0f, EquippedWeaponIndex);
@@ -121,7 +127,8 @@ void UForestSliceCombatComponent::ResolveActiveHit()
     if (bHeavyAttack) Attack = &HeavyAttack;
     if (!Attack || bHitResolved) return;
 
-    // Replace this event with an authoritative capsule/sweep trace against hurtbox components.
+    // The first production slice emits a server-owned hit window. The next combat slice
+    // replaces this single event with a capsule/sweep trace against registered hurtboxes.
     bHitResolved = true;
     CombatEvent.Broadcast(TEXT("HitWindow"), ComboIndex, Attack->Damage, EquippedWeaponIndex);
 }

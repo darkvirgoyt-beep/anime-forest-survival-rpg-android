@@ -6,6 +6,8 @@
 
 class UCameraComponent;
 class UForestSliceCombatComponent;
+class UForestSliceInteractionComponent;
+class UForestSliceQuickSlotComponent;
 class UForestSliceSurvivalComponent;
 class UForestSliceWeaponComponent;
 class UInputAction;
@@ -57,6 +59,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "Survival")
     float GetStaminaNormalized() const;
 
+    UFUNCTION(BlueprintPure, Category = "Systems")
+    UForestSliceInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
+
+    UFUNCTION(BlueprintPure, Category = "Systems")
+    UForestSliceQuickSlotComponent* GetQuickSlotComponent() const { return QuickSlotComponent; }
+
     UFUNCTION(BlueprintPure, Category = "Survival")
     bool HasGyroscopeSupport() const { return bDeviceHasGyroscope; }
 
@@ -69,6 +77,12 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceSurvivalComponent> SurvivalComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceInteractionComponent> InteractionComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceQuickSlotComponent> QuickSlotComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TObjectPtr<USpringArmComponent> CameraBoom;
@@ -99,12 +113,6 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> JumpAction;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Survival")
-    float MaxStamina = 100.0f;
-
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Survival")
-    float Stamina = 100.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float WalkSpeed = 320.0f;

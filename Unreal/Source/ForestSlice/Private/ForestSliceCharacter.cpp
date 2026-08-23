@@ -1,5 +1,7 @@
 #include "ForestSliceCharacter.h"
 #include "ForestSliceCombatComponent.h"
+#include "ForestSliceInteractionComponent.h"
+#include "ForestSliceQuickSlotComponent.h"
 #include "ForestSliceSurvivalComponent.h"
 #include "ForestSliceWeaponComponent.h"
 
@@ -21,6 +23,8 @@ AForestSliceCharacter::AForestSliceCharacter()
     CombatComponent = CreateDefaultSubobject<UForestSliceCombatComponent>(TEXT("CombatComponent"));
     WeaponComponent = CreateDefaultSubobject<UForestSliceWeaponComponent>(TEXT("WeaponComponent"));
     SurvivalComponent = CreateDefaultSubobject<UForestSliceSurvivalComponent>(TEXT("SurvivalComponent"));
+    InteractionComponent = CreateDefaultSubobject<UForestSliceInteractionComponent>(TEXT("InteractionComponent"));
+    QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
     bUseControllerRotationYaw = false;
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 620.0f, 0.0f);
@@ -49,8 +53,6 @@ AForestSliceCharacter::AForestSliceCharacter()
 void AForestSliceCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    Stamina = MaxStamina;
-
     if (const APlayerController* PlayerController = Cast<APlayerController>(GetController())) {
         if (const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer()) {
             if (UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>()) {
@@ -66,12 +68,10 @@ void AForestSliceCharacter::Tick(float DeltaSeconds)
     SlideCooldown = FMath::Max(0.0f, SlideCooldown - DeltaSeconds);
     DodgeCooldown = FMath::Max(0.0f, DodgeCooldown - DeltaSeconds);
 
-    if (!bSprintHeld && SlideCooldown <= 0.0f) {
-        Stamina = FMath::Min(MaxStamina, Stamina + 16.0f * DeltaSeconds);
-    }
-    if (bSprintHeld && GetVelocity().SizeSquared2D() > 100.0f) {
-        Stamina = FMath::Max(0.0f, Stamina - 18.0f * DeltaSeconds);
-        if (Stamina <= 0.0f) bSprintHeld = false;
+    if (bSprintHeld && GetVelocity().SizeSquared2D() > 100.0f && SurvivalComponent) {
+        if (!SurvivalComponent->ConsumeStamina(18.0f * FMath::Clamp(DeltaSeconds, 0.0f, 0.1f))) {
+            StopSprint(FInputActionValue());
+        }
     }
 }
 
@@ -161,7 +161,7 @@ void AForestSliceCharacter::TriggerVirtualJump()
 
 void AForestSliceCharacter::StartSprint(const FInputActionValue& Value)
 {
-    bSprintHeld = Stamina > 0.0f;
+    bSprintHeld = SurvivalComponent && SurvivalComponent->GetState().Stamina > 0.0f;
     GetCharacterMovement()->MaxWalkSpeed = bSprintHeld ? SprintSpeed : WalkSpeed;
 }
 
@@ -175,16 +175,14 @@ void AForestSliceCharacter::StopSprint(const FInputActionValue& Value)
 
 void AForestSliceCharacter::StartSlide(const FInputActionValue& Value)
 {
-    if (!GetCharacterMovement()->IsMovingOnGround() || SlideCooldown > 0.0f || Stamina < 18.0f) return;
-    Stamina -= 18.0f;
+    if (!GetCharacterMovement()->IsMovingOnGround() || SlideCooldown > 0.0f || !SurvivalComponent || !SurvivalComponent->ConsumeStamina(18.0f)) return;
     SlideCooldown = 0.65f;
     LaunchCharacter(GetActorForwardVector() * SlideImpulse + FVector(0.0f, 0.0f, 35.0f), true, false);
 }
 
 void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
 {
-    if (DodgeCooldown > 0.0f || Stamina < 25.0f) return;
-    Stamina -= 25.0f;
+    if (DodgeCooldown > 0.0f || !SurvivalComponent || !SurvivalComponent->ConsumeStamina(25.0f)) return;
     DodgeCooldown = 0.85f;
     LaunchCharacter(GetActorForwardVector() * DodgeImpulse, true, false);
     // Gameplay Ability System will own the authoritative invulnerability tag in the next slice.
@@ -231,5 +229,5 @@ void AForestSliceCharacter::ApplyGyroInput(float RotationX, float RotationY, flo
 
 float AForestSliceCharacter::GetStaminaNormalized() const
 {
-    return MaxStamina > 0.0f ? Stamina / MaxStamina : 0.0f;
+    return SurvivalComponent ? SurvivalComponent->GetStaminaNormalized() : 0.0f;
 }

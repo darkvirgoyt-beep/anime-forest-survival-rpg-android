@@ -63,6 +63,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Survival")
     const FForestSliceSurvivalState& GetState() const { return State; }
 
+    UFUNCTION(BlueprintPure, Category = "Survival")
+    float GetStaminaNormalized() const { return FMath::Clamp(State.Stamina / 100.0f, 0.0f, 1.0f); }
+
     UPROPERTY(BlueprintAssignable, Category = "Survival")
     FForestSliceSurvivalChanged SurvivalChanged;
 

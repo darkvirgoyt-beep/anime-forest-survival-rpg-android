@@ -34,6 +34,13 @@ jobs:
           test -f Unreal/Source/ForestSlice/Private/ForestSliceMobileHUD.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceAccountSubsystem.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceAccountSubsystem.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceInteractionComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceInteractionComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceQuickSlotComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceQuickSlotComponent.cpp
+          grep -q 'InteractionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          grep -q 'QuickSlotComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
+          ! grep -q 'float Stamina' Unreal/Source/ForestSlice/Public/ForestSliceCharacter.h
           grep -q 'EngineAssociation.*5.6' Unreal/ForestSlice.uproject
           grep -q 'bSupportsVulkan=True' Unreal/Config/DefaultEngine.ini
           grep -q 'RequestHeavyAttack' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
