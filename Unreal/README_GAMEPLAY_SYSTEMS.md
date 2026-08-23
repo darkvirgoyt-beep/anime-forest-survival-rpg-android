@@ -20,6 +20,10 @@
 
 `UForestSliceQuickSlotComponent` provides nine replicated slots for weapons, tools, food, potions, and other usable items. It tracks item IDs, quantities, combat usability, active selection, and consumption events. It is intentionally a data contract first; the final Blueprint HUD will supply the thumb-accessible grid/radial presentation.
 
+## Creature bonding and mount boundary
+
+`UForestSliceCreatureComponent` defines original species metadata, wildlife/predator/companion/mount/boss roles, server-authoritative bond progress, bonded state, mount eligibility, and companion commands (`Follow`, `Stay`, `Defend`, `ReturnToCamp`). It is a gameplay contract for future AI, taming interactions, mount movement, equipment, and creature animation. It does not claim that final creature models, behavior trees, saddle systems, or mount locomotion are complete.
+
 ## Day/night and beds
 
 `AForestSliceWorldClock` replicates a 24-hour server clock, exposes day alpha and night detection, and validates bed sleep by checking nighttime, proximity, movement, and authority. `AForestSliceBed` adds occupancy protection, asks the clock to advance to morning, and restores survival state. The next co-op pass should require party policy approval before advancing a shared clock and should cancel sleep on damage, combat, disconnect, or boss activity.

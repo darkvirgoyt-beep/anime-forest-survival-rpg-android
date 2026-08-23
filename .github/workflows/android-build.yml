@@ -40,6 +40,10 @@ jobs:
           test -f Unreal/Source/ForestSlice/Private/ForestSliceQuickSlotComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceHealthComponent.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceHealthComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
+          grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
+          grep -q 'AddBondProgress' Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
           grep -q 'SweepMultiByChannel' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
           grep -q 'FindComponentByClass<UForestSliceHealthComponent>' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp
           grep -q 'InteractionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
