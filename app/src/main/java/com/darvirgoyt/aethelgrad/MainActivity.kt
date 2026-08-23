@@ -389,7 +389,10 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
-            showCharacterSetup(snapshot.accountId)
+            accountSession.fetchOwnedWorlds { worlds, error ->
+                val recoveredWorld = worlds?.firstOrNull()
+                showCharacterSetup(snapshot.accountId, recoveredWorld, error)
+            }
             return
         }
         if (!::onboardingStatus.isInitialized) return
@@ -406,7 +409,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     /** The login panel is intentionally sign-in only. A verified backend session advances here automatically. */
-    private fun showCharacterSetup(accountId: String?) {
+    private fun showCharacterSetup(accountId: String?, recoveredWorld: CloudWorldManifest? = null, cloudError: String? = null) {
         runOnUiThread {
             if (characterSetupOverlay != null) return@runOnUiThread
             onboardingOverlay.visibility = View.GONE
@@ -443,20 +446,24 @@ class MainActivity : Activity(), SensorEventListener {
                 setTextColor(Color.rgb(226, 184, 101))
             }, LinearLayout.LayoutParams(-1, dp(30)))
             panel.addView(TextView(this).apply {
-                text = "CREATE YOUR WAYFARER"
+                text = if (recoveredWorld == null) "CREATE YOUR WAYFARER" else "YOUR CLOUD WORLD"
                 textSize = 24f
                 gravity = Gravity.CENTER
                 typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
                 setTextColor(Color.rgb(239, 234, 219))
             }, LinearLayout.LayoutParams(-1, dp(42)))
             panel.addView(TextView(this).apply {
-                text = "Account verified${accountId?.let { "  •  ${it.take(8)}" } ?: ""}"
+                text = when {
+                    recoveredWorld != null -> "Cloud world found: ${recoveredWorld.name}  •  Revision ${recoveredWorld.saveRevision}"
+                    !cloudError.isNullOrBlank() -> "Account verified  •  $cloudError"
+                    else -> "Account verified${accountId?.let { "  •  ${it.take(8)}" } ?: ""}"
+                }
                 textSize = 11f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(164, 231, 190))
             }, LinearLayout.LayoutParams(-1, dp(28)))
             characterNameInput = EditText(this).apply {
-                hint = "WAYFARER NAME"
+                hint = if (recoveredWorld == null) "WAYFARER NAME" else "PROFILE NAME"
                 textSize = 15f
                 isSingleLine = true
                 setTextColor(Color.WHITE)
@@ -473,6 +480,9 @@ class MainActivity : Activity(), SensorEventListener {
             val eyebrow = cinematicButton("BROW 01", false) { }
             val outfit = cinematicButton("OUTFIT 01", false) { }
             val hair = cinematicButton("HAIR 01", false) { }
+            val avatars = listOf("trailblazer", "ember", "verdant", "tide", "moon", "sunward")
+            var avatarIndex = 0
+            val avatar = cinematicButton("AVATAR 01", false) { }
             eyebrow.setOnClickListener {
                 characterCreation.eyebrowStyle = (characterCreation.eyebrowStyle + 1) % 4
                 eyebrow.text = "BROW ${String.format("%02d", characterCreation.eyebrowStyle + 1)}"
@@ -485,7 +495,11 @@ class MainActivity : Activity(), SensorEventListener {
                 characterCreation.hairStyle = (characterCreation.hairStyle + 1) % 4
                 hair.text = "HAIR ${String.format("%02d", characterCreation.hairStyle + 1)}"
             }
-            listOf(eyebrow, outfit, hair).forEach { control ->
+            avatar.setOnClickListener {
+                avatarIndex = (avatarIndex + 1) % avatars.size
+                avatar.text = "AVATAR ${String.format("%02d", avatarIndex + 1)}"
+            }
+            listOf(eyebrow, outfit, hair, avatar).forEach { control ->
                 appearance.addView(control, LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
             }
             panel.addView(appearance, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(10) })
@@ -495,19 +509,45 @@ class MainActivity : Activity(), SensorEventListener {
                 setTextColor(Color.rgb(255, 180, 150))
             }
             panel.addView(validation, LinearLayout.LayoutParams(-1, dp(26)))
-            panel.addView(cinematicButton("ENTER AETHELGARD  ›", true) {
+            panel.addView(cinematicButton(if (recoveredWorld == null) "CREATE CLOUD WORLD  ›" else "RESUME CLOUD WORLD  ›", true) {
+                if (recoveredWorld != null) {
+                    validation.setTextColor(Color.rgb(164, 231, 190))
+                    validation.text = "Recovering ${recoveredWorld.name} from revision ${recoveredWorld.saveRevision}…"
+                    rootContainer.postDelayed({
+                        rootContainer.removeView(overlay)
+                        characterSetupOverlay = null
+                    }, 420L)
+                    return@cinematicButton
+                }
                 characterCreation.name = characterNameInput.text.toString()
                 val issue = characterCreation.validate()
                 if (issue != null) {
                     validation.text = issue
                     return@cinematicButton
                 }
-                validation.setTextColor(Color.rgb(164, 231, 190))
-                validation.text = "Wayfarer ready. Entering your first cloud world…"
-                rootContainer.postDelayed({
-                    rootContainer.removeView(overlay)
-                    characterSetupOverlay = null
-                }, 420L)
+                validation.setTextColor(Color.rgb(255, 205, 145))
+                validation.text = "Reserving your profile and creating a cloud world…"
+                val avatarId = avatars[avatarIndex]
+                accountSession.updateProfile(characterCreation.name, avatarId) { profileError ->
+                    if (profileError != null) {
+                        validation.setTextColor(Color.rgb(255, 180, 150))
+                        validation.text = profileError
+                        return@updateProfile
+                    }
+                    accountSession.createInitialCloudWorld("${characterCreation.name}'s Horizon", selectedServer.id, avatarId) { _, worldError ->
+                        if (worldError != null) {
+                            validation.setTextColor(Color.rgb(255, 180, 150))
+                            validation.text = worldError
+                            return@createInitialCloudWorld
+                        }
+                        validation.setTextColor(Color.rgb(164, 231, 190))
+                        validation.text = "Cloud world protected. Entering Aethelgard…"
+                        rootContainer.postDelayed({
+                            rootContainer.removeView(overlay)
+                            characterSetupOverlay = null
+                        }, 420L)
+                    }
+                }
             }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(4) })
             overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
             characterSetupOverlay = overlay

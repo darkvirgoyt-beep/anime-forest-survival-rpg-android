@@ -12,6 +12,8 @@ import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import org.json.JSONArray
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
@@ -33,6 +35,14 @@ data class SessionSnapshot(
     val accountId: String? = null,
     val message: String,
     val expiresAtEpochMs: Long? = null
+)
+
+data class CloudWorldManifest(
+    val id: String,
+    val name: String,
+    val region: String,
+    val saveRevision: Int,
+    val schemaVersion: Int
 )
 
 /**
@@ -193,6 +203,79 @@ class AccountSessionManager {
         return accessSessionToken
     }
 
+    /** Lists only worlds that belong to the currently authenticated internal game account. */
+    fun fetchOwnedWorlds(onComplete: (List<CloudWorldManifest>?, String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again to recover cloud worlds.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = getJson(cloudEndpoint("/worlds/mine"), token)
+                if (response.statusCode !in 200..299) {
+                    publishCloudResult(onComplete, null, "Could not check your cloud worlds (${response.statusCode}).")
+                    return@execute
+                }
+                publishCloudResult(onComplete, parseWorldManifests(response.body), null)
+            } catch (_: Exception) {
+                publishCloudResult(onComplete, null, "Cloud worlds are unavailable. Check your connection.")
+            }
+        }
+    }
+
+    /** Saves player-visible identity fields; only a server-approved built-in avatar ID may be selected. */
+    fun updateProfile(username: String, avatarId: String, onComplete: (String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete("Your game session has expired. Sign in again.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("username", username).put("avatarId", avatarId).put("profileVisibility", "public").toString()
+                val response = requestJson("PUT", cloudEndpoint("/profile"), token, payload)
+                val error = if (response.statusCode in 200..299) null else if (response.statusCode == 409) "That wayfarer name is already taken." else "Could not save your profile (${response.statusCode})."
+                publishProfileResult(onComplete, error)
+            } catch (_: Exception) {
+                publishProfileResult(onComplete, "Could not save your profile. Check your connection.")
+            }
+        }
+    }
+
+    /** Creates an account-owned manifest and writes its first immutable cloud snapshot. */
+    fun createInitialCloudWorld(name: String, region: String, avatarId: String, onComplete: (CloudWorldManifest?, String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val created = requestJson("POST", cloudEndpoint("/worlds"), token, JSONObject().put("name", name).put("region", region).toString())
+                if (created.statusCode !in 200..299) {
+                    publishWorldResult(onComplete, null, "Could not create your cloud world (${created.statusCode}).")
+                    return@execute
+                }
+                val world = JSONObject(created.body).getJSONObject("world")
+                val worldId = world.getString("id")
+                val initialState = JSONObject()
+                    .put("schemaVersion", 1)
+                    .put("worldSeed", "aethelgard-${worldId.take(8)}")
+                    .put("day", 1)
+                    .put("character", JSONObject().put("name", name).put("avatarId", avatarId))
+                val saved = requestJson("PUT", cloudEndpoint("/worlds/$worldId/save"), token, JSONObject().put("expectedRevision", 0).put("schemaVersion", 1).put("worldState", initialState).toString())
+                if (saved.statusCode !in 200..299) {
+                    publishWorldResult(onComplete, null, "Cloud world was created but its first snapshot could not be saved (${saved.statusCode}).")
+                    return@execute
+                }
+                publishWorldResult(onComplete, CloudWorldManifest(worldId, world.getString("name"), world.getString("region"), 1, 1), null)
+            } catch (_: Exception) {
+                publishWorldResult(onComplete, null, "Could not create your cloud world. Check your connection.")
+            }
+        }
+    }
+
     fun signOut(): SessionSnapshot {
         clearSession()
         return publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out"))
@@ -208,6 +291,8 @@ class AccountSessionManager {
             !authExchangeUrl.startsWith("REPLACE_") &&
             authExchangeUrl.startsWith("https://")
 
+    private fun cloudEndpoint(path: String): String = authExchangeUrl.substringBeforeLast("/exchange") + path
+
     private fun publish(next: SessionSnapshot): SessionSnapshot {
         snapshot = next
         stateListener?.invoke(next)
@@ -219,15 +304,22 @@ class AccountSessionManager {
     }
 
     private fun postJson(url: String, payload: String): HttpResponse {
+        return requestJson("POST", url, null, payload)
+    }
+
+    private fun getJson(url: String, bearerToken: String): HttpResponse = requestJson("GET", url, bearerToken, null)
+
+    private fun requestJson(method: String, url: String, bearerToken: String?, payload: String?): HttpResponse {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
+            requestMethod = method
             connectTimeout = 10_000
             readTimeout = 10_000
-            doOutput = true
+            doOutput = payload != null
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
+            if (!bearerToken.isNullOrBlank()) setRequestProperty("Authorization", "Bearer $bearerToken")
         }
-        connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+        if (payload != null) connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
         val statusCode = connection.responseCode
         val body = (if (statusCode in 200..299) connection.inputStream else connection.errorStream)
             ?.bufferedReader()
@@ -236,6 +328,25 @@ class AccountSessionManager {
         connection.disconnect()
         return HttpResponse(statusCode, body)
     }
+
+    private fun parseWorldManifests(json: String): List<CloudWorldManifest> {
+        val worlds: JSONArray = JSONObject(json).optJSONArray("worlds") ?: JSONArray()
+        return buildList {
+            for (index in 0 until worlds.length()) {
+                val world = worlds.optJSONObject(index) ?: continue
+                val id = world.optString("id")
+                val name = world.optString("name")
+                val region = world.optString("region")
+                if (id.isNotBlank() && name.isNotBlank() && region.isNotBlank()) {
+                    add(CloudWorldManifest(id, name, region, world.optInt("saveRevision", 0), world.optInt("schemaVersion", 1)))
+                }
+            }
+        }
+    }
+
+    private fun publishCloudResult(callback: (List<CloudWorldManifest>?, String?) -> Unit, worlds: List<CloudWorldManifest>?, error: String?) = mainHandler.post { callback(worlds, error) }
+    private fun publishProfileResult(callback: (String?) -> Unit, error: String?) = mainHandler.post { callback(error) }
+    private fun publishWorldResult(callback: (CloudWorldManifest?, String?) -> Unit, world: CloudWorldManifest?, error: String?) = mainHandler.post { callback(world, error) }
 
     private fun clearSession() {
         accessSessionToken = null

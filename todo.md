@@ -19,4 +19,6 @@
 - [x] Inspect the Drive error evidence for the authenticated login flow that fails to advance
 - [x] Repair the post-authentication transition so the login page is sign-in only and authenticated players reach the next setup page
 - [x] Redesign the sign-in-only page with original Aethelgard artwork and layout informed only by the supplied reference’s high-level mood
+- [ ] Connect authenticated Android characters to account-bound cloud-world manifest recovery and profile-avatar selection
+- [ ] Implement client-side versioned cloud-save upload/download handling without storing session tokens on disk
 - [x] Connect the Android login configuration to the managed backend after the Web OAuth client ID is created
