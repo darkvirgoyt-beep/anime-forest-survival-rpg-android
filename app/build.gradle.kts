@@ -54,9 +54,9 @@ android {
         }
         create("prototype") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".prototype"
+            applicationId = "com.darvirgoyt.aethelgrad"
             versionNameSuffix = "-prototype"
-            // Keep the separate application ID for testing, but do not bypass login.
+            // Keep the prototype build task, but install it under the production-compatible application ID.
             buildConfigField("boolean", "PROTOTYPE_MODE", "false")
             matchingFallbacks += listOf("debug")
         }

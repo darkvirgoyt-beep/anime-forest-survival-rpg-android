@@ -1,11 +1,10 @@
 package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.credentials.CredentialManager
 import androidx.credentials.CredentialManagerCallback
@@ -24,7 +23,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
 import java.time.Instant
@@ -180,10 +178,10 @@ class AccountSessionManager {
         val owner = activity
         val manager = credentialManager
         if (owner == null || manager == null) {
-            return publish(SessionSnapshot(SessionState.ERROR, message = "Google sign-in is not initialized. Restart the game and try again."))
+            return publish(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
         }
         if (!hasGoogleConfiguration()) {
-            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Optional Google sign-in is not configured. Guest mode remains available."))
+            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Internal error. Please try again later."))
         }
 
         publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Choose a Google account to connect…"))
@@ -209,49 +207,17 @@ class AccountSessionManager {
                 }
 
                 override fun onError(error: GetCredentialException) {
-                    publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error, owner)))
+                    publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error)))
                 }
             }
         )
         return snapshot
     }
 
-    /** Maps provider failures to safe player-facing actions; token/account details are never logged or displayed. */
-    private fun describeGoogleCredentialFailure(error: GetCredentialException, owner: Activity): String {
-        val installedIdentity = installedAndroidOAuthIdentity(owner)
-        return when (error) {
-            is NoCredentialException -> "No usable Google account is available. Add or re-authenticate a Google account on this phone, then try again."
-            is GetCredentialProviderConfigurationException -> "Google sign-in services are unavailable on this device. Update Google Play services and the game, then try again."
-            is GetCredentialUnsupportedException -> "This device does not support the required Google credential service. Update Android and Google Play services, then try again."
-            is GetCredentialInterruptedException -> "Google sign-in was interrupted. Re-open the game and try again."
-            is GetCredentialCancellationException -> "Google sign-in ended before the game server. Register $installedIdentity in the Android OAuth client, then retry."
-            else -> "Google sign-in could not complete (${error::class.java.simpleName}). Verify $installedIdentity in Google Cloud, then try again."
-        }
-    }
-
-    /** Returns public OAuth registration data for this exact installed APK, never a secret. */
-    private fun installedAndroidOAuthIdentity(owner: Activity): String {
-        return try {
-            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                owner.packageManager.getPackageInfo(owner.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-            } else {
-                @Suppress("DEPRECATION")
-                owner.packageManager.getPackageInfo(owner.packageName, PackageManager.GET_SIGNATURES)
-            }
-            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.signingInfo?.apkContentsSigners ?: emptyArray()
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.signatures ?: emptyArray()
-            }
-            val fingerprint = signatures.firstOrNull()?.let { signature ->
-                MessageDigest.getInstance("SHA-1").digest(signature.toByteArray())
-                    .joinToString(":") { byte -> "%02X".format(Locale.US, byte.toInt() and 0xFF) }
-            } ?: "unavailable"
-            "package ${owner.packageName}, SHA-1 $fingerprint"
-        } catch (_: Exception) {
-            "package ${owner.packageName}, SHA-1 unavailable"
-        }
+    /** Keeps provider diagnostics in Logcat and never exposes registration data in the player UI. */
+    private fun describeGoogleCredentialFailure(error: GetCredentialException): String {
+        Log.w("AethelgardAuth", "Google credential request failed: ${error::class.java.simpleName}")
+        return "Internal error. Please try again later."
     }
 
     private fun exchangeGoogleIdToken(idToken: String) {
@@ -260,11 +226,13 @@ class AccountSessionManager {
             try {
                 val response = postJson(authExchangeUrl, "{\"idToken\":\"${escapeJson(idToken)}\"}")
                 if (!response.isJson()) {
-                    publishFromNetwork(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Game backend returned a web page instead of an authentication response. Verify the backend URL and try again."))
+                    Log.w("AethelgardAuth", "Google token exchange returned a non-JSON response")
+                    publishFromNetwork(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Internal error. Please try again later."))
                     return@execute
                 }
                 if (response.statusCode !in 200..299) {
-                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server rejected the Google login (${response.statusCode})."))
+                    Log.w("AethelgardAuth", "Google token exchange was rejected with HTTP ${response.statusCode}")
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
                     return@execute
                 }
                 val sessionToken = jsonString(response.body, "accessToken")
@@ -272,7 +240,8 @@ class AccountSessionManager {
                 val refreshToken = jsonString(response.body, "refreshToken")
                 val expiresAt = parseIsoEpochMs(jsonString(response.body, "expiresAt"))
                 if (sessionToken.isNullOrBlank() || accountId.isNullOrBlank() || refreshToken.isNullOrBlank() || expiresAt == null) {
-                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server returned an invalid session response."))
+                    Log.w("AethelgardAuth", "Google token exchange returned an incomplete session payload")
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
                     return@execute
                 }
                 accessSessionToken = sessionToken
@@ -286,8 +255,9 @@ class AccountSessionManager {
                         expiresAtEpochMs = expiresAt
                     )
                 )
-            } catch (_: Exception) {
-                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Game server is unreachable. Check your connection and try again."))
+            } catch (error: Exception) {
+                Log.w("AethelgardAuth", "Google token exchange failed: ${error::class.java.simpleName}")
+                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Internal error. Please try again later."))
             }
         }
     }
