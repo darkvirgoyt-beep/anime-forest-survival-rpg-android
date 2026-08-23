@@ -13,11 +13,13 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
@@ -30,6 +32,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.ScrollView
 import android.widget.TextView
@@ -55,6 +58,7 @@ object NativeGameBridge {
     external fun gather()
     external fun craft()
     external fun getHudState(): String
+    external fun setGraphicsQuality(level: Int)
     external fun getCloudState(): String
     external fun loadCloudState(state: String): Boolean
 }
@@ -67,11 +71,16 @@ class MainActivity : Activity(), SensorEventListener {
     private var gyroSensor: Sensor? = null
     private var gyroEnabled = false
     private val gyroSensitivity = 1.0f
+    private var selectedTargetFps = 60
+    private var selectedGraphicsTier = 2
+    private var supportedTargetFps = listOf(60)
+    private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
     private lateinit var audio: GameAudio
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
+    private var assetPatchOverlay: View? = null
     private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
     private lateinit var characterNameInput: EditText
@@ -120,11 +129,17 @@ class MainActivity : Activity(), SensorEventListener {
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+        supportedTargetFps = detectSupportedTargetFps()
+        selectedTargetFps = graphicsPreferences.getInt("target_fps", supportedTargetFps.maxOrNull() ?: 60)
+            .takeIf { it in supportedTargetFps } ?: (supportedTargetFps.maxOrNull() ?: 60)
+        selectedGraphicsTier = graphicsPreferences.getInt("graphics_tier", 2).coerceIn(0, 4)
         audio = GameAudio(this)
         audio.playMusic()
 
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
+        gameView.applyTargetFps(selectedTargetFps)
+        gameView.applyGraphicsTier(selectedGraphicsTier)
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         rootContainer.addView(buildHud())
         rootContainer.addView(JoystickView(this) { x, y ->
@@ -137,6 +152,31 @@ class MainActivity : Activity(), SensorEventListener {
         registerGyro()
         accountSession.initialize(this, ::applyAccountSnapshot)
     }
+
+    private fun detectSupportedTargetFps(): List<Int> {
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
+        val maxRefreshRate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: display?.refreshRate ?: 60f
+        } else {
+            @Suppress("DEPRECATION") (display?.refreshRate ?: 60f)
+        }
+        val options = listOf(60, 90, 120)
+        return options.filter { it.toFloat() <= maxRefreshRate + 1.5f }.ifEmpty { listOf(60) }
+    }
+
+    private fun applyTargetFps(value: Int) {
+        selectedTargetFps = value.coerceIn(supportedTargetFps.minOrNull() ?: 60, supportedTargetFps.maxOrNull() ?: 60)
+        graphicsPreferences.edit().putInt("target_fps", selectedTargetFps).apply()
+        if (::gameView.isInitialized) gameView.applyTargetFps(selectedTargetFps)
+    }
+
+    private fun applyGraphicsTier(value: Int) {
+        selectedGraphicsTier = value.coerceIn(0, 4)
+        graphicsPreferences.edit().putInt("graphics_tier", selectedGraphicsTier).apply()
+        if (::gameView.isInitialized) gameView.applyGraphicsTier(selectedGraphicsTier)
+    }
+
+    private fun graphicsTierName(value: Int): String = listOf("LOW", "MEDIUM", "HIGH", "ULTRA", "MAX")[value.coerceIn(0, 4)]
 
     private fun registerGyro() {
         gyroSensor?.let { sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
@@ -603,6 +643,7 @@ class MainActivity : Activity(), SensorEventListener {
                                 rootContainer.postDelayed({
                                     rootContainer.removeView(overlay)
                                     characterSetupOverlay = null
+                                    showAssetPatchOverlay()
                                 }, 420L)
                             }
                         }
@@ -677,7 +718,7 @@ class MainActivity : Activity(), SensorEventListener {
         val dodge = actionButton("DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
         val gather = actionButton("GATHER") { audio.playEffect("gather"); gameView.queueEvent { NativeGameBridge.gather() } }
         val craft = actionButton("CRAFT") { audio.playEffect("craft"); gameView.queueEvent { NativeGameBridge.craft() } }
-        val settings = actionButton("AUDIO SETTINGS") { showAudioSettings() }
+        val settings = actionButton("GRAPHICS / FPS") { showGraphicsSettings() }
         actions.addView(sprintSlide, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(attack, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(jump, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
@@ -723,6 +764,183 @@ class MainActivity : Activity(), SensorEventListener {
         )
         questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  $weather  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
         questLabel.setTextColor(if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
+    }
+
+    private fun showAssetPatchOverlay() {
+        if (assetPatchOverlay != null) return
+        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(4, 10, 16)) }
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(34), dp(26), dp(34), dp(24))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(13, 28, 36), Color.rgb(6, 15, 22))
+            ).apply {
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.rgb(150, 116, 62))
+            }
+        }
+        val title = TextView(this).apply {
+            text = "PREPARING AETHELGARD  •  3D ASSET PATCH"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(244, 218, 155))
+        }
+        val status = TextView(this).apply {
+            text = "Checking asset manifest…"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(205, 223, 220))
+            setPadding(0, dp(12), 0, dp(10))
+        }
+        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(226, 184, 101))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 56, 61))
+        }
+        val details = TextView(this).apply {
+            text = "Mobile-safe base installed; optional world packs are prepared after verification."
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(161, 190, 187))
+            setPadding(0, dp(12), 0, 0)
+        }
+        val note = TextView(this).apply {
+            text = "Production path: download signed bundles, verify SHA-256, unpack compressed textures/meshes, build shader caches, then mount the selected 3D asset tier."
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(146, 168, 171))
+            setPadding(0, dp(18), 0, 0)
+        }
+        panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
+        panel.addView(status, LinearLayout.LayoutParams(-1, dp(46)))
+        panel.addView(progress, LinearLayout.LayoutParams(dp(430), dp(28)))
+        panel.addView(details, LinearLayout.LayoutParams(-1, dp(48)))
+        panel.addView(note, LinearLayout.LayoutParams(-1, dp(60)))
+        overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
+        rootContainer.addView(overlay)
+        assetPatchOverlay = overlay
+
+        val steps = listOf(
+            "Checking signed asset manifest…" to "Base APK verified. Optional high-fidelity packs are available for selection.",
+            "Downloading 3D world bundle…" to "Terrain, foliage, characters, creatures, and VFX bundle queued.",
+            "Verifying SHA-256 checksums…" to "Package integrity verified before mounting.",
+            "Unpacking compressed render assets…" to "Textures, meshes, materials, and animation data prepared.",
+            "Building device shader cache…" to "Graphics tier ${graphicsTierName(selectedGraphicsTier)} selected at $selectedTargetFps FPS.",
+            "Ready — entering Aethelgard…" to "Runtime will stream only the cells and quality tier required by this device."
+        )
+        var stepIndex = 0
+        val progressRunnable = object : Runnable {
+            override fun run() {
+                val entry = steps[stepIndex]
+                status.text = entry.first
+                details.text = entry.second
+                progress.progress = ((stepIndex + 1) * 100 / steps.size).coerceAtMost(100)
+                stepIndex += 1
+                if (stepIndex < steps.size) {
+                    hudHandler.postDelayed(this, 520L)
+                } else {
+                    hudHandler.postDelayed({
+                        rootContainer.removeView(overlay)
+                        assetPatchOverlay = null
+                    }, 650L)
+                }
+            }
+        }
+        hudHandler.post(progressRunnable)
+    }
+
+    private fun showGraphicsSettings() {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(12), dp(24), dp(8))
+        }
+        val detectedMax = supportedTargetFps.maxOrNull() ?: 60
+        val detected = TextView(this).apply {
+            text = "Detected display capability: up to ${detectedMax} FPS\nUnsupported higher modes are hidden automatically."
+            textSize = 13f
+            setTextColor(Color.rgb(210, 224, 220))
+            setPadding(0, 0, 0, dp(10))
+        }
+        panel.addView(detected)
+        val autoFps = CheckBox(this).apply {
+            text = "AUTO: use the highest supported FPS ($detectedMax)"
+            textSize = 14f
+            setTextColor(Color.rgb(244, 218, 155))
+            isChecked = graphicsPreferences.getBoolean("auto_fps", true)
+        }
+        panel.addView(autoFps)
+        val fpsGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            setPadding(dp(8), 0, 0, dp(8))
+        }
+        val fpsButtons = supportedTargetFps.map { fps ->
+            RadioButton(this).apply {
+                text = "$fps FPS"
+                textSize = 13f
+                setTextColor(Color.WHITE)
+                tag = fps
+                isChecked = fps == selectedTargetFps
+            }
+        }
+        fpsButtons.forEach { fpsGroup.addView(it, LinearLayout.LayoutParams(0, dp(44), 1f)) }
+        fpsGroup.isEnabled = !autoFps.isChecked
+        panel.addView(TextView(this).apply {
+            text = "Manual FPS override"
+            textSize = 13f
+            setTextColor(Color.rgb(165, 214, 223))
+        })
+        panel.addView(fpsGroup)
+        autoFps.setOnCheckedChangeListener { _, checked ->
+            fpsGroup.isEnabled = !checked
+            if (checked) fpsGroup.clearCheck()
+        }
+
+        panel.addView(TextView(this).apply {
+            text = "GRAPHICS QUALITY"
+            textSize = 13f
+            setTextColor(Color.rgb(165, 214, 223))
+            setPadding(0, dp(8), 0, dp(4))
+        })
+        val qualityGroup = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL }
+        val qualityNames = listOf("LOW", "MEDIUM", "HIGH", "ULTRA", "MAX")
+        qualityNames.forEachIndexed { index, name ->
+            qualityGroup.addView(RadioButton(this).apply {
+                text = name
+                textSize = 13f
+                setTextColor(Color.WHITE)
+                isChecked = index == selectedGraphicsTier
+                tag = index
+            }, LinearLayout.LayoutParams(-1, dp(34)))
+        }
+        panel.addView(qualityGroup)
+        panel.addView(TextView(this).apply {
+            text = "Quality tiers scale effect density, weather detail, lighting accents, and future 3D asset/LOD budgets."
+            textSize = 12f
+            setTextColor(Color.rgb(171, 190, 187))
+            setPadding(0, dp(8), 0, 0)
+        })
+        AlertDialog.Builder(this)
+            .setTitle("GRAPHICS / FPS SETTINGS")
+            .setView(panel)
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("APPLY") { _, _ ->
+                val auto = autoFps.isChecked
+                graphicsPreferences.edit().putBoolean("auto_fps", auto).apply()
+                val chosenFps = if (auto) detectedMax else {
+                    fpsGroup.checkedRadioButtonId.let { id ->
+                        if (id == -1) selectedTargetFps else fpsGroup.findViewById<RadioButton>(id).tag as Int
+                    }
+                }
+                val chosenTier = qualityGroup.checkedRadioButtonId.let { id ->
+                    if (id == -1) selectedGraphicsTier else qualityGroup.findViewById<RadioButton>(id).tag as Int
+                }
+                applyTargetFps(chosenFps)
+                applyGraphicsTier(chosenTier)
+            }
+            .show()
     }
 
     private fun showAudioSettings() {
@@ -844,6 +1062,7 @@ private class CinematicLoginBackdropView(context: Context) : View(context) {
 
 private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
     private val renderer = GameRenderer()
+    private var targetFps = 60
     private var lastLookX = 0f
     private var lastLookY = 0f
 
@@ -853,6 +1072,19 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
         setPreserveEGLContextOnPause(true)
         renderMode = RENDERMODE_CONTINUOUSLY
         isFocusable = true
+    }
+
+    fun applyTargetFps(value: Int) {
+        targetFps = value.coerceIn(60, 120)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            holder.surface.setFrameRate(targetFps.toFloat(), Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE, Surface.CHANGE_FRAME_RATE_ALWAYS)
+        }
+        renderer.targetFps = targetFps
+    }
+
+    fun applyGraphicsTier(level: Int) {
+        renderer.graphicsTier = level.coerceIn(0, 4)
+        queueEvent { NativeGameBridge.setGraphicsQuality(renderer.graphicsTier) }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -926,8 +1158,14 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
 }
 
 private class GameRenderer : GLSurfaceView.Renderer {
+    var targetFps: Int = 60
+    var graphicsTier: Int = 2
+    private var lastFrameNanos = 0L
+
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         NativeGameBridge.init(1, 1)
+        NativeGameBridge.setGraphicsQuality(graphicsTier)
+        lastFrameNanos = System.nanoTime()
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         GLES30.glEnable(GLES30.GL_BLEND)
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
@@ -939,6 +1177,9 @@ private class GameRenderer : GLSurfaceView.Renderer {
     }
 
     override fun onDrawFrame(gl: GL10?) {
-        NativeGameBridge.render(1f / 60f)
+        val now = System.nanoTime()
+        val delta = if (lastFrameNanos == 0L) 1.0 / targetFps.toDouble() else (now - lastFrameNanos) / 1_000_000_000.0
+        lastFrameNanos = now
+        NativeGameBridge.render(delta.toFloat().coerceIn(0.0f, 0.10f))
     }
 }

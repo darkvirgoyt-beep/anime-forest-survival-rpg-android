@@ -41,6 +41,7 @@ int gAttackPulse = 0;
 int gDodgePulse = 0;
 int gLevelPulse = 0;
 int gQuestPulse = 0;
+int gGraphicsQuality = 2; // 0=Low, 1=Medium, 2=High, 3=Ultra, 4=Max
 float gHunger = 0.82f;
 double gPhysicsAccumulator = 0.0;
 constexpr float kPhysicsStep = 1.0f / 60.0f;
@@ -368,14 +369,17 @@ void drawNightStars() {
         {-0.10f, 0.57f, 0.008f}, {0.11f, 0.50f, 0.005f}, {0.43f, 0.54f, 0.007f},
         {0.67f, 0.46f, 0.005f}
     };
-    for (const auto& star : stars) {
+    const int visibleStars = std::min(16, 5 + gGraphicsQuality * 3);
+    for (int i = 0; i < visibleStars; ++i) {
+        const auto& star = stars[i];
         drawCircle(star[0], star[1], star[2], 0.82f, 0.93f, 1.0f, 0.80f);
     }
 }
 
 void drawRain(float intensity) {
     if (intensity <= 0.0f) return;
-    for (int i = 0; i < 22; ++i) {
+    const int rainDrops = 8 + gGraphicsQuality * 5;
+    for (int i = 0; i < rainDrops; ++i) {
         const float seed = static_cast<float>(i) * 0.173f;
         const float x = -0.96f + std::fmod(seed + gTime * (0.07f + 0.004f * static_cast<float>(i)), 1.92f);
         const float y = 0.78f - std::fmod(seed * 2.0f + gTime * (0.21f + 0.009f * static_cast<float>(i)), 1.58f);
@@ -782,8 +786,8 @@ void drawWorld() {
     const float currentRain = rainIntensity();
     const WeatherState weather = currentWeather();
     drawCampfire(weather == WeatherState::Thunderstorm ? 0.58f : weather == WeatherState::Rain ? 0.82f : 1.0f);
-    drawRain(currentRain);
-    drawLightning(lightningIntensity());
+    drawRain(currentRain * (0.65f + static_cast<float>(gGraphicsQuality) * 0.10f));
+    drawLightning(lightningIntensity() * (0.70f + static_cast<float>(gGraphicsQuality) * 0.075f));
 
     // Water is drawn before the hero so the body remains readable while ripples and
     // surface highlights communicate depth and movement on the small prototype screen.
@@ -823,6 +827,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gEnemyDefeatTimer = 0.0f;
     gLevelPulse = 0;
     gQuestPulse = 0;
+    gGraphicsQuality = 2;
     gController.body.position = {0.0f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
     if (gProgram == 0) createProgram();
@@ -881,6 +886,11 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGyro(JNIEnv*, jobject, jfloat rotationX, jfloat rotationY, jfloat sensitivity) {
     gGyroX = static_cast<float>(rotationX) * static_cast<float>(sensitivity);
     gGyroY = static_cast<float>(rotationY) * static_cast<float>(sensitivity);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality(JNIEnv*, jobject, jint level) {
+    gGraphicsQuality = std::clamp(static_cast<int>(level), 0, 4);
 }
 
 extern "C" JNIEXPORT void JNICALL
