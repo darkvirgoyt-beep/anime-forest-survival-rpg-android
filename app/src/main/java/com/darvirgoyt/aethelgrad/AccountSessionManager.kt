@@ -45,6 +45,12 @@ data class CloudWorldManifest(
     val schemaVersion: Int
 )
 
+data class PlayerProfile(
+    val username: String?,
+    val avatarId: String,
+    val profileVisibility: String
+)
+
 /**
  * Standard Google account sign-in boundary for pre-Play-Console testing.
  * The Android client sends only a Google-issued ID token to the configured HTTPS backend.
@@ -220,6 +226,35 @@ class AccountSessionManager {
                 publishCloudResult(onComplete, parseWorldManifests(response.body), null)
             } catch (_: Exception) {
                 publishCloudResult(onComplete, null, "Cloud worlds are unavailable. Check your connection.")
+            }
+        }
+    }
+
+    /** Restores the signed-in account's username and server-approved curated avatar ID. */
+    fun fetchProfile(onComplete: (PlayerProfile?, String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again to restore your profile.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = getJson(cloudEndpoint("/profile"), token)
+                if (response.statusCode !in 200..299) {
+                    publishRecoveredProfile(onComplete, null, "Could not restore your profile (${response.statusCode}).")
+                    return@execute
+                }
+                val payload = JSONObject(response.body).optJSONObject("profile")
+                if (payload == null) {
+                    publishRecoveredProfile(onComplete, null, "Cloud profile response was incomplete.")
+                    return@execute
+                }
+                val username = payload.optString("username").trim().ifBlank { null }
+                val avatarId = payload.optString("avatarId", "trailblazer")
+                val visibility = payload.optString("profileVisibility", "public")
+                publishRecoveredProfile(onComplete, PlayerProfile(username, avatarId, visibility), null)
+            } catch (_: Exception) {
+                publishRecoveredProfile(onComplete, null, "Could not restore your profile. Check your connection.")
             }
         }
     }
@@ -404,6 +439,7 @@ class AccountSessionManager {
     }
 
     private fun publishCloudResult(callback: (List<CloudWorldManifest>?, String?) -> Unit, worlds: List<CloudWorldManifest>?, error: String?) = mainHandler.post { callback(worlds, error) }
+    private fun publishRecoveredProfile(callback: (PlayerProfile?, String?) -> Unit, profile: PlayerProfile?, error: String?) = mainHandler.post { callback(profile, error) }
     private fun publishProfileResult(callback: (String?) -> Unit, error: String?) = mainHandler.post { callback(error) }
     private fun publishWorldResult(callback: (CloudWorldManifest?, String?) -> Unit, world: CloudWorldManifest?, error: String?) = mainHandler.post { callback(world, error) }
     private fun publishSnapshotResult(callback: (String?, String?) -> Unit, snapshot: String?, error: String?) = mainHandler.post { callback(snapshot, error) }

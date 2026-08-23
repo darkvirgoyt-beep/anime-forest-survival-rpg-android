@@ -495,8 +495,10 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
-            accountSession.fetchOwnedWorlds { worlds, error ->
-                showCharacterSetup(snapshot.accountId, worlds.orEmpty(), error)
+            accountSession.fetchProfile { profile, profileError ->
+                accountSession.fetchOwnedWorlds { worlds, worldsError ->
+                    showCharacterSetup(snapshot.accountId, profile, worlds.orEmpty(), worldsError ?: profileError)
+                }
             }
             return
         }
@@ -514,7 +516,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     /** The login panel is intentionally sign-in only. A verified backend session advances here automatically. */
-    private fun showCharacterSetup(accountId: String?, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
+    private fun showCharacterSetup(accountId: String?, recoveredProfile: PlayerProfile? = null, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
         runOnUiThread {
             if (characterSetupOverlay != null) return@runOnUiThread
             val availableWorlds = recoveredWorlds.take(6)
@@ -561,7 +563,9 @@ class MainActivity : Activity(), SensorEventListener {
             }, LinearLayout.LayoutParams(-1, dp(42)))
             val accountStatus = TextView(this).apply {
                 text = when {
+                    selectedWorld != null && recoveredProfile?.username != null -> "${recoveredProfile.username}  •  ${selectedWorld?.name}  •  Revision ${selectedWorld?.saveRevision}"
                     selectedWorld != null -> "Cloud world found: ${selectedWorld?.name}  •  Revision ${selectedWorld?.saveRevision}"
+                    recoveredProfile?.username != null -> "Welcome back, ${recoveredProfile.username}  •  Choose your cloud path"
                     !cloudError.isNullOrBlank() -> "Account verified  •  $cloudError"
                     else -> "Account verified${accountId?.let { "  •  ${it.take(8)}" } ?: ""}"
                 }
@@ -598,6 +602,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
             characterNameInput = EditText(this).apply {
                 hint = if (selectedWorld == null) "WAYFARER NAME" else "PROFILE NAME"
+                setText(recoveredProfile?.username.orEmpty())
                 textSize = 15f
                 isSingleLine = true
                 setTextColor(Color.WHITE)
@@ -620,7 +625,7 @@ class MainActivity : Activity(), SensorEventListener {
                 Color.rgb(78, 114, 92), Color.rgb(153, 81, 54), Color.rgb(71, 139, 103),
                 Color.rgb(57, 112, 148), Color.rgb(103, 83, 150), Color.rgb(166, 125, 63)
             )
-            var avatarIndex = 0
+            var avatarIndex = avatars.indexOf(recoveredProfile?.avatarId).takeIf { it >= 0 } ?: 0
             val avatarStrip = LinearLayout(this).apply { gravity = Gravity.CENTER }
             val avatarChoices = mutableListOf<FrameLayout>()
             fun refreshAvatarChoices() {
