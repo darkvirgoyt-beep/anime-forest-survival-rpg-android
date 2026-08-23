@@ -159,10 +159,11 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
-        // Production requests the fast-follow forest pack. The prototype variant stays
-        // offline and uses the built-in native slice so it is playable immediately.
+        // Production starts with a small bootstrap install, then prepares the
+        // separately downloadable 3D content before showing account onboarding.
         if (!BuildConfig.PROTOTYPE_MODE) {
-            assetPacks.request("assetpack_forest")
+            onboardingOverlay.visibility = View.GONE
+            showAssetPatchOverlay()
         } else {
             onboardingOverlay.visibility = View.GONE
         }
@@ -763,7 +764,6 @@ class MainActivity : Activity(), SensorEventListener {
                                 rootContainer.postDelayed({
                                     rootContainer.removeView(overlay)
                                     characterSetupOverlay = null
-                                    showAssetPatchOverlay()
                                 }, 420L)
                             }
                         }
@@ -865,7 +865,7 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(210)
         })
         val orbitHint = TextView(this).apply {
-            text = "SWIPE RIGHT TO ORBIT 360°  •  GYRO OPTIONAL"
+            text = "SWIPE RIGHT TO ORBIT 540°  •  FULL HORIZONTAL + VERTICAL LOOK  •  GYRO OPTIONAL"
             textSize = 10f
             letterSpacing = 0.08f
             setTextColor(Color.rgb(229, 211, 167))
@@ -970,13 +970,13 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val title = TextView(this).apply {
-            text = "PREPARING AETHELGARD  •  COOKED 3D ASSET PACK"
+            text = "DOWNLOAD FULL 3D CONTENT  •  ${ContentDownloadPlan.totalGiBLabel}"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "Checking asset manifest…"
+            text = "Preparing your post-install graphics download…"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -989,14 +989,14 @@ class MainActivity : Activity(), SensorEventListener {
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 56, 61))
         }
         val details = TextView(this).apply {
-            text = "Resolving the selected device graphics tier…"
+            text = "Your base install is small. This download adds the selected 3D graphics tier, world regions, characters, audio, and effects."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(161, 190, 187))
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "Runtime bundles are pre-cooked offline. Android verifies, unpacks, and mounts them; it does not compile the authoring project on-device."
+            text = "Production target: ${ContentDownloadPlan.totalGiBLabel} delivered separately from the APK. Development builds use tiny offline bundles; production requires signed CDN or Play Asset Delivery packs."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -1014,23 +1014,54 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(overlay)
         assetPatchOverlay = overlay
 
+        fun finishPreparation() {
+            hudHandler.postDelayed({
+                rootContainer.removeView(overlay)
+                assetPatchOverlay = null
+                if (!authenticationTransitionStarted && !BuildConfig.PROTOTYPE_MODE) {
+                    onboardingOverlay.visibility = View.VISIBLE
+                }
+            }, 450L)
+        }
+
+        fun showLocalPreparationFallback() {
+            assetDelivery.prepareForTier(selectedGraphicsTier) { event ->
+                status.text = event.title
+                details.text = "Direct APK fallback: ${event.detail}"
+                progress.progress = event.percent
+                if (event.state == AssetDeliveryManager.State.READY) finishPreparation()
+                if (event.state == AssetDeliveryManager.State.FAILED) {
+                    note.text = event.error ?: "The local development bundle was rejected."
+                    note.setTextColor(Color.rgb(255, 180, 150))
+                    retry.visibility = View.VISIBLE
+                }
+            }
+        }
+
         lateinit var startPreparation: () -> Unit
         startPreparation = {
             retry.visibility = View.GONE
             progress.progress = 0
-            assetDelivery.prepareForTier(selectedGraphicsTier) { event ->
-                status.text = event.title
-                details.text = event.detail
-                progress.progress = event.percent
-                if (event.state == AssetDeliveryManager.State.READY) {
-                    hudHandler.postDelayed({
-                        rootContainer.removeView(overlay)
-                        assetPatchOverlay = null
-                    }, 450L)
-                } else if (event.state == AssetDeliveryManager.State.FAILED) {
-                    note.text = event.error ?: "The bundle was rejected. Check the connection or manifest."
-                    note.setTextColor(Color.rgb(255, 180, 150))
-                    retry.visibility = View.VISIBLE
+            if (BuildConfig.PROTOTYPE_MODE) {
+                showLocalPreparationFallback()
+            } else {
+                var fallbackStarted = false
+                assetPacks.requestProductionContent { event ->
+                    if (event.failed) {
+                        if (!fallbackStarted) {
+                            fallbackStarted = true
+                            note.text = "Play Asset Delivery is unavailable for this direct APK. Trying the small local fallback so the build remains testable. Install the Play Store AAB for the full ${ContentDownloadPlan.totalGiBLabel} production download."
+                            note.setTextColor(Color.rgb(255, 205, 145))
+                            showLocalPreparationFallback()
+                        }
+                    } else {
+                        status.text = if (event.complete) "Full 3D content ready" else "Downloading separate 3D resource packs…"
+                        val downloaded = event.bytesDownloaded / (1024 * 1024)
+                        val total = event.totalBytes / (1024 * 1024)
+                        details.text = if (total > 0) "$downloaded MB / $total MB downloaded from Play Asset Delivery." else "Preparing ${ContentDownloadPlan.totalGiBLabel} of separately delivered 3D content…"
+                        progress.progress = event.percent
+                        if (event.complete) finishPreparation()
+                    }
                 }
             }
         }

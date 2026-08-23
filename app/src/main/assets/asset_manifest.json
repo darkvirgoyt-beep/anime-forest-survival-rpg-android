@@ -5,6 +5,13 @@
     "algorithm": "ed25519",
     "value": "DEVELOPMENT_ONLY_REPLACE_WITH_SERVER_SIGNATURE"
   },
+  "contentDelivery": {
+    "mode": "play-asset-delivery",
+    "bootstrapInstallMiB": 1200,
+    "full3dTargetMiB": 6750,
+    "full3dTargetLabel": "6.6 GB",
+    "cameraProfile": "third-person-orbit-360-horizontal-180-vertical"
+  },
   "packs": [
     {
       "tier": "low",

@@ -20,7 +20,10 @@ constexpr float kHitstunDuration = 0.18f;
 
 void CameraState::orbit(float deltaYaw, float deltaPitch) {
     yaw += deltaYaw;
-    pitch = std::clamp(pitch + deltaPitch, -1.20f, 1.05f);
+    // Allow almost 180 degrees of vertical travel while avoiding the exact
+    // pole singularity. Combined with the full 360 degree yaw loop, this
+    // gives the intended 540 degree-class third-person orbit range.
+    pitch = std::clamp(pitch + deltaPitch, -1.52f, 1.52f);
     while (yaw > PI) yaw -= PI * 2.0f;
     while (yaw < -PI) yaw += PI * 2.0f;
 }

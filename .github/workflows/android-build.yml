@@ -70,6 +70,10 @@ jobs:
           ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'VIEW ART REFERENCES' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'Google sign-in is required to continue' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'requestProductionContent' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
+          grep -q 'ContentDownloadPlan.totalGiBLabel' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'full3dTargetMiB' app/src/main/assets/asset_manifest.json
+          grep -q '1.52f' app/src/main/cpp/controller/third_person_controller.cpp
           ! grep -q 'DEV GUEST' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
           grep -q 'AddBondProgress' Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
