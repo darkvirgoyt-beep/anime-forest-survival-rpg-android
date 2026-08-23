@@ -90,6 +90,7 @@ class MainActivity : Activity(), SensorEventListener {
     private val characterCreation = CharacterCreationState()
     private var activeCloudWorld: CloudWorldManifest? = null
     private var cloudSaveInFlight = false
+    private var cloudRecoveryNotice: String? = null
     private var selectedServer = ServerDirectory.regions.first()
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
@@ -111,9 +112,8 @@ class MainActivity : Activity(), SensorEventListener {
                 gameView.queueEvent {
                     val nativeState = NativeGameBridge.getCloudState()
                     runOnUiThread {
-                        accountSession.uploadCloudWorld(world, nativeState) { updated, _ ->
-                            if (updated != null) activeCloudWorld = updated
-                            cloudSaveInFlight = false
+                        accountSession.uploadCloudWorld(world, nativeState) { updated, error ->
+                            handleCloudSaveResult(updated, error)
                         }
                     }
                 }
@@ -234,9 +234,8 @@ class MainActivity : Activity(), SensorEventListener {
             gameView.queueEvent {
                 val nativeState = NativeGameBridge.getCloudState()
                 runOnUiThread {
-                    accountSession.uploadCloudWorld(world, nativeState) { updated, _ ->
-                        if (updated != null) activeCloudWorld = updated
-                        cloudSaveInFlight = false
+                    accountSession.uploadCloudWorld(world, nativeState) { updated, error ->
+                        handleCloudSaveResult(updated, error)
                     }
                 }
             }
@@ -263,6 +262,17 @@ class MainActivity : Activity(), SensorEventListener {
         accountSession.shutdown()
         audio.release()
         super.onDestroy()
+    }
+
+    private fun handleCloudSaveResult(updated: CloudWorldManifest?, error: String?) {
+        if (updated != null) {
+            activeCloudWorld = updated
+            cloudRecoveryNotice = null
+        } else if (error?.startsWith("A newer cloud revision") == true) {
+            activeCloudWorld = null
+            cloudRecoveryNotice = "CLOUD CONFLICT • SAVES PAUSED • REOPEN THIS WORLD TO RECOVER THE NEWER REVISION"
+        }
+        cloudSaveInFlight = false
     }
 
     private fun buildOnboardingOverlay(): View {
@@ -470,8 +480,7 @@ class MainActivity : Activity(), SensorEventListener {
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             accountSession.fetchOwnedWorlds { worlds, error ->
-                val recoveredWorld = worlds?.firstOrNull()
-                showCharacterSetup(snapshot.accountId, recoveredWorld, error)
+                showCharacterSetup(snapshot.accountId, worlds.orEmpty(), error)
             }
             return
         }
@@ -489,9 +498,11 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     /** The login panel is intentionally sign-in only. A verified backend session advances here automatically. */
-    private fun showCharacterSetup(accountId: String?, recoveredWorld: CloudWorldManifest? = null, cloudError: String? = null) {
+    private fun showCharacterSetup(accountId: String?, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
         runOnUiThread {
             if (characterSetupOverlay != null) return@runOnUiThread
+            val availableWorlds = recoveredWorlds.take(6)
+            var selectedWorld = availableWorlds.firstOrNull()
             onboardingOverlay.visibility = View.GONE
             val overlay = FrameLayout(this).apply {
                 addView(ImageView(this@MainActivity).apply {
@@ -526,24 +537,51 @@ class MainActivity : Activity(), SensorEventListener {
                 setTextColor(Color.rgb(226, 184, 101))
             }, LinearLayout.LayoutParams(-1, dp(30)))
             panel.addView(TextView(this).apply {
-                text = if (recoveredWorld == null) "CREATE YOUR WAYFARER" else "YOUR CLOUD WORLD"
+                text = if (selectedWorld == null) "CREATE YOUR WAYFARER" else "YOUR CLOUD WORLDS"
                 textSize = 24f
                 gravity = Gravity.CENTER
                 typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
                 setTextColor(Color.rgb(239, 234, 219))
             }, LinearLayout.LayoutParams(-1, dp(42)))
-            panel.addView(TextView(this).apply {
+            val accountStatus = TextView(this).apply {
                 text = when {
-                    recoveredWorld != null -> "Cloud world found: ${recoveredWorld.name}  •  Revision ${recoveredWorld.saveRevision}"
+                    selectedWorld != null -> "Cloud world found: ${selectedWorld?.name}  •  Revision ${selectedWorld?.saveRevision}"
                     !cloudError.isNullOrBlank() -> "Account verified  •  $cloudError"
                     else -> "Account verified${accountId?.let { "  •  ${it.take(8)}" } ?: ""}"
                 }
                 textSize = 11f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(164, 231, 190))
-            }, LinearLayout.LayoutParams(-1, dp(28)))
+            }
+            panel.addView(accountStatus, LinearLayout.LayoutParams(-1, dp(28)))
+            if (availableWorlds.size > 1) {
+                var selectedWorldIndex = 0
+                val worldSummary = TextView(this).apply {
+                    textSize = 10f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.rgb(237, 231, 214))
+                }
+                fun refreshWorldSelection() {
+                    selectedWorld = availableWorlds[selectedWorldIndex]
+                    val world = selectedWorld ?: return
+                    worldSummary.text = "${selectedWorldIndex + 1}/${availableWorlds.size}  •  ${world.name.take(24)}  •  ${world.region.take(12)}  •  R${world.saveRevision}"
+                    accountStatus.text = "Selected cloud world: ${world.name}  •  Revision ${world.saveRevision}"
+                }
+                val worldPicker = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+                worldPicker.addView(cinematicButton("‹", false) {
+                    selectedWorldIndex = (selectedWorldIndex - 1 + availableWorlds.size) % availableWorlds.size
+                    refreshWorldSelection()
+                }, LinearLayout.LayoutParams(dp(42), dp(36)))
+                worldPicker.addView(worldSummary, LinearLayout.LayoutParams(0, dp(36), 1f))
+                worldPicker.addView(cinematicButton("›", false) {
+                    selectedWorldIndex = (selectedWorldIndex + 1) % availableWorlds.size
+                    refreshWorldSelection()
+                }, LinearLayout.LayoutParams(dp(42), dp(36)))
+                refreshWorldSelection()
+                panel.addView(worldPicker, LinearLayout.LayoutParams(-1, dp(42)))
+            }
             characterNameInput = EditText(this).apply {
-                hint = if (recoveredWorld == null) "WAYFARER NAME" else "PROFILE NAME"
+                hint = if (selectedWorld == null) "WAYFARER NAME" else "PROFILE NAME"
                 textSize = 15f
                 isSingleLine = true
                 setTextColor(Color.WHITE)
@@ -561,8 +599,45 @@ class MainActivity : Activity(), SensorEventListener {
             val outfit = cinematicButton("OUTFIT 01", false) { }
             val hair = cinematicButton("HAIR 01", false) { }
             val avatars = listOf("trailblazer", "ember", "verdant", "tide", "moon", "sunward")
+            val avatarMarks = listOf("T", "E", "V", "W", "M", "S")
+            val avatarColors = listOf(
+                Color.rgb(78, 114, 92), Color.rgb(153, 81, 54), Color.rgb(71, 139, 103),
+                Color.rgb(57, 112, 148), Color.rgb(103, 83, 150), Color.rgb(166, 125, 63)
+            )
             var avatarIndex = 0
-            val avatar = cinematicButton("AVATAR 01", false) { }
+            val avatarStrip = LinearLayout(this).apply { gravity = Gravity.CENTER }
+            val avatarChoices = mutableListOf<FrameLayout>()
+            fun refreshAvatarChoices() {
+                avatarChoices.forEachIndexed { index, choice ->
+                    choice.background = GradientDrawable().apply {
+                        setColor(avatarColors[index])
+                        cornerRadius = dp(10).toFloat()
+                        setStroke(dp(if (index == avatarIndex) 3 else 1), if (index == avatarIndex) Color.rgb(239, 204, 124) else Color.rgb(67, 54, 37))
+                    }
+                    choice.alpha = if (index == avatarIndex) 1f else 0.64f
+                }
+            }
+            avatarMarks.forEachIndexed { index, mark ->
+                avatarChoices += FrameLayout(this).apply {
+                    val portraitId = resources.getIdentifier("aethelgard_avatar_${avatars[index]}", "drawable", packageName)
+                    addView(ImageView(this@MainActivity).apply {
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        if (portraitId != 0) setImageResource(portraitId)
+                        background = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+                        clipToOutline = true
+                        contentDescription = "${avatars[index]} profile avatar"
+                    }, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+                    addView(TextView(this@MainActivity).apply {
+                        text = mark
+                        textSize = 11f
+                        gravity = Gravity.CENTER
+                        typeface = android.graphics.Typeface.DEFAULT_BOLD
+                        setTextColor(Color.rgb(242, 235, 216))
+                        setShadowLayer(2f, 0f, 1f, Color.BLACK)
+                    }, FrameLayout.LayoutParams(-1, -1))
+                    setOnClickListener { avatarIndex = index; refreshAvatarChoices() }
+                }
+            }
             eyebrow.setOnClickListener {
                 characterCreation.eyebrowStyle = (characterCreation.eyebrowStyle + 1) % 4
                 eyebrow.text = "BROW ${String.format("%02d", characterCreation.eyebrowStyle + 1)}"
@@ -575,21 +650,28 @@ class MainActivity : Activity(), SensorEventListener {
                 characterCreation.hairStyle = (characterCreation.hairStyle + 1) % 4
                 hair.text = "HAIR ${String.format("%02d", characterCreation.hairStyle + 1)}"
             }
-            avatar.setOnClickListener {
-                avatarIndex = (avatarIndex + 1) % avatars.size
-                avatar.text = "AVATAR ${String.format("%02d", avatarIndex + 1)}"
-            }
-            listOf(eyebrow, outfit, hair, avatar).forEach { control ->
+            listOf(eyebrow, outfit, hair).forEach { control ->
                 appearance.addView(control, LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
             }
             panel.addView(appearance, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(10) })
+            panel.addView(TextView(this).apply {
+                text = "CHOOSE PROFILE AVATAR"
+                textSize = 10f
+                gravity = Gravity.CENTER
+                letterSpacing = 0.12f
+                setTextColor(Color.rgb(187, 165, 119))
+            }, LinearLayout.LayoutParams(-1, dp(22)))
+            avatarChoices.forEach { choice -> avatarStrip.addView(choice, LinearLayout.LayoutParams(dp(42), dp(42)).apply { leftMargin = dp(3); rightMargin = dp(3) }) }
+            refreshAvatarChoices()
+            panel.addView(avatarStrip, LinearLayout.LayoutParams(-1, dp(44)))
             val validation = TextView(this).apply {
                 textSize = 11f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(255, 180, 150))
             }
             panel.addView(validation, LinearLayout.LayoutParams(-1, dp(26)))
-            panel.addView(cinematicButton(if (recoveredWorld == null) "CREATE CLOUD WORLD  ›" else "RESUME CLOUD WORLD  ›", true) {
+            panel.addView(cinematicButton(if (selectedWorld == null) "CREATE CLOUD WORLD  ›" else "RESUME SELECTED WORLD  ›", true) {
+                val recoveredWorld = selectedWorld
                 if (recoveredWorld != null) {
                     validation.setTextColor(Color.rgb(164, 231, 190))
                     validation.text = "Recovering ${recoveredWorld.name} from revision ${recoveredWorld.saveRevision}…"
@@ -764,8 +846,9 @@ class MainActivity : Activity(), SensorEventListener {
                 else -> Color.WHITE
             }
         )
-        questLabel.text = if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  $weather  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
-        questLabel.setTextColor(if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
+        val recoveryNotice = cloudRecoveryNotice
+        questLabel.text = recoveryNotice ?: if (biome == "SNOW" && warden > 0) "$objective  •  $phase  •  $weather  •  SNOW PREDATOR HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
+        questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
     private fun showAssetPatchOverlay() {

@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -13,6 +12,7 @@
 #include "controller/third_person_controller.h"
 #include "combat/combat_system.h"
 #include "rpg/progression.h"
+#include "rpg/cloud_state.h"
 
 namespace {
 constexpr float PI = 3.14159265359f;
@@ -982,21 +982,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobject) {
-    std::ostringstream state;
-    state << "{\"schemaVersion\":1"
-          << ",\"playerX\":" << gPlayerX
-          << ",\"playerY\":" << gPlayerY
-          << ",\"health\":" << gController.health
-          << ",\"stamina\":" << gController.stamina
-          << ",\"hunger\":" << gHunger
-          << ",\"wood\":" << gWood
-          << ",\"fiber\":" << gFiber
-          << ",\"stone\":" << gStone
-          << ",\"experience\":" << gProgression.experience
-          << ",\"day\":" << gDaysPlayed
-          << ",\"worldTime\":" << gTime
-          << "}";
-    const std::string value = state.str();
+    const forest::rpg::CloudState state{gPlayerX, gPlayerY, gController.health, gController.stamina, gHunger, gWood, gFiber, gStone, gProgression.experience, gDaysPlayed, gTime};
+    const std::string value = forest::rpg::serializeCloudState(state);
     return env->NewStringUTF(value.c_str());
 }
 
@@ -1005,33 +992,21 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     if (payload == nullptr) return JNI_FALSE;
     const char* chars = env->GetStringUTFChars(payload, nullptr);
     if (chars == nullptr) return JNI_FALSE;
-    float playerX = 0.0f;
-    float playerY = 0.0f;
-    float health = 1.0f;
-    float stamina = 1.0f;
-    float hunger = 0.82f;
-    float worldTime = 0.0f;
-    int wood = 12;
-    int fiber = 8;
-    int stone = 4;
-    int experience = 0;
-    int day = 1;
-    const int parsed = std::sscanf(chars,
-        "{\"schemaVersion\":1,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"day\":%d,\"worldTime\":%f}",
-        &playerX, &playerY, &health, &stamina, &hunger, &wood, &fiber, &stone, &experience, &day, &worldTime);
+    forest::rpg::CloudState state{};
+    const bool parsed = forest::rpg::parseCloudState(chars, state);
     env->ReleaseStringUTFChars(payload, chars);
-    if (parsed != 12) return JNI_FALSE;
-    gPlayerX = std::clamp(playerX, kSimulationMinX, kSimulationMaxX);
-    gPlayerY = std::clamp(playerY, kSimulationMinY, kSimulationMaxY);
+    if (!parsed) return JNI_FALSE;
+    gPlayerX = std::clamp(state.playerX, kSimulationMinX, kSimulationMaxX);
+    gPlayerY = std::clamp(state.playerY, kSimulationMinY, kSimulationMaxY);
     gController.body.position = {gPlayerX, gPlayerY};
-    gController.health = std::clamp(health, 0.0f, 1.0f);
-    gController.stamina = std::clamp(stamina, 0.0f, 1.0f);
-    gHunger = std::clamp(hunger, 0.0f, 1.0f);
-    gWood = std::max(0, wood);
-    gFiber = std::max(0, fiber);
-    gStone = std::max(0, stone);
-    gProgression.experience = std::max(0, experience);
-    gDaysPlayed = std::max(1, day);
-    gTime = std::max(0.0f, worldTime);
+    gController.health = state.health;
+    gController.stamina = state.stamina;
+    gHunger = state.hunger;
+    gWood = state.wood;
+    gFiber = state.fiber;
+    gStone = state.stone;
+    gProgression.experience = state.experience;
+    gDaysPlayed = state.day;
+    gTime = state.worldTime;
     return JNI_TRUE;
 }

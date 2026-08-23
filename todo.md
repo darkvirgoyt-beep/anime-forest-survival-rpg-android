@@ -21,4 +21,7 @@
 - [x] Redesign the sign-in-only page with original Aethelgard artwork and layout informed only by the supplied reference’s high-level mood
 - [x] Connect authenticated Android characters to account-bound cloud-world manifest recovery and profile-avatar selection
 - [x] Implement client-side versioned cloud-save upload/download handling without storing session tokens on disk
+- [x] Render selectable built-in profile avatars and username identity in the authenticated character setup flow
+- [x] Present recovered cloud worlds with explicit resume and conflict-recovery states on Android
+- [x] Add native snapshot round-trip validation for the cloud-state export/import bridge
 - [x] Connect the Android login configuration to the managed backend after the Web OAuth client ID is created

@@ -103,6 +103,11 @@ jobs:
             app/src/main/cpp/rpg/progression.cpp \
             -o progression_test
           ./progression_test
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/cloud_state_test.cpp \
+            -o cloud_state_test
+          ./cloud_state_test
 
   online-service-tests:
     runs-on: ubuntu-latest

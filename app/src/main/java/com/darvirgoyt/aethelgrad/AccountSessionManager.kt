@@ -315,13 +315,15 @@ class AccountSessionManager {
                     publishSnapshotResult(onComplete, null, "Could not recover cloud world (${manifest.statusCode}).")
                     return@execute
                 }
-                val relativeUrl = JSONObject(manifest.body).optString("downloadUrl")
-                if (relativeUrl.isBlank()) {
+                val downloadUrl = JSONObject(manifest.body).optString("downloadUrl")
+                if (downloadUrl.isBlank()) {
                     publishSnapshotResult(onComplete, null, "Cloud world did not return a snapshot location.")
                     return@execute
                 }
-                val absoluteUrl = if (relativeUrl.startsWith("https://")) relativeUrl else authExchangeUrl.substringBefore("/api/game-auth") + relativeUrl
-                val snapshot = getJson(absoluteUrl, token)
+                val absoluteUrl = if (downloadUrl.startsWith("https://")) downloadUrl else authExchangeUrl.substringBefore("/api/game-auth") + downloadUrl
+                // The backend already authenticated ownership before minting this short-lived object URL.
+                // Do not expose the game access token to the storage host.
+                val snapshot = requestJson("GET", absoluteUrl, null, null)
                 if (snapshot.statusCode !in 200..299) {
                     publishSnapshotResult(onComplete, null, "Could not download cloud world (${snapshot.statusCode}).")
                     return@execute
