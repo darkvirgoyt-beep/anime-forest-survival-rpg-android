@@ -368,8 +368,7 @@ class MainActivity : Activity(), SensorEventListener {
             applyResourceTier(automaticTier)
         }
         val tier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.LOW
-        val legacyObbReady = standaloneExpansionFile.inspect().ready
-        if (legacyObbReady || assetPacks.productionContentReady(tier)) {
+        if (assetPacks.productionContentReady(tier)) {
             markProductionContentReady()
             continuePendingWorldEntry()
         } else {
@@ -2406,7 +2405,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The APK starts the expansion automatically. Play Asset Delivery resumes the selected ${resourceTier.storageLabel} package after restart. For direct APK testing, place the matching OBB in Android/obb/${packageName} or install the signed Play AAB."
+            text = "The online client starts the expansion automatically. Play Asset Delivery resumes the selected ${resourceTier.storageLabel} package after restart. Gameplay remains locked until the selected production pack is ready."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
