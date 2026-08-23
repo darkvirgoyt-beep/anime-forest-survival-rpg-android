@@ -96,7 +96,7 @@ jobs:
           grep -q 'Opening Aethelgard online as a guest' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'requestGuestSignIn' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'requestProductionContent' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
-          grep -q 'ContentDownloadPlan.totalGiBLabel' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'resourceTier.storageLabel' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'full3dTargetMiB' app/src/main/assets/asset_manifest.json
           grep -q '1.52f' app/src/main/cpp/controller/third_person_controller.cpp
           ! grep -q 'DEV GUEST' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
