@@ -19,8 +19,10 @@
       "pipelineCacheRequired": true,
       "runtimeFormat": "unreal-cooked-pak-v1"
     },
-    "highFidelityFeatures": {
-      "nativeRenderer": ["quality-aware micro-lighting", "atmospheric fog", "water caustics", "firefly glow field"],
+          "highFidelityFeatures": {
+        "approvedArtDirection": "assets/aethelgard_high_end_visual_target.jpg",
+        "nativeRenderer": ["quality-aware micro-lighting", "atmospheric fog", "water caustics", "firefly glow field"],
+
       "worldDetail": ["dense foliage HISM", "biome-specific LODs", "streamed world sectors", "animated weather"],
       "simulation": ["60Hz fixed-step movement", "three-pass contact resolution", "water buoyancy and drag", "secondary hair and cloth motion"],
       "camera": "360-degree horizontal orbit with near-180-degree vertical travel"
@@ -90,6 +92,7 @@
       "Screenshot_20260823-115635_Aethelgard_ Wild Horizons – Crafting.png"
     ],
     "packMapping": {
+      "approvedArtDirection": "design-reference-only",
       "characterPhotos": "assetpack_characters",
       "snowCreatureReference": ["assetpack_snow", "assetpack_characters"],
       "uiReferences": "app-ui-reference-only"

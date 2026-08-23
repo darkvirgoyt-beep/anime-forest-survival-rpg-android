@@ -29,6 +29,9 @@ def main() -> None:
     require({"cinematic", "high", "balanced", "performance"}.issubset(profiles), "graphics profiles must include the declared device bands")
     require(profiles["cinematic"]["texture_max_size"] >= 4096, "cinematic profile must retain 4K source textures")
     require(profiles["cinematic"]["foliage_density"] >= 1.0, "cinematic profile must enable full foliage density")
+    approved_reference = root / "assets/aethelgard_high_end_visual_target.jpg"
+    require(approved_reference.is_file(), "approved art-direction image must be present")
+    require(manifest["contentDelivery"]["highFidelityFeatures"]["approvedArtDirection"] == "assets/aethelgard_high_end_visual_target.jpg", "manifest must register the approved art direction")
     require("QualityEnvelope" in content_plan, "runtime plan must expose quality envelopes")
     require("qualityEnvelopeFor" in content_plan, "runtime plan must map tiers to quality envelopes")
     require("setContentTierReady" in activity, "Android must notify native rendering when downloaded content is ready")
