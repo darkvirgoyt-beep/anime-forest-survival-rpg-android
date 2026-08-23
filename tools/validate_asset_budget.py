@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Validate authored Android asset-pack content against assets/asset_budget.json.
+
+This tool intentionally reports the current repository size separately from the
+planned target. It never creates files or pads content to satisfy a budget.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+
+def directory_bytes(path: Path) -> int:
+    return sum(item.stat().st_size for item in path.rglob("*") if item.is_file() and item.name != ".gitkeep")
+
+
+def mib(value: int) -> float:
+    return value / (1024 * 1024)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--require-target", action="store_true", help="fail when authored bytes are below the planned target")
+    args = parser.parse_args()
+
+    root = args.root.resolve()
+    manifest_path = root / "assets" / "asset_budget.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    packs = manifest["packs"]
+    planned_total = sum(int(pack["target_mib"]) for pack in packs)
+    if planned_total != int(manifest["target_total_mib"]):
+        raise SystemExit(f"manifest total mismatch: packs={planned_total} target_total_mib={manifest['target_total_mib']}")
+
+    actual_total = 0
+    print(f"AETHELGRAD asset budget: planned={planned_total} MiB ({mib(planned_total * 1024 * 1024):.2f} MiB)")
+    print("pack,delivery,target_mib,actual_mib,status")
+    for pack in packs:
+        pack_path = root / pack["module"] / "src" / "main" / "assets"
+        actual_bytes = directory_bytes(pack_path) if pack_path.exists() else 0
+        actual_total += actual_bytes
+        actual_mib = mib(actual_bytes)
+        status = "OK" if actual_mib <= float(pack["target_mib"]) else "OVER_BUDGET"
+        print(f"{pack['module']},{pack['delivery']},{pack['target_mib']},{actual_mib:.3f},{status}")
+        if status == "OVER_BUDGET":
+            return 2
+
+    print(f"actual_authored_total_mib={mib(actual_total):.3f}")
+    if args.require_target and actual_total < planned_total * 1024 * 1024:
+        print("ERROR: authored resources are below the planned target; add real licensed/generated assets, never padding files.")
+        return 3
+    print("PASS: no pack exceeds its planned budget and no padding was generated.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

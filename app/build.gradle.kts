@@ -37,6 +37,20 @@ android {
         }
     }
 
+    assetPacks += listOf(
+        ":assetpack_core",
+        ":assetpack_forest",
+        ":assetpack_sand",
+        ":assetpack_snow",
+        ":assetpack_characters",
+        ":assetpack_audio_hd",
+        ":assetpack_cinematics",
+        ":assetpack_hd_textures",
+        ":assetpack_dungeons",
+        ":assetpack_vfx",
+        ":assetpack_voice"
+    )
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -57,4 +71,6 @@ dependencies {
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("com.google.android.play:asset-delivery:2.3.0")
+    implementation("com.google.android.play:asset-delivery-ktx:2.3.0")
 }

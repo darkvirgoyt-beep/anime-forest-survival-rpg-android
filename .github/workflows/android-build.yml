@@ -54,6 +54,13 @@ jobs:
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/ServerDirectory.kt
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/CharacterCreationModel.kt
+          test -f app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
+          test -f assets/asset_budget.json
+          test -f tools/validate_asset_budget.py
+          test -f assetpack_core/build.gradle.kts
+          test -f assetpack_forest/build.gradle.kts
+          test -f assetpack_voice/build.gradle.kts
+          python3 tools/validate_asset_budget.py
           grep -q 'CONTINUE WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
@@ -158,14 +165,18 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Assemble release-style APK
-        run: gradle assembleRelease --stacktrace
+      - name: Validate asset budget and assemble release artifacts
+        run: |
+          python3 tools/validate_asset_budget.py
+          gradle bundleRelease assembleRelease --stacktrace
 
-      - name: Upload release APK
+      - name: Upload release APK and Android App Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: forest-slice-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: forest-slice-release-artifacts
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
 
 
   release:
@@ -175,10 +186,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download release APK artifact
+      - name: Download release Android artifacts
         uses: actions/download-artifact@v4
         with:
-          name: forest-slice-release-apk
+          name: forest-slice-release-artifacts
           path: release
 
       - name: Create GitHub release
@@ -192,7 +203,9 @@ jobs:
             This release includes the original cel-shaded playable hero with ink-like contours, hard shadow planes, expressive anime-fantasy hair, outfit accents, and a short sword.
 
             The APK is signed with the repository's debug signing configuration for test distribution only. A protected production keystore is required for Google Play publishing.
-          files: release/app-release.apk
+          files: |
+            release/app-release.apk
+            release/app-release.aab
           fail_on_unmatched_files: true
           generate_release_notes: true
           draft: false

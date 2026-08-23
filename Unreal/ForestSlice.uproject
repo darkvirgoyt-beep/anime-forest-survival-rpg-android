@@ -17,6 +17,7 @@
     { "Name": "GameplayAbilities", "Enabled": true },
     { "Name": "AIModule", "Enabled": true },
     { "Name": "OnlineSubsystemUtils", "Enabled": true },
+    { "Name": "GooglePAD", "Enabled": true },
     { "Name": "AndroidFileServer", "Enabled": true }
   ]
 }

@@ -1,0 +1,57 @@
+{
+  "project": "AETHELGRAD",
+  "profiles": {
+    "cinematic": {
+      "target_device": "high-end Android",
+      "resolution_scale": 1.0,
+      "texture_max_size": 4096,
+      "texture_format": "ASTC_6x6",
+      "shadow_cascades": 4,
+      "dynamic_lights": 4,
+      "foliage_density": 1.0,
+      "vfx_density": 1.0,
+      "hair_mode": "strand_or_high_density_cards",
+      "cloth_mode": "simulated_with_bone_fallback",
+      "water_mode": "refraction_reflection_shoreline_foam"
+    },
+    "high": {
+      "target_device": "upper-midrange Android",
+      "resolution_scale": 0.9,
+      "texture_max_size": 2048,
+      "texture_format": "ASTC_6x6",
+      "shadow_cascades": 3,
+      "dynamic_lights": 3,
+      "foliage_density": 0.8,
+      "vfx_density": 0.8,
+      "hair_mode": "high_density_cards",
+      "cloth_mode": "simulated",
+      "water_mode": "reflection_shoreline_foam"
+    },
+    "balanced": {
+      "target_device": "mainstream Android",
+      "resolution_scale": 0.75,
+      "texture_max_size": 1024,
+      "texture_format": "ASTC_8x8",
+      "shadow_cascades": 2,
+      "dynamic_lights": 2,
+      "foliage_density": 0.55,
+      "vfx_density": 0.55,
+      "hair_mode": "optimized_cards",
+      "cloth_mode": "bone_spring_fallback",
+      "water_mode": "animated_surface_shoreline_foam"
+    },
+    "performance": {
+      "target_device": "low-memory Android",
+      "resolution_scale": 0.60,
+      "texture_max_size": 512,
+      "texture_format": "ASTC_8x8",
+      "shadow_cascades": 1,
+      "dynamic_lights": 1,
+      "foliage_density": 0.30,
+      "vfx_density": 0.30,
+      "hair_mode": "bone_spring_fallback",
+      "cloth_mode": "bone_spring_fallback",
+      "water_mode": "animated_surface"
+    }
+  }
+}

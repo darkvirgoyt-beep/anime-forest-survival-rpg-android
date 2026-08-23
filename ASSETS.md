@@ -33,3 +33,12 @@ The concept references are also bundled into `app/src/main/res/drawable-nodpi/` 
 | Ambient audio | Wind, water, wildlife, and combat cues | Planned; original or compatible license. |
 
 The design references broad anime-fantasy and survival-RPG aesthetics only. Do not import or recreate named characters, logos, maps, or assets from commercial games.
+
+
+## Realistic graphics and large-content delivery
+
+The production graphics and delivery plan is documented in [REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md](docs/REALISTIC_GRAPHICS_AND_ASSET_DELIVERY.md). The authoritative budget is [assets/asset_budget.json](assets/asset_budget.json), which targets 10,116 MiB of real authored content across eleven Android asset packs. The pack modules are linked from the app Gradle configuration and use install-time, fast-follow, and on-demand delivery modes.
+
+The repository does not create dummy files or claim that empty asset directories are finished 10 GiB content. Populate each pack with original or properly licensed models, textures, animations, audio, cinematics, voice, VFX, and cooked Unreal chunks. Run `python3 tools/validate_asset_budget.py` before release; it reports actual bytes and rejects over-budget packs without generating padding.
+
+The Unreal graphics baseline is in `Unreal/Config/DefaultEngine.ini`. It enables a mobile-realistic PBR/HDR baseline with controlled lights, shadows, atmosphere, virtual-texture support, and streaming while leaving desktop-only ray-traced features disabled for the Android profile. Final AAA presentation still requires authored assets, Unreal material and animation graphs, LODs, quality tiers, and device profiling.

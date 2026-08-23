@@ -68,6 +68,7 @@ object NativeGameBridge {
 class MainActivity : Activity(), SensorEventListener {
     private lateinit var rootContainer: FrameLayout
     private lateinit var gameView: GameSurfaceView
+    private lateinit var assetPacks: AssetPackCatalog
     private lateinit var gyroButton: Button
     private var sensorManager: SensorManager? = null
     private var gyroSensor: Sensor? = null
@@ -140,6 +141,7 @@ class MainActivity : Activity(), SensorEventListener {
 
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
+        assetPacks = AssetPackCatalog(this)
         gameView.applyTargetFps(selectedTargetFps)
         gameView.applyGraphicsTier(selectedGraphicsTier)
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
@@ -150,6 +152,9 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
+        // Forest is fast-follow content in production; this call is safe to repeat
+        // and lets Play resume or verify the pack after an update.
+        assetPacks.request("assetpack_forest")
         updateGyroButton()
         registerGyro()
         accountSession.initialize(this, ::applyAccountSnapshot)
@@ -260,6 +265,7 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         accountSession.shutdown()
+        if (::assetPacks.isInitialized) assetPacks.close()
         audio.release()
         super.onDestroy()
     }
