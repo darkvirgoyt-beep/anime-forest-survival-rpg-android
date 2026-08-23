@@ -166,15 +166,16 @@ jobs:
           gradle-version: "8.10.2"
 
       - name: Restore protected release signing key
-        if: ${{ secrets.AETHELGARD_RELEASE_KEYSTORE_BASE64 != '' }}
         env:
           AETHELGARD_RELEASE_KEYSTORE_BASE64: ${{ secrets.AETHELGARD_RELEASE_KEYSTORE_BASE64 }}
         run: |
-          echo "$AETHELGARD_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aethelgard-release.jks"
+          if [ -n "$AETHELGARD_RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$AETHELGARD_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aethelgard-release.jks"
+          fi
 
       - name: Validate asset budget and assemble release artifacts
         env:
-          AETHELGARD_RELEASE_KEYSTORE_PATH: ${{ secrets.AETHELGARD_RELEASE_KEYSTORE_BASE64 != '' && format('{0}/aethelgard-release.jks', runner.temp) || '' }}
+          AETHELGARD_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/aethelgard-release.jks
           AETHELGARD_RELEASE_STORE_PASSWORD: ${{ secrets.AETHELGARD_RELEASE_STORE_PASSWORD }}
           AETHELGARD_RELEASE_KEY_ALIAS: ${{ secrets.AETHELGARD_RELEASE_KEY_ALIAS }}
           AETHELGARD_RELEASE_KEY_PASSWORD: ${{ secrets.AETHELGARD_RELEASE_KEY_PASSWORD }}
