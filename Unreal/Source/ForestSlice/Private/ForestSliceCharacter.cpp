@@ -1,5 +1,6 @@
 #include "ForestSliceCharacter.h"
 #include "ForestSliceCombatComponent.h"
+#include "ForestSliceHealthComponent.h"
 #include "ForestSliceInteractionComponent.h"
 #include "ForestSliceQuickSlotComponent.h"
 #include "ForestSliceSurvivalComponent.h"
@@ -25,6 +26,7 @@ AForestSliceCharacter::AForestSliceCharacter()
     SurvivalComponent = CreateDefaultSubobject<UForestSliceSurvivalComponent>(TEXT("SurvivalComponent"));
     InteractionComponent = CreateDefaultSubobject<UForestSliceInteractionComponent>(TEXT("InteractionComponent"));
     QuickSlotComponent = CreateDefaultSubobject<UForestSliceQuickSlotComponent>(TEXT("QuickSlotComponent"));
+    HealthComponent = CreateDefaultSubobject<UForestSliceHealthComponent>(TEXT("HealthComponent"));
     bUseControllerRotationYaw = false;
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 620.0f, 0.0f);

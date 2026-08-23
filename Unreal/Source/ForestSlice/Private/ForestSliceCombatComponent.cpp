@@ -3,6 +3,9 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/World.h"
+#include "CollisionShape.h"
+#include "ForestSliceHealthComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "ForestSliceSurvivalComponent.h"
 
@@ -127,10 +130,36 @@ void UForestSliceCombatComponent::ResolveActiveHit()
     if (bHeavyAttack) Attack = &HeavyAttack;
     if (!Attack || bHitResolved) return;
 
-    // The first production slice emits a server-owned hit window. The next combat slice
-    // replaces this single event with a capsule/sweep trace against registered hurtboxes.
+    if (!GetOwner()->HasAuthority()) return;
+
+    const FVector Start = GetOwner()->GetActorLocation() + FVector(0.0f, 0.0f, 55.0f);
+    const FVector End = Start + GetOwner()->GetActorForwardVector() * Attack->Range;
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ForestSliceAttack), false, GetOwner());
+    TArray<FHitResult> Hits;
+    const bool bAnyHit = GetWorld() && GetWorld()->SweepMultiByChannel(
+        Hits,
+        Start,
+        End,
+        FQuat::Identity,
+        ECC_Pawn,
+        FCollisionShape::MakeSphere(46.0f),
+        QueryParams);
+
+    TSet<AActor*> DamagedActors;
+    if (bAnyHit) {
+        for (const FHitResult& Hit : Hits) {
+            AActor* HitActor = Hit.GetActor();
+            if (!IsValid(HitActor) || HitActor == GetOwner() || DamagedActors.Contains(HitActor)) continue;
+            UForestSliceHealthComponent* Health = HitActor->FindComponentByClass<UForestSliceHealthComponent>();
+            if (!Health) continue;
+            DamagedActors.Add(HitActor);
+            const FVector Impulse = GetOwner()->GetActorForwardVector() * Attack->Knockback;
+            Health->ApplyDamage(Attack->Damage, Attack->PoiseDamage, Impulse, Attack->AttackId);
+        }
+    }
+
     bHitResolved = true;
-    CombatEvent.Broadcast(TEXT("HitWindow"), ComboIndex, Attack->Damage, EquippedWeaponIndex);
+    CombatEvent.Broadcast(bAnyHit ? TEXT("HitConfirmed") : TEXT("HitWindow"), ComboIndex, Attack->Damage, EquippedWeaponIndex);
 }
 
 void UForestSliceCombatComponent::FinishAttack()
