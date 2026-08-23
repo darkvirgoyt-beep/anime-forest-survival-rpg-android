@@ -8,6 +8,7 @@ namespace forest::rpg {
 
 struct CloudState {
     int schemaVersion = 5;
+    int sourceSchemaVersion = 5; // parser metadata; never serialized
     float playerX = -0.55f;
     float playerY = -0.08f;
     float health = 1.0f;
@@ -134,6 +135,9 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
         }
     }
 
+    const int sourceSchemaVersion = std::clamp(parsed.schemaVersion, 1, 5);
+    parsed.schemaVersion = 5;
+    parsed.sourceSchemaVersion = sourceSchemaVersion;
     parsed.emberKitCrafted = emberKitCrafted != 0;
     parsed.wardenDefeated = wardenDefeated != 0;
     parsed.emberlingBonded = parsed.emberlingBonded || emberlingBonded != 0;

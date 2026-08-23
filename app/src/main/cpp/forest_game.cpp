@@ -2786,7 +2786,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     gWood = state.wood;
     gFiber = state.fiber;
     gStone = state.stone;
-    if (state.schemaVersion >= 3) {
+    if (state.sourceSchemaVersion >= 3) {
         gProgression.restoreState(state.level, state.experience, state.experienceToNext, state.totalExperience);
     } else {
         gProgression.restoreLegacyExperience(state.experience);

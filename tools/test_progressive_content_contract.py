@@ -22,11 +22,13 @@ def main() -> None:
 
     require("int schemaVersion = 5" in cloud, "cloud state schema must advance to version 5")
     require("discoveredSectors" in cloud and "parsed.discoveredSectors" in cloud, "cloud state must persist discovered sectors")
+    require("sourceSchemaVersion" in cloud and "parsed.sourceSchemaVersion = sourceSchemaVersion" in cloud, "migration must retain source schema metadata")
     require("v4Fields == 22" in cloud and "parsed.discoveredSectors = 1" in cloud, "legacy cloud snapshots must default to the launch sector")
     require("enum class WorldSector" in plan, "runtime plan must expose world sectors")
     require("startupPackNamesFor" in plan and "packNamesForSector" in plan, "runtime plan must separate startup and sector packs")
     require("requestWorldSector" in catalog and "sectorContentReady" in catalog, "asset catalog must support sector requests and readiness")
     require("requestDiscoveredSectorContent" in activity, "Android must trigger content requests from discovery state")
+    require("sourceSchemaVersion >= 3" in native, "native restore must preserve legacy experience migration")
     require("val discoveredSectors = number(26)" in activity, "Android must consume the native discovery bitmask")
     require("gDiscoveredSectors |= 1 << 1" in native and "gDiscoveredSectors |= 1 << 2" in native, "native movement must unlock sand and snow")
     require("gDiscoveredSectors |= 1 << 3" in native, "native progression must unlock the dungeon sector")
