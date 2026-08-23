@@ -25,10 +25,12 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
+import android.widget.ScrollView
 import android.widget.TextView
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 object NativeGameBridge {
     init { System.loadLibrary("forestgame") }
@@ -176,11 +178,11 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun buildOnboardingOverlay(): View {
-        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.argb(238, 7, 16, 20)) }
+        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(32, 24, 32, 24)
+            setPadding(dp(32), dp(24), dp(32), dp(24))
             background = GradientDrawable().apply {
                 cornerRadius = 24f
                 setColor(Color.rgb(18, 35, 39))
@@ -199,14 +201,14 @@ class MainActivity : Activity(), SensorEventListener {
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.LTGRAY)
-            setPadding(0, 6, 0, 12)
+            setPadding(0, dp(6), 0, dp(12))
         }
         onboardingStatus = TextView(this).apply {
             text = "ONLINE ONLY  •  Sign in with Google Play to continue to server selection and cloud world access."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            setPadding(0, 4, 0, 10)
+            setPadding(0, dp(4), 0, dp(10))
         }
         val accountRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
         val google = actionButton("GOOGLE PLAY SIGN-IN") {
@@ -218,32 +220,34 @@ class MainActivity : Activity(), SensorEventListener {
                 onboardingStatus.text = "DEV ONLY  •  ${snapshot.message}"
                 onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
             }
-            accountRow.addView(guest, LinearLayout.LayoutParams(150, 46).apply { rightMargin = 10 })
-            accountRow.addView(google, LinearLayout.LayoutParams(230, 46))
+            accountRow.addView(guest, LinearLayout.LayoutParams(0, dp(46), 1f).apply { rightMargin = dp(8) })
+            accountRow.addView(google, LinearLayout.LayoutParams(0, dp(46), 1f))
         } else {
-            accountRow.addView(google, LinearLayout.LayoutParams(390, 46))
+            accountRow.addView(google, LinearLayout.LayoutParams(0, dp(46), 1f))
         }
 
         val serverTitle = TextView(this).apply {
             text = "SERVER / REGION"
             textSize = 12f
             setTextColor(Color.rgb(244, 218, 155))
-            setPadding(0, 14, 0, 4)
+            setPadding(0, dp(14), 0, dp(4))
         }
         val serverRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        ServerDirectory.regions.forEach { region ->
+        ServerDirectory.regions.forEachIndexed { index, region ->
             val button = actionButton(region.name.removePrefix("Aethelgard ").uppercase()) {
                 selectedServer = region
                 onboardingStatus.text = "${region.name} selected  •  PING: ${region.pingMs?.let { "$it ms" } ?: "—"}  •  ${region.status}"
             }
-            serverRow.addView(button, LinearLayout.LayoutParams(190, 42).apply { rightMargin = 8 })
+            serverRow.addView(button, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                if (index < ServerDirectory.regions.lastIndex) rightMargin = dp(8)
+            })
         }
 
         val characterTitle = TextView(this).apply {
             text = "CHARACTER CREATION"
             textSize = 12f
             setTextColor(Color.rgb(244, 218, 155))
-            setPadding(0, 12, 0, 4)
+            setPadding(0, dp(12), 0, dp(4))
         }
         characterNameInput = EditText(this).apply {
             hint = "Character name (3–16 letters/numbers)"
@@ -251,7 +255,7 @@ class MainActivity : Activity(), SensorEventListener {
             setSingleLine(true)
             setTextColor(Color.WHITE)
             setHintTextColor(Color.GRAY)
-            setPadding(16, 0, 16, 0)
+            setPadding(dp(16), 0, dp(16), 0)
         }
         val styleRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
         fun styleButton(label: String, value: () -> Int, update: (Int) -> Unit): Button {
@@ -263,9 +267,9 @@ class MainActivity : Activity(), SensorEventListener {
             }
             return button
         }
-        styleRow.addView(styleButton("EYEBROW", { characterCreation.eyebrowStyle }, { characterCreation.eyebrowStyle = it }), LinearLayout.LayoutParams(155, 42).apply { rightMargin = 8 })
-        styleRow.addView(styleButton("CLOTHES", { characterCreation.outfitStyle }, { characterCreation.outfitStyle = it }), LinearLayout.LayoutParams(155, 42).apply { rightMargin = 8 })
-        styleRow.addView(styleButton("HAIR", { characterCreation.hairStyle }, { characterCreation.hairStyle = it }), LinearLayout.LayoutParams(155, 42))
+        styleRow.addView(styleButton("EYEBROW", { characterCreation.eyebrowStyle }, { characterCreation.eyebrowStyle = it }), LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
+        styleRow.addView(styleButton("CLOTHES", { characterCreation.outfitStyle }, { characterCreation.outfitStyle = it }), LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
+        styleRow.addView(styleButton("HAIR", { characterCreation.hairStyle }, { characterCreation.hairStyle = it }), LinearLayout.LayoutParams(0, dp(42), 1f))
 
         val enter = actionButton("CREATE PROFILE / ENTER WORLD") {
             characterCreation.name = characterNameInput.text.toString()
@@ -289,22 +293,30 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
 
-        panel.addView(title, LinearLayout.LayoutParams(-1, 38))
-        panel.addView(subtitle, LinearLayout.LayoutParams(-1, 34))
-        panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, 42))
-        panel.addView(accountRow, LinearLayout.LayoutParams(-1, 48))
-        panel.addView(serverTitle, LinearLayout.LayoutParams(-1, 30))
-        panel.addView(serverRow, LinearLayout.LayoutParams(-1, 44))
-        panel.addView(characterTitle, LinearLayout.LayoutParams(-1, 28))
-        panel.addView(characterNameInput, LinearLayout.LayoutParams(-1, 48).apply { bottomMargin = 8 })
-        panel.addView(styleRow, LinearLayout.LayoutParams(-1, 44))
-        panel.addView(enter, LinearLayout.LayoutParams(-1, 50).apply { topMargin = 14 })
-        overlay.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply {
-            leftMargin = 40
-            rightMargin = 40
+        panel.addView(title, LinearLayout.LayoutParams(-1, dp(48)))
+        panel.addView(subtitle, LinearLayout.LayoutParams(-1, dp(34)))
+        panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(50)))
+        panel.addView(accountRow, LinearLayout.LayoutParams(-1, dp(50)))
+        panel.addView(serverTitle, LinearLayout.LayoutParams(-1, dp(30)))
+        panel.addView(serverRow, LinearLayout.LayoutParams(-1, dp(46)))
+        panel.addView(characterTitle, LinearLayout.LayoutParams(-1, dp(28)))
+        panel.addView(characterNameInput, LinearLayout.LayoutParams(-1, dp(50)).apply { bottomMargin = dp(8) })
+        panel.addView(styleRow, LinearLayout.LayoutParams(-1, dp(46)))
+        panel.addView(enter, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(14) })
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+            setPadding(0, dp(16), 0, dp(16))
+            addView(panel, ScrollView.LayoutParams(-1, -2))
+        }
+        overlay.addView(scroll, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER).apply {
+            leftMargin = dp(24)
+            rightMargin = dp(24)
         })
         return overlay
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         if (!::onboardingStatus.isInitialized) return
@@ -324,7 +336,7 @@ class MainActivity : Activity(), SensorEventListener {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(28, 16, 28, 0)
+            setPadding(dp(28), dp(16), dp(28), 0)
         }
         val title = TextView(this).apply {
             text = "AETHELGARD  •  DAY 01"
@@ -343,7 +355,7 @@ class MainActivity : Activity(), SensorEventListener {
             textSize = 13f
             setTextColor(Color.rgb(255, 226, 164))
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
-            setPadding(28, 0, 28, 0)
+            setPadding(0, 0, dp(24), dp(24))
         }
         gyroButton = actionButton("GYRO: OFF") {
             audio.playEffect("ui")
@@ -353,14 +365,14 @@ class MainActivity : Activity(), SensorEventListener {
         }
         top.addView(title)
         top.addView(stateLabel)
-        top.addView(gyroButton, LinearLayout.LayoutParams(142, 44).apply { leftMargin = 18 })
-        overlay.addView(top, FrameLayout.LayoutParams(-1, 54, Gravity.TOP))
-        overlay.addView(questLabel, FrameLayout.LayoutParams(-1, 42, Gravity.TOP).apply { topMargin = 54 })
+        top.addView(gyroButton, LinearLayout.LayoutParams(dp(142), dp(44)).apply { leftMargin = dp(18) })
+        overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
+        overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply { topMargin = dp(54) })
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.BOTTOM or Gravity.END
-            setPadding(0, 0, 24, 24)
+            setPadding(0, dp(12), 0, dp(4))
         }
         val sprintSlide = actionButton("SPRINT / SLIDE") { }
         sprintSlide.setOnTouchListener { _, event ->
@@ -382,13 +394,13 @@ class MainActivity : Activity(), SensorEventListener {
         val gather = actionButton("GATHER") { audio.playEffect("gather"); gameView.queueEvent { NativeGameBridge.gather() } }
         val craft = actionButton("CRAFT") { audio.playEffect("craft"); gameView.queueEvent { NativeGameBridge.craft() } }
         val settings = actionButton("AUDIO SETTINGS") { showAudioSettings() }
-        actions.addView(sprintSlide, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(attack, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(jump, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(dodge, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(gather, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(craft, LinearLayout.LayoutParams(150, 50).apply { bottomMargin = 6 })
-        actions.addView(settings, LinearLayout.LayoutParams(150, 50))
+        actions.addView(sprintSlide, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(attack, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(jump, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(dodge, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(gather, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(craft, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
+        actions.addView(settings, LinearLayout.LayoutParams(dp(150), dp(50)))
         overlay.addView(actions, FrameLayout.LayoutParams(-1, -1))
         return overlay
     }
@@ -448,7 +460,13 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun actionButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
         text = label
-        textSize = 13f
+        textSize = 12f
+        isAllCaps = false
+        minHeight = 0
+        minimumHeight = 0
+        minWidth = 0
+        minimumWidth = 0
+        setPadding(dp(8), 0, dp(8), 0)
         setTextColor(Color.rgb(14, 26, 27))
         setOnClickListener { onClick() }
         background = GradientDrawable().apply {

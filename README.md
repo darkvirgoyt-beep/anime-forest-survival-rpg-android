@@ -62,7 +62,7 @@ This repository is now being developed in two explicit layers: a verified Androi
 ## Contribution
 Contributors can propose improvements through feature branches and pull requests. Please describe gameplay, Android, or build changes clearly in each contribution. Configure Git with the email linked to your GitHub account so contribution credit is attributed correctly.
 
-For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.md`](docs/GOOGLE_PLAY_GAMES_SETUP.md).
+For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.md`](docs/GOOGLE_PLAY_GAMES_SETUP.md). The real online multiplayer target is documented in [`docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md`](docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md).
 
 
 **Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android forest-survival RPG prototype.
