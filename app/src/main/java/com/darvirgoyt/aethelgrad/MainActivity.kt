@@ -2693,10 +2693,12 @@ class MainActivity : Activity(), SensorEventListener {
                         failureShown = true
                         status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
                         details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
-                        note.text = if (event.errorCode == -2) {
-                            "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.startupMiBFor(resourceTier) + 512)} MB."
-                        } else {
-                            "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs. Production world entry requires Play Asset Delivery."
+                        note.text = when (event.errorCode) {
+                            -2 -> "The requested pack is not in this installed release. Upload/install the matching AAB, then retry."
+                            -10 -> "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.startupMiBFor(resourceTier) + 512)} MB."
+                            -13, -15, -100 -> "This installation is not recognized for Play Asset Delivery. A GitHub/direct APK cannot fetch on-demand packs. Install the matching AAB from Play internal testing, or install a bundletool --local-testing APK set, uninstalling the old APK first."
+                            -6 -> "Play could not reach the asset service. Check Wi-Fi, Google Play Store/Play Services, then retry."
+                            else -> "Install the matching AAB from Play internal testing, or use a bundletool --local-testing APK set. Direct APK installation cannot fetch the selected ${resourceTier.storageLabel} resource packs."
                         }
                         note.setTextColor(Color.rgb(255, 188, 142))
                         progress.progress = 0

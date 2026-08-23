@@ -18,6 +18,8 @@ def main() -> None:
     content_plan = (root / "app/src/main/java/com/darvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
     activity = (root / "app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt").read_text()
     native = (root / "app/src/main/cpp/forest_game.cpp").read_text()
+    workflow = (root / ".github/workflows/android-build.yml").read_text()
+    delivery_notes = (root / "docs/EXTERNAL_ANDROID_DELIVERY_NOTES.md").read_text()
 
     tiers = {tier["id"]: tier for tier in manifest["resourceTiers"]}
     require(set(tiers) == {"low", "high"}, "manifest must define exactly low and high resource tiers")
@@ -60,6 +62,8 @@ def main() -> None:
     require("minimumWorldLoadingDurationMs = 10_000L" in activity, "startup loading must reserve a ten-second preparation window")
     require("worldLoadingProgressTicker" in activity and "timelinePercent" in activity, "startup progress must update continuously with a timeline")
     require("WARMING HIGH-END GRAPHICS" in activity and "NECESSARY RESOURCES READY" in activity, "startup must show explicit finalization and readiness states")
+    require("--local-testing" in workflow and "aethelgard-local-testing.apks" in workflow, "CI must publish a bundletool local-testing APK set")
+    require("direct APK" in delivery_notes and "bundletool" in delivery_notes and "-100" in delivery_notes, "delivery notes must explain PAD installation paths and error -100")
     print("GRAPHICS_TIER_CONTRACT_PASS=1")
     print(f"LOW_PACKS={len(tiers['low']['packs'])}")
     print(f"HIGH_PACKS={len(tiers['high']['packs'])}")

@@ -248,6 +248,26 @@ jobs:
           gradle bundleRelease assembleRelease --stacktrace
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
 
+      - name: Build Play Asset Delivery local-testing APK set
+        run: |
+          curl --fail --silent --show-error --location \
+            https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar \
+            --output bundletool.jar
+          mkdir -p build/local-testing
+          java -jar bundletool.jar build-apks \
+            --bundle=app/build/outputs/bundle/release/app-release.aab \
+            --output=build/local-testing/aethelgard-local-testing.apks \
+            --local-testing \
+            --overwrite
+          test -s build/local-testing/aethelgard-local-testing.apks
+
+      - name: Upload Play Asset Delivery local-testing APK set
+        uses: actions/upload-artifact@v4
+        with:
+          name: aethelgard-pad-local-testing-apks
+          path: build/local-testing/aethelgard-local-testing.apks
+          if-no-files-found: error
+
       - name: Verify 16 KB native alignment
         env:
           ANDROID_NDK_VERSION: "28.0.12433566"
@@ -334,19 +354,26 @@ jobs:
           name: forest-slice-release-aab
           path: release
 
+      - name: Download PAD local-testing APK set
+        uses: actions/download-artifact@v4
+        with:
+          name: aethelgard-pad-local-testing-apks
+          path: release
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.2.2
           name: AETHELGRAD v0.2.2 — Direct Android Downloads
           body: |
-            AETHELGRAD Android build with direct APK and Android App Bundle downloads.
-            Download `app-release.apk` for direct installation on a compatible Android device. Use `app-release.aab` for Google Play or bundle testing.
+            AETHELGRAD Android build with direct APK, Android App Bundle, and Play Asset Delivery local-testing downloads.
+            Download `app-release.apk` only for base-client UI/native testing; it cannot fetch Play Asset Delivery packs by itself. Use `app-release.aab` for Google Play or bundle testing, or install `aethelgard-local-testing.apks` with bundletool to test asset-pack downloads outside Play.
             The APK is signed with the repository's debug signing configuration for test distribution only. A protected production keystore is required for Google Play publishing.
             The Actions build ZIP is only a CI container; use these release assets instead of opening the ZIP.
           files: |
             release/app-release.apk
             release/app-release.aab
+            release/aethelgard-local-testing.apks
           fail_on_unmatched_files: true
           generate_release_notes: true
           draft: false
