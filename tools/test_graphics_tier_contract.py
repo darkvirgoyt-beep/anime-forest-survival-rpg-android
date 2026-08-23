@@ -21,6 +21,12 @@ def main() -> None:
 
     tiers = {tier["id"]: tier for tier in manifest["resourceTiers"]}
     require(set(tiers) == {"low", "high"}, "manifest must define exactly low and high resource tiers")
+    declared_packs = {pack["name"] for pack in manifest["packs"]}
+    require(declared_packs == set(tiers["high"]["packs"]), "high tier must cover every manifest-declared pack exactly once")
+    for pack_name in sorted(declared_packs):
+        pack_root = root / pack_name
+        require((pack_root / "build.gradle.kts").is_file(), f"asset pack module is missing build.gradle.kts: {pack_name}")
+        require((pack_root / "src/main/assets").is_dir(), f"asset pack is missing required content root: {pack_name}/src/main/assets")
     require(tiers["high"]["targetMiB"] > tiers["low"]["targetMiB"], "high tier must have a larger content envelope")
     require(len(tiers["high"]["packs"]) > len(tiers["low"]["packs"]), "high tier must include additional content packs")
     require("assetpack_hd_textures" in tiers["high"]["packs"], "high tier must include HD textures")
