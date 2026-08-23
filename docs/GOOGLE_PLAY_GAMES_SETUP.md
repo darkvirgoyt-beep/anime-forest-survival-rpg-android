@@ -30,6 +30,16 @@ Do not put OAuth client secrets, service-account keys, or backend administrator 
 
 Register the SHA-1 and SHA-256 certificate fingerprints for every signing certificate used to test or distribute the app. At minimum, configure the debug certificate for local testing and the protected release certificate for Play distribution. A build signed with an unregistered certificate can install successfully but still fail Play Games authentication.
 
+For the already delivered **test APK** inspected for this milestone, enter the following only when installing that exact artifact:
+
+| Field | Copyable value |
+|---|---|
+| Package name | `com.darvirgoyt.aethelgrad` |
+| SHA-1 | `4B:D4:D6:94:1A:B9:9B:56:60:3F:37:7C:B2:8B:B7:67:E6:94:FE:CB` |
+| SHA-256 | `86989113250DB7CDDD1BCCAB3A3B7248B5BA5C981673D0B7607E32F22132E9D` |
+
+This repository intentionally uses debug/test-distribution signing for its milestone APKs. Debug certificates can differ between machines and CI environments, so recalculate the fingerprint with `apksigner verify --print-certs <apk>` whenever the signed APK changes. When the game is enrolled in Google Play App Signing, register the **App signing certificate** SHA-1 shown in Play Console as a separate Android OAuth credential. Do not upload or commit a production keystore.
+
 ## 3. Add test users
 
 Before publishing, add the Google accounts used for testing as Play Games testers in Play Console. Install the application from the matching internal-test or closed-test track when testing release behavior. A locally sideloaded release build may not authenticate unless its package name, signing certificate, Play Games project, and tester account all match the configured values.

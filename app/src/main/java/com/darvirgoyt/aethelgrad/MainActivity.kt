@@ -28,6 +28,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.ScrollView
@@ -184,6 +185,17 @@ class MainActivity : Activity(), SensorEventListener {
     private fun buildOnboardingOverlay(): View {
         val overlay = FrameLayout(this)
         overlay.addView(CinematicLoginBackdropView(this), FrameLayout.LayoutParams(-1, -1))
+        overlay.addView(ImageView(this).apply {
+            setImageResource(R.drawable.aethelgard_login_cinematic_background)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            alpha = 0.72f
+        }, FrameLayout.LayoutParams(-1, -1))
+        overlay.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(36, 3, 8, 14), Color.argb(118, 3, 7, 12), Color.argb(224, 2, 5, 8))
+            )
+        }, FrameLayout.LayoutParams(-1, -1))
 
         val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {
             val index = ServerDirectory.regions.indexOfFirst { it.id == selectedServer.id }
