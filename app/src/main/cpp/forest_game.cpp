@@ -1735,7 +1735,7 @@ void drawSnowCrystalCluster(float x, float y, float scale) {
 
 void drawPlayer() {
     // The hero is built from deliberately flat color planes. Drawing the ink silhouette
-    // first and the lit/shadow planes second gives the 2D prototype a mobile-safe cel look.
+    // first and the lit/shadow planes second gives the Android game layer a mobile-safe cel look.
     const float bob = std::sin(gTime * 4.0f) * 0.004f;
     const float px = gPlayerX;
     const float py = gPlayerY + bob;

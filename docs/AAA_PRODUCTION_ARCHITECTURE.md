@@ -2,7 +2,7 @@
 
 ## Decision
 
-The requested target—high-end 3D anime characters, animation, open-world streaming, boss encounters, co-op multiplayer, large asset packs, mobile scalability, gyro aiming, and store distribution—should use **Unreal Engine 5.6+ with C++ gameplay modules** for the production game. The current Kotlin/C++ OpenGL ES application remains a lightweight Android prototype and test harness; it is not the correct long-term renderer for AAA 3D content.
+The requested target—high-end 3D anime characters, animation, open-world streaming, boss encounters, co-op multiplayer, large asset packs, mobile scalability, gyro aiming, and store distribution—uses **Unreal Engine 5.6+ with C++ gameplay modules** as Aethelgard’s AAA production presentation and dedicated-server path. The current Kotlin/C++ OpenGL ES application is the verified Android game layer and contract-validation path; it remains intentionally lightweight for mobile delivery while the Unreal path carries the high-end 3D content.
 
 Epic’s mobile documentation describes Unreal as a framework for optimized Android applications and provides dedicated guidance for Vulkan, OpenGL ES 3.2 fallback, frame pacing, device profiles, Android Asset Delivery, packaging, profiling, and release signing.[1] Android’s Unreal guidance also describes Vulkan as the preferred high-performance path with OpenGL ES 3.2 fallback and points to Play Asset Delivery for large asset packs.[2]
 
@@ -22,7 +22,7 @@ ForestSlice/
 │   ├── AssetValidation/
 │   ├── BuildAutomation/
 │   └── ContentCooking/
-├── MobilePrototype/                    # current Kotlin/OpenGL ES validation app
+├── MobileGameLayer/                    # current Kotlin/OpenGL ES Android game layer
 ├── Docs/
 │   ├── Design/
 │   ├── Technical/
@@ -54,7 +54,7 @@ The camera uses a spring arm with collision tests and a shoulder offset. Right-s
 
 Combat is data-driven. Each ability has startup, active, recovery, cancel, resource, range, damage, poise, knockback, and animation-event data. The server validates the attack request, resolves the hit trace or hitbox against authoritative hurtboxes, applies damage once per target per swing, and replicates a compact result event. The client predicts input feel and effects but cannot grant damage, loot, recipes, or progression.
 
-The first combat package should contain one original hero, one target dummy, one hostile creature, a three-hit light combo, heavy attack, dodge with invulnerability frames, jump attack, hit reaction, stagger, death, respawn, and a boss telegraph prototype. Hit-stop, camera shake, slash trails, impact particles, sound, and floating damage numbers consume combat events instead of modifying health themselves.
+The first combat package should contain one original hero, one target dummy, one hostile creature, a three-hit light combo, heavy attack, dodge with invulnerability frames, jump attack, hit reaction, stagger, death, respawn, and a boss telegraph baseline. Hit-stop, camera shake, slash trails, impact particles, sound, and floating damage numbers consume combat events instead of modifying health themselves.
 
 ## Open world and assets
 
@@ -70,15 +70,15 @@ The first multiplayer milestone should be a four-player invite-only session with
 
 On Android, detect `Sensor.TYPE_GYROSCOPE` at runtime. If absent, the gyro aiming toggle must be visibly disabled and labeled unsupported, never silently enabled. Store gyro sensitivity, invert-Y, aim acceleration, graphics preset, frame-rate cap, resolution scale, shadows, foliage density, motion blur, vibration, audio, and control-layout preferences in a versioned local settings schema. The game should expose Balanced, Performance, and Quality presets; device profiles can override unsupported or unsafe combinations.
 
-Login should begin with guest/local profile support for offline development, then add a real identity provider through a backend-owned authentication boundary. Never place provider secrets in the APK. Account tokens, cloud saves, entitlements, party membership, and anti-cheat decisions belong behind server APIs.
+Login supports guest/local profiles for development and QA, alongside a real identity provider through a backend-owned authentication boundary. Never place provider secrets in the APK. Account tokens, cloud saves, entitlements, party membership, and anti-cheat decisions belong behind server APIs.
 
 ## Build and release
 
-Development requires a machine with Unreal Engine 5.6+, Android SDK/NDK/JDK, and a physical device matrix. GitHub should run source checks, host unit tests, Unreal automation tests, cooking/package validation, Android debug packaging, and release packaging. A production Android App Bundle should use a protected signing key and Play Asset Delivery for large optional content. The current repository’s CI can prove the native prototype and test modules, but it cannot compile an Unreal project without the Unreal toolchain and production assets.
+Development requires a machine with Unreal Engine 5.6+, Android SDK/NDK/JDK, and a physical device matrix. GitHub should run source checks, host unit tests, Unreal automation tests, cooking/package validation, Android debug packaging, and release packaging. A production Android App Bundle should use a protected signing key and Play Asset Delivery for large optional content. The current repository’s CI can prove the native Android game layer and test modules, but it cannot compile an Unreal project without the Unreal toolchain and production assets.
 
 ## Honest milestone boundary
 
-This document is the production architecture for the requested game. The current public repository contains a functioning Android prototype with C++ physics/controller/combat foundations, not the complete AAA game. The correct next production action is to migrate the gameplay contracts into an Unreal C++ project, create the first authored forest map and original hero asset, and validate a four-player dedicated-server slice before expanding to the full world.
+This document is the production architecture for Aethelgard, the real AAA game. The current public repository contains a functioning online Android game layer with C++ physics, controller, combat, progression, delivery, and service foundations, plus an active Unreal C++ production path. The next production actions are to connect authored forest content and original hero assets, compile/cook the Unreal targets on an Unreal-capable runner, and validate the four-player dedicated-server slice before expanding the full world.
 
 ## References
 

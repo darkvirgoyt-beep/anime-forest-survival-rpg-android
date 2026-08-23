@@ -16,13 +16,16 @@ function createMemoryPool() {
   const rooms = new Map();
   const members = new Map();
   const receipts = new Map();
+  const worldSaves = new Map();
+  const buildings = new Map();
   let nextRoomId = 1;
+  let nextBuildingId = 1;
 
   const key = (roomId, accountId) => `${roomId}:${accountId}`;
   const roomByCode = code => [...rooms.values()].find(room => room.code === code);
   const memberFor = (roomId, accountId) => members.get(key(roomId, accountId));
   const participantRows = roomId => [...members.values()]
-    .filter(member => member.roomId === roomId && Date.now() - member.lastSeenAt < 20_000)
+    .filter(member => member.roomId === roomId && member.isActive && Date.now() - member.lastSeenAt < 20_000)
     .map(member => ({
       account_id: member.accountId,
       player_x: member.playerX,
@@ -61,8 +64,10 @@ function createMemoryPool() {
       const current = members.get(memberKey) || {
         roomId: params[0], accountId: params[1], playerX: -0.55, playerY: -0.08,
         atTower: false, towerRevision: 0, lastSeenAt: Date.now(), isActive: true, wood: 12, fiber: 8,
-        stone: 4, inventoryRevision: 0, emberKit: false, lastActionAt: null
+        stone: 4, inventoryRevision: 0, emberKit: false, itemState: { wood: 12, fiber: 8, stone: 4, emberKit: false, items: [] },
+        progressionState: { level: 1, xp: 0, unlocked: [] }, memberRevision: 0, lastActionAt: null
       };
+      current.isActive = true;
       current.lastSeenAt = Date.now();
       members.set(memberKey, current);
       return { rowCount: 1, rows: [] };
@@ -72,7 +77,7 @@ function createMemoryPool() {
       return room ? { rowCount: 1, rows: [{ id: room.id, code: room.code, region: room.region, max_players: room.maxPlayers }] } : { rowCount: 0, rows: [] };
     }
     if (normalized.startsWith("SELECT COUNT(*)::int AS count FROM coop_members")) {
-      const count = [...members.values()].filter(member => member.roomId === params[0] && member.accountId !== params[1] && Date.now() - member.lastSeenAt < 20_000).length;
+      const count = [...members.values()].filter(member => member.roomId === params[0] && member.accountId !== params[1] && member.isActive && Date.now() - member.lastSeenAt < 20_000).length;
       return { rowCount: 1, rows: [{ count }] };
     }
     if (normalized.startsWith("SELECT id, code, region, world_name, created_by, max_players, world_time, tower_revision, boss_health, combat_revision FROM coop_rooms")) {
@@ -119,11 +124,61 @@ function createMemoryPool() {
       if (room) room.towerRevision = Math.max(room.towerRevision, params[1]);
       return { rowCount: 1, rows: [] };
     }
-    if (normalized.startsWith("INSERT INTO coop_world_saves")) return { rowCount: 1, rows: [] };
-    if (normalized.startsWith("UPDATE coop_members SET is_active")) {
+    if (normalized.startsWith("INSERT INTO coop_world_saves")) {
+      worldSaves.set(params[0], { worldState: { schemaVersion: 1, buildings: [], claimedResources: [], quests: {} }, saveRevision: 0, updatedBy: params[1], updatedAt: null });
+      return { rowCount: 1, rows: [] };
+    }
+    if (normalized.startsWith("SELECT m.item_state, m.progression_state, m.member_revision, r.created_by, r.world_name")) {
+      const member = memberFor(rooms.get(roomByCode(params[0])?.id)?.id, params[1]);
+      const room = roomByCode(params[0]);
+      return member && room ? { rowCount: 1, rows: [{ item_state: member.itemState, progression_state: member.progressionState, member_revision: member.memberRevision, created_by: room.createdBy, world_name: room.worldName }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("UPDATE coop_members SET item_state")) {
       const room = roomByCode(params[0]);
       const member = room ? memberFor(room.id, params[1]) : null;
-      if (member) { member.isActive = false; member.lastSeenAt = Date.now(); }
+      if (!member || member.memberRevision !== params[4]) return { rowCount: 0, rows: [] };
+      member.itemState = params[2];
+      member.progressionState = params[3];
+      member.memberRevision += 1;
+      member.lastSeenAt = Date.now();
+      return { rowCount: 1, rows: [{ member_revision: member.memberRevision, item_state: member.itemState, progression_state: member.progressionState }] };
+    }
+    if (normalized.startsWith("SELECT world_state, save_revision, updated_at FROM coop_world_saves")) {
+      const save = worldSaves.get(params[0]);
+      return save ? { rowCount: 1, rows: [{ world_state: save.worldState, save_revision: save.saveRevision, updated_at: save.updatedAt }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT id, building_type, placed_by, transform, state, created_at, updated_at FROM coop_buildings")) {
+      return { rowCount: 0, rows: [...buildings.values()].filter(building => building.roomId === params[0]).map(({ roomId, ...building }) => building) };
+    }
+    if (normalized.startsWith("SELECT id, created_by, world_name FROM coop_rooms WHERE code = $1")) {
+      const room = roomByCode(params[0]);
+      return room ? { rowCount: 1, rows: [{ id: room.id, created_by: room.createdBy, world_name: room.worldName }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT id, created_by FROM coop_rooms WHERE code = $1")) {
+      const room = roomByCode(params[0]);
+      return room ? { rowCount: 1, rows: [{ id: room.id, created_by: room.createdBy }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("UPDATE coop_world_saves SET world_state")) {
+      const save = worldSaves.get(params[0]);
+      if (!save || save.saveRevision !== params[3]) return { rowCount: 0, rows: [] };
+      save.worldState = params[1];
+      save.updatedBy = params[2];
+      save.saveRevision += 1;
+      return { rowCount: 1, rows: [{ save_revision: save.saveRevision, updated_at: save.updatedAt }] };
+    }
+    if (normalized.startsWith("INSERT INTO coop_buildings (room_id")) {
+      const room = roomByCode(params[0]);
+      const member = room ? memberFor(room.id, params[2]) : null;
+      if (!room || !member || !member.isActive) return { rowCount: 0, rows: [] };
+      const building = { id: `building-${nextBuildingId++}`, roomId: room.id, building_type: params[1], placed_by: params[2], transform: params[3], state: params[4], created_at: null, updated_at: null };
+      buildings.set(building.id, building);
+      const { roomId, ...row } = building;
+      return { rowCount: 1, rows: [row] };
+    }
+    if (normalized.startsWith("UPDATE coop_members SET is_active")) {
+      const room = rooms.get(params[0]) || roomByCode(params[0]);
+      const member = room ? memberFor(room.id, params[1]) : null;
+      if (member) { member.isActive = normalized.includes("is_active = TRUE"); member.lastSeenAt = Date.now(); }
       return { rowCount: 1, rows: [] };
     }
     if (normalized.startsWith("DELETE FROM coop_members")) {
@@ -168,7 +223,7 @@ function createMemoryPool() {
     }
     if (normalized.startsWith("UPDATE coop_members SET wood")) {
       const member = memberFor(params[0], params[1]);
-      if (member) { member.wood = params[2]; member.fiber = params[3]; member.stone = params[4]; member.emberKit = params[5]; member.inventoryRevision = params[6]; member.lastSeenAt = Date.now(); }
+      if (member) { member.wood = params[2]; member.fiber = params[3]; member.stone = params[4]; member.emberKit = params[5]; member.inventoryRevision = params[6]; member.itemState = params[7]; member.memberRevision = params[8]; member.lastSeenAt = Date.now(); }
       return { rowCount: 1, rows: [] };
     }
     if (normalized === "BEGIN" || normalized === "COMMIT" || normalized === "ROLLBACK") return { rowCount: 0, rows: [] };
@@ -200,11 +255,13 @@ const tokenD = issueAccessToken({ accountId: "account-d", sessionId: 4, secret: 
 const tokenE = issueAccessToken({ accountId: "account-e", sessionId: 5, secret: config.sessionSecret, now: Date.now(), ttlSeconds: 900 }).token;
 
 try {
-  const created = await request(baseUrl, tokenA, "/v1/coop/rooms", "POST", { region: "asia" });
+  const created = await request(baseUrl, tokenA, "/v1/coop/rooms", "POST", { region: "asia", worldName: "Aurora's Grove" });
   assert.equal(created.status, 201);
   const code = created.payload.room.code;
   assert.match(code, /^[A-Z0-9]{6}$/);
   assert.equal(created.payload.participants.length, 1);
+  assert.equal(created.payload.room.worldName, "Aurora's Grove");
+  assert.equal(created.payload.room.ownerAccountId, "account-a");
 
   const joined = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/join`, "POST", {});
   assert.equal(joined.status, 200);
@@ -255,10 +312,74 @@ try {
   assert.equal(craft.status, 200);
   assert.deepEqual(craft.payload.inventory, { wood: 10, fiber: 8, stone: 4, emberKit: true });
 
+  const playerBeforeSave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/player-save`, "GET");
+  assert.equal(playerBeforeSave.status, 200);
+  assert.equal(playerBeforeSave.payload.ownerAccountId, "account-a");
+  assert.equal(playerBeforeSave.payload.worldName, "Aurora's Grove");
+  assert.equal(playerBeforeSave.payload.memberRevision, 1);
+  const savedPlayer = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/player-save`, "PUT", {
+    expectedRevision: 1,
+    itemState: { wood: 10, fiber: 8, stone: 4, emberKit: true, items: ["ember_kit"] },
+    progressionState: { level: 3, xp: 240, unlocked: ["campfire"] }
+  });
+  assert.equal(savedPlayer.status, 200);
+  assert.equal(savedPlayer.payload.memberRevision, 2);
+  const stalePlayerSave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/player-save`, "PUT", {
+    expectedRevision: 1,
+    itemState: { wood: 1 },
+    progressionState: { level: 1, xp: 0, unlocked: [] }
+  });
+  assert.equal(stalePlayerSave.status, 409);
+
+  const leave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/leave`, "DELETE");
+  assert.equal(leave.status, 204);
+  const inactiveBuild = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/buildings`, "POST", {
+    buildingType: "foundation",
+    transform: { x: 1, y: 2, z: 0, yaw: 0 },
+    state: { tier: 1 }
+  });
+  assert.equal(inactiveBuild.status, 403);
+  const savedAfterLeave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/player-save`, "GET");
+  assert.equal(savedAfterLeave.status, 200);
+  assert.deepEqual(savedAfterLeave.payload.progressionState, { level: 3, xp: 240, unlocked: ["campfire"] });
+
+  const reconnectAfterLeave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/reconnect`, "POST", {});
+  assert.equal(reconnectAfterLeave.status, 200);
+  const building = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/buildings`, "POST", {
+    buildingType: "foundation",
+    transform: { x: 1, y: 2, z: 0, yaw: 0 },
+    state: { tier: 1, material: "wood" }
+  });
+  assert.equal(building.status, 201);
+  assert.equal(building.payload.building.placed_by, "account-b");
+
+  const nonOwnerSave = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/save`, "PUT", {
+    expectedRevision: 0,
+    worldState: { schemaVersion: 1, quests: { firstEmber: "active" } }
+  });
+  assert.equal(nonOwnerSave.status, 403);
+  const worldSave = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/save`, "PUT", {
+    expectedRevision: 0,
+    worldState: { schemaVersion: 1, quests: { firstEmber: "complete" }, claimedResources: ["forest_cache"] }
+  });
+  assert.equal(worldSave.status, 200);
+  assert.equal(worldSave.payload.saveRevision, 1);
+  const staleWorldSave = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/save`, "PUT", {
+    expectedRevision: 0,
+    worldState: { schemaVersion: 1, quests: { firstEmber: "active" } }
+  });
+  assert.equal(staleWorldSave.status, 409);
+  const restoredWorld = await request(baseUrl, tokenC, `/v1/coop/rooms/${code}/save`, "GET");
+  assert.equal(restoredWorld.status, 200);
+  assert.equal(restoredWorld.payload.worldName, "Aurora's Grove");
+  assert.equal(restoredWorld.payload.saveRevision, 1);
+  assert.equal(restoredWorld.payload.worldState.quests.firstEmber, "complete");
+  assert.equal(restoredWorld.payload.buildings.length, 1);
+
   console.log(JSON.stringify({
     ok: true,
     roomCode: code,
-    checks: ["room_created", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated"]
+    checks: ["room_created", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated", "player_save_persisted", "player_save_conflict_rejected", "leave_preserved_membership", "reconnect_restored_membership", "building_persisted", "world_owner_enforced", "world_save_conflict_rejected", "world_reload_includes_building"]
   }, null, 2));
 } finally {
   await new Promise(resolve => server.close(resolve));

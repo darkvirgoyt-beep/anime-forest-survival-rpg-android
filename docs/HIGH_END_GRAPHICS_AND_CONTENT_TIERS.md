@@ -8,7 +8,7 @@ The reference image `assets/aethelgard_high_end_visual_target.jpg` defines the i
 
 ![Aethelgard high-end visual target](../assets/aethelgard_high_end_visual_target.jpg)
 
-This is a visual target, not a claim that the checked-in prototype already contains a complete AAA asset library. The production result requires original or licensed Blender/Unreal meshes, rigging, animation, PBR textures, water materials, foliage clusters, VFX, lighting, collision, navigation, and device profiling.
+This is the canonical visual target for the real AAA production game. The current checkout contains the delivery contracts and development payloads needed to advance that target; the authored production result requires original or licensed Blender/Unreal meshes, rigging, animation, PBR textures, water materials, foliage clusters, VFX, lighting, collision, navigation, and device profiling.
 
 ## Download-to-quality contract
 

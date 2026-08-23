@@ -2,11 +2,11 @@
 
 **Aethelgard: Wild Horizons – Crafting** is an original anime-inspired Android online game built around a third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
 
-> This repository contains the verified online mobile client and a connected production-engine foundation; it does not claim to reproduce the scale or visual fidelity of a large commercial title.
+> This repository contains Aethelgard’s real AAA production game development path: a verified online mobile game layer, an active Unreal Engine production branch, and connected service foundations. The current playable Android build and the Unreal path have different packaging and asset requirements; those engineering facts do not change the game’s AAA production identity.
 
-## Pre-production package
+## Production package
 
-The complete end-to-end production brief is in [`PREPRODUCTION_BIBLE.md`](PREPRODUCTION_BIBLE.md), with the visual generation brief in [`CONCEPT_ART_BRIEF.md`](CONCEPT_ART_BRIEF.md) and the generated concept-art index in [`CONCEPT_ART_README.md`](CONCEPT_ART_README.md). The concept-art set covers the Aethelgard vision key art, Aurora, Emberling, Wisteria Forest, Forest Warden, crafting props, mobile HUD/login direction, and lighting/weather targets.
+The complete end-to-end AAA production brief is in [`PREPRODUCTION_BIBLE.md`](PREPRODUCTION_BIBLE.md), with the visual generation brief in [`CONCEPT_ART_BRIEF.md`](CONCEPT_ART_BRIEF.md) and the generated concept-art index in [`CONCEPT_ART_README.md`](CONCEPT_ART_README.md). The concept-art set covers the Aethelgard vision key art, Aurora, Emberling, Wisteria Forest, Forest Warden, crafting props, mobile HUD/login direction, and lighting/weather targets.
 
 ## Current milestone
 
@@ -20,7 +20,7 @@ The Aethelgard RPG layer now adds a deterministic progression loop: the **First 
 
 The launcher is branded as **Aethelgard: Wild Horizons – Crafting** and uses `assets/ui/aethelgard_game_icon.png`. The generated audio bank is cataloged in [`assets/audio/AUDIO_MANIFEST.md`](assets/audio/AUDIO_MANIFEST.md). The Android harness loads the forest exploration track and gameplay/UI Foley through `GameAudio`, with persistent Master, Music, Effects, Ambience, and Mute controls. The Unreal path uses `UForestSliceAudioSubsystem` as the settings boundary.
 
-The current image-service quota and external audio-service availability prevented final AI character sheets and a full AAA sound library in this run. The icon and procedural SFX are original fallback assets and are intentionally marked for later replacement by production-quality original or licensed content.
+The current image-service quota and external audio-service availability prevented final AI character sheets and a full AAA sound library in this run. The icon and procedural SFX are original interim assets and are intentionally marked for replacement by production-quality original or licensed content as the asset pipeline advances.
 
 ## Technology split
 
@@ -53,7 +53,7 @@ The left virtual joystick moves the hero. Right-side drag controls camera orbit.
 
 ## Production blueprint and GDD map
 
-The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). The 10–20 GB production reset, content budget, milestone gates, and acceptance standard are in [`AAA_PRODUCTION_MASTER_PLAN.md`](AAA_PRODUCTION_MASTER_PLAN.md). The AAA engine and multiplayer decision is documented in [`docs/AAA_PRODUCTION_ARCHITECTURE.md`](docs/AAA_PRODUCTION_ARCHITECTURE.md), and the supplied GDD requirements are mapped in [`docs/GDD_IMPLEMENTATION_MAP.md`](docs/GDD_IMPLEMENTATION_MAP.md). These documents separate the current mobile online client from the future Unreal C++ production path and describe the production migration honestly.
+The complete base-to-release implementation document is [`FULL_IMPLEMENTATION_PLAN.md`](FULL_IMPLEMENTATION_PLAN.md). The 10–20 GB production reset, content budget, milestone gates, and acceptance standard are in [`AAA_PRODUCTION_MASTER_PLAN.md`](AAA_PRODUCTION_MASTER_PLAN.md). The AAA engine and multiplayer decision is documented in [`docs/AAA_PRODUCTION_ARCHITECTURE.md`](docs/AAA_PRODUCTION_ARCHITECTURE.md), and the supplied GDD requirements are mapped in [`docs/GDD_IMPLEMENTATION_MAP.md`](docs/GDD_IMPLEMENTATION_MAP.md). These documents distinguish the current mobile online client from the active Unreal C++ AAA production path and describe the remaining production deliverables honestly.
 
 ## Roadmap
 
@@ -61,7 +61,7 @@ The next production slices should add a proper 3D camera, original rigged anime 
 
 ## Repository status
 
-This repository is now being developed in two connected layers: a verified Android/Kotlin/C++ online client for mobile gameplay and service contracts, and a planned Unreal C++ production path for the larger 3D open-world game. Content size will come from useful original assets, audio, animation, cinematics, language packs, and optional Android asset packs—not padded placeholder data.
+This repository is now being developed in two connected layers: a verified Android/Kotlin/C++ online game layer for mobile gameplay and service contracts, and an active Unreal C++ AAA production path for the larger 3D open-world game. Content size will come from useful original assets, audio, animation, cinematics, language packs, and optional Android asset packs—not padded placeholder data.
 
 ## Contribution
 Contributors can propose improvements through feature branches and pull requests. Please describe gameplay, Android, or build changes clearly in each contribution. Configure Git with the email linked to your GitHub account so contribution credit is attributed correctly.
@@ -74,4 +74,4 @@ For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.m
 
 ## 3D digging and farming slice
 
-The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, mobile HUD, character progression, visible ground-tile, animated chunk, map-layout, stackable inventory, and resource-node pickup contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md), [`docs/PROGRESSION_AND_XP_SPEC.md`](docs/PROGRESSION_AND_XP_SPEC.md), [`docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md`](docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md), and [`docs/REFERENCE_SURVIVAL_GAME_AUDIT.md`](docs/REFERENCE_SURVIVAL_GAME_AUDIT.md) plus [`docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md`](docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md) and [`docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md`](docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md). The four-player online flow is documented in [`docs/MULTIPLAYER_WORKFLOW.md`](docs/MULTIPLAYER_WORKFLOW.md). The player has 100 maximum HP, starts at level 0, can reach level 100, and earns integer XP through grinding. The Android GLES client is the verified online mobile gameplay path; the true large-scale 3D gameplay migration remains in the Unreal project.
+The Unreal branch now contains the 3D camera, ground-planning, excavation, underground-reveal, farm-contour, mobile HUD, character progression, visible ground-tile, animated chunk, map-layout, stackable inventory, and resource-node pickup contracts documented in [`docs/THREE_D_DIGGING_AND_FARMING_SLICE.md`](docs/THREE_D_DIGGING_AND_FARMING_SLICE.md), [`docs/PROGRESSION_AND_XP_SPEC.md`](docs/PROGRESSION_AND_XP_SPEC.md), [`docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md`](docs/MOBILE_JOYSTICK_AND_STREAMED_MAP_SLICE.md), and [`docs/REFERENCE_SURVIVAL_GAME_AUDIT.md`](docs/REFERENCE_SURVIVAL_GAME_AUDIT.md) plus [`docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md`](docs/REFERENCE_INSPIRED_GATHERING_AND_INVENTORY.md) and [`docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md`](docs/POST_INSTALL_RESOURCE_DOWNLOAD_SPEC.md). The four-player online flow is documented in [`docs/MULTIPLAYER_WORKFLOW.md`](docs/MULTIPLAYER_WORKFLOW.md). The player has 100 maximum HP, starts at level 0, can reach level 100, and earns integer XP through grinding. The Android GLES client is the verified online mobile gameplay path; the large-scale 3D gameplay systems are being advanced in the Unreal project as the AAA presentation and dedicated-server path.

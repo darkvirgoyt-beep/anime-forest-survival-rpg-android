@@ -2,9 +2,9 @@
 
 ## Direction
 
-Aethelgard should target a **stylized AAA fantasy survival RPG**: physically grounded materials, high-contrast cinematic lighting, authored silhouettes, dense but performance-aware foliage, readable combat feedback, and a restrained premium HUD. The Android prototype remains a contract harness; the Unreal `ForestSlice` project is the production gameplay path.
+Aethelgard is being developed as a **stylized AAA fantasy survival RPG**: physically grounded materials, high-contrast cinematic lighting, authored silhouettes, dense but performance-aware foliage, readable combat feedback, and a restrained premium HUD. The Android game layer carries verified mobile controls, delivery, and contract behavior; the Unreal `ForestSlice` project carries the high-end 3D presentation and production gameplay path.
 
-> The goal is not to claim that procedural primitives are already AAA art. The goal is to establish the data, streaming, presentation, and gameplay contracts that let authored Blender/Unreal assets replace placeholders without rewriting the game.
+> The goal is to advance the real AAA game without confusing mobile-safe interim presentation with final authored content. The contracts establish the data, streaming, presentation, and gameplay boundaries that let original Blender/Unreal assets progressively replace interim geometry without rewriting the game.
 
 ## World envelope
 

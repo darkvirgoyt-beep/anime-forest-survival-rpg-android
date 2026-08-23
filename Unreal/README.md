@@ -1,6 +1,6 @@
 # Unreal production branch
 
-This directory is the long-term 3D production foundation for Forest Slice. It is intentionally separate from the small `app/` Android/OpenGL ES prototype so the prototype remains buildable while the real game moves to Unreal Engine 5.6+.
+This directory is the long-term 3D production path for Aethelgard, the real AAA production game. It is intentionally paired with the `app/` Android/OpenGL ES game layer: the Android layer keeps mobile controls, delivery, and gameplay contracts testable while Unreal Engine 5.6+ provides the high-end 3D presentation and dedicated-server path.
 
 ## Required local toolchain
 
@@ -14,7 +14,7 @@ Install Unreal Engine 5.6 or later, Android Studio with SDK 35, NDK and JDK vers
 
 The Unreal source now includes data-driven combat and weapon boundaries in `ForestSliceCombatComponent` and `ForestSliceWeaponComponent`, with light/heavy attack phases, combo buffering, hit-window events, replicated equipment slots, and server request methods. `ForestSliceProceduralForest` provides deterministic seed-and-chunk generation with hierarchical instanced tree/rock placement and bounded active records. `ForestSliceSurvivalComponent` owns replicated health, hunger, thirst, stamina, temperature, shelter, injury, and sleep restoration. `ForestSliceWorldClock` provides authoritative day/night progression, and `ForestSliceBed` validates nighttime sleep at a safe bed. `ForestSliceMobileHUD` routes UMG joystick, look, sprint/slide, attack, weapon switch, and gyro commands to the same character path. `ForestSliceAccountSubsystem` defines guest mode and the Google Play credential-to-backend session boundary.
 
-These are production-shaped foundations, not claims that final art, full hit traces, engine-generated UMG assets, Play Games credentials, or a live backend already exist.
+These are active AAA production foundations. Final authored art, complete hit traces, engine-generated UMG assets, Play Games credentials, and a deployed live backend remain specific production deliverables rather than assumptions.
 
 ## Asset rules
 
@@ -38,4 +38,4 @@ The production path now includes data-oriented contracts for the requested upgra
 
 ## Honest status
 
-This directory is a compile-oriented source foundation and configuration seed. It cannot be packaged in this sandbox because the Unreal Engine editor/toolchain and production assets are not installed here. The existing GitHub Actions job continues to build the Kotlin/C++ prototype under `app/`; a later runner with Unreal installed must be added for the production branch. The backend service under `server/` is a real credential-verifying foundation, but it is not a public live service until it is deployed with production secrets, TLS, PostgreSQL, and a dedicated-server allocator.
+This directory is a compile-oriented Unreal production path and configuration seed. It cannot be packaged in this sandbox because the Unreal Engine editor/toolchain and production assets are not installed here. The existing GitHub Actions job builds the Kotlin/native-C++ Android game layer under `app/`; an Unreal-capable runner is still required for cooked AAA client and dedicated-server artifacts. The backend service under `server/` is a real credential-verifying foundation, but it is not a public live service until it is deployed with production secrets, TLS, PostgreSQL, and a dedicated-server allocator.
