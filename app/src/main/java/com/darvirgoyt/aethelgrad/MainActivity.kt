@@ -2,7 +2,6 @@ package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -73,8 +72,6 @@ class MainActivity : Activity(), SensorEventListener {
     private val accountSession = AccountSessionManager()
     private val characterCreation = CharacterCreationState()
     private var selectedServer = ServerDirectory.regions.first()
-    private val isDeveloperBuild: Boolean
-        get() = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
         override fun run() {
@@ -349,7 +346,7 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingStatus.text = snapshot.message
         onboardingStatus.setTextColor(
             when (snapshot.state) {
-                SessionState.AUTHENTICATED, SessionState.GUEST -> Color.rgb(164, 231, 190)
+                SessionState.AUTHENTICATED -> Color.rgb(164, 231, 190)
                 SessionState.SIGNING_IN -> Color.rgb(255, 205, 145)
                 SessionState.CONFIGURATION_ERROR, SessionState.NETWORK_ERROR -> Color.rgb(255, 205, 145)
                 SessionState.DENIED, SessionState.EXPIRED, SessionState.ERROR -> Color.rgb(255, 180, 150)

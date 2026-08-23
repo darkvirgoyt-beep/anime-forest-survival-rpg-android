@@ -13,7 +13,6 @@ import java.util.concurrent.Executors
 
 enum class SessionState {
     SIGNED_OUT,
-    GUEST,
     SIGNING_IN,
     AUTHENTICATED,
     DENIED,
@@ -69,11 +68,6 @@ class AccountSessionManager {
                 )
             }
         }
-    }
-
-    fun startGuest(): SessionSnapshot {
-        val next = SessionSnapshot(SessionState.GUEST, accountId = "guest-local", message = "Guest mode • offline development")
-        return publish(next)
     }
 
     fun requestGooglePlaySignIn(): SessionSnapshot {
