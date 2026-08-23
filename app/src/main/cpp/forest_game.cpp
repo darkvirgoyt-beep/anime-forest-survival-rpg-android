@@ -60,8 +60,15 @@ float gGyroY = 0.0f;
 bool gGyroEnabled = false;
 bool gAuthoritativeOnline = false;
 bool gCampBuilt = false;
+float gCampX = -0.64f;
+float gCampY = 0.52f;
+float gCampZ = 0.0f;
+float gCampYaw = 0.0f;
+float gCampScale = 1.0f;
+int gCampRevision = 0;
 int gCapturedMobIndex = -1;
 bool gCapturedCompanionStay = false;
+int gCompanionRevision = 0;
 int gWood = 12;
 int gFiber = 8;
 int gStone = 4;
@@ -1114,15 +1121,17 @@ void drawCircle(float x, float y, float radius, float r, float g, float b, float
 
 void draw3DFieldCamp(const Mat4& viewProjection) {
     if (!gCampBuilt) return;
+    const float campWorldX = gCampX * 4.3f;
+    const float campWorldZ = -gCampY * 4.0f;
     const float firePulse = 0.72f + 0.18f * std::sin(gTime * 4.6f);
     // A compact original field camp gives the player a readable home anchor
     // without adding a heavyweight asset dependency to the Android slice.
-    draw3DBox(viewProjection, -2.75f, 0.08f, -2.10f, 1.48f, 0.16f, 1.12f, 0.20f, 0.12f, 0.08f);
-    draw3DBox(viewProjection, -2.75f, 0.66f, -2.10f, 1.24f, 0.98f, 0.90f, 0.55f, 0.22f, 0.16f);
-    draw3DBox(viewProjection, -2.75f, 1.24f, -2.10f, 1.36f, 0.16f, 1.00f, 0.82f, 0.50f, 0.20f);
-    draw3DBox(viewProjection, -2.75f, 0.34f, -1.48f, 0.58f, 0.38f, 0.16f, 0.48f, 0.30f, 0.16f);
-    draw3DBox(viewProjection, -2.75f, 0.21f, -1.26f, 0.34f, 0.10f, 0.34f, 0.96f, 0.62f, 0.22f, firePulse);
-    draw3DBox(viewProjection, -2.75f, 0.38f, -1.26f, 0.10f, 0.24f, 0.10f, 1.0f, 0.86f, 0.30f, firePulse);
+    draw3DBox(viewProjection, campWorldX, 0.08f, campWorldZ, 1.48f, 0.16f, 1.12f, 0.20f, 0.12f, 0.08f);
+    draw3DBox(viewProjection, campWorldX, 0.66f, campWorldZ, 1.24f, 0.98f, 0.90f, 0.55f, 0.22f, 0.16f);
+    draw3DBox(viewProjection, campWorldX, 1.24f, campWorldZ, 1.36f, 0.16f, 1.00f, 0.82f, 0.50f, 0.20f);
+    draw3DBox(viewProjection, campWorldX, 0.34f, campWorldZ + 0.62f, 0.58f, 0.38f, 0.16f, 0.48f, 0.30f, 0.16f);
+    draw3DBox(viewProjection, campWorldX, 0.21f, campWorldZ + 0.84f, 0.34f, 0.10f, 0.34f, 0.96f, 0.62f, 0.22f, firePulse);
+    draw3DBox(viewProjection, campWorldX, 0.38f, campWorldZ + 0.84f, 0.10f, 0.24f, 0.10f, 1.0f, 0.86f, 0.30f, firePulse);
 }
 
 void draw3DPeer(const Mat4& viewProjection, const CoOpPeer& peer, int index) {
@@ -2106,7 +2115,7 @@ void simulatePhysicsStep() {
     gPlayerY = gController.body.position.y;
     refreshDiscoveredSectors();
     forest::rpg::updateEmberling(gEmberling, gPlayerX, gPlayerY, kPhysicsStep, currentWeather() == WeatherState::Thunderstorm);
-    const float campDistance = std::sqrt((gPlayerX + 0.64f) * (gPlayerX + 0.64f) + (gPlayerY - 0.52f) * (gPlayerY - 0.52f));
+    const float campDistance = std::sqrt((gPlayerX - gCampX) * (gPlayerX - gCampX) + (gPlayerY - gCampY) * (gPlayerY - gCampY));
     if (gCampBuilt && campDistance < 0.26f) {
         gController.health = std::min(1.0f, gController.health + kPhysicsStep * 0.018f);
         gHunger = std::min(1.0f, gHunger + kPhysicsStep * 0.020f);
@@ -2284,8 +2293,15 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gProgression = {};
     gEmberling = {};
     gCampBuilt = false;
+    gCampX = -0.64f;
+    gCampY = 0.52f;
+    gCampZ = 0.0f;
+    gCampYaw = 0.0f;
+    gCampScale = 1.0f;
+    gCampRevision = 0;
     gCapturedMobIndex = -1;
     gCapturedCompanionStay = false;
+    gCompanionRevision = 0;
     gWood = 12;
     gFiber = 8;
     gStone = 4;
@@ -2401,6 +2417,45 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_applyAuthoritativeInventory(JNIE
     gFiber = std::max(0, static_cast<int>(fiber));
     gStone = std::max(0, static_cast<int>(stone));
     gProgression.emberKitCrafted = emberKit == JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_applyAuthoritativeCompanion(JNIEnv*, jobject, jint creatureIndex, jboolean stay, jint revision) {
+    const int committedRevision = static_cast<int>(revision);
+    for (MobState& mob : gMobs) mob.captured = false;
+    const int index = static_cast<int>(creatureIndex);
+    if (index < 0) {
+        gCapturedMobIndex = -1;
+        gCapturedCompanionStay = false;
+        gCompanionRevision = committedRevision;
+        return;
+    }
+    if (index >= forest::mobs::kProfileCount) return;
+    gCapturedMobIndex = index;
+    gCapturedCompanionStay = stay == JNI_TRUE;
+    gCompanionRevision = committedRevision;
+    MobState& companion = gMobs[index];
+    companion.captured = true;
+    companion.health = static_cast<float>(forest::mobs::profile(companion.type).maxHealth) * 0.75f;
+    companion.position = {gPlayerX - 0.16f, gPlayerY + 0.13f};
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_applyAuthoritativeCamp(JNIEnv*, jobject, jboolean built, jfloat x, jfloat y, jfloat z, jfloat yaw, jfloat scale, jint revision) {
+    const int committedRevision = static_cast<int>(revision);
+    if (built != JNI_TRUE) {
+        gCampBuilt = false;
+        gCampRevision = committedRevision;
+        return;
+    }
+    if (!std::isfinite(static_cast<float>(x)) || !std::isfinite(static_cast<float>(y)) || !std::isfinite(static_cast<float>(z)) || !std::isfinite(static_cast<float>(yaw)) || !std::isfinite(static_cast<float>(scale))) return;
+    gCampBuilt = true;
+    gCampX = std::clamp(static_cast<float>(x), kSimulationMinX, kSimulationMaxX);
+    gCampY = std::clamp(static_cast<float>(y), kSimulationMinY, kSimulationMaxY);
+    gCampZ = std::clamp(static_cast<float>(z), -8.0f, 32.0f);
+    gCampYaw = std::clamp(static_cast<float>(yaw), -3.14159265f, 3.14159265f);
+    gCampScale = std::clamp(static_cast<float>(scale), 0.75f, 1.25f);
+    gCampRevision = committedRevision;
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -2572,7 +2627,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_captureNearestCreature(JNIEnv*, 
     mob.position = {gPlayerX - 0.16f, gPlayerY + 0.13f};
     gCapturedMobIndex = target;
     gCapturedCompanionStay = false;
-        gQuestPulse = 150;
+    ++gCompanionRevision;
+    gQuestPulse = 150;
     awardExperience(24 + mobProfile.tamingCost * 4);
 }
 extern "C" JNIEXPORT void JNICALL
@@ -2583,6 +2639,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleCompanionCommand(JNIEnv*, 
         companionState.command = gCapturedCompanionStay ? forest::rpg::CompanionCommand::Stay : forest::rpg::CompanionCommand::Follow;
         if (forest::rpg::toggleCompanionCommand(companionState)) {
             gCapturedCompanionStay = companionState.command == forest::rpg::CompanionCommand::Stay;
+            ++gCompanionRevision;
             gQuestPulse = 90;
         }
     } else {
@@ -2601,6 +2658,12 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_buildCamp(JNIEnv*, jobject) {
     gWood -= 6;
     gFiber -= 4;
     gCampBuilt = true;
+    gCampX = gPlayerX;
+    gCampY = gPlayerY;
+    gCampZ = 0.0f;
+    gCampYaw = 0.0f;
+    gCampScale = 1.0f;
+    ++gCampRevision;
     gCraftPulse = 20;
     gQuestPulse = 150;
     awardExperience(24);
@@ -2685,6 +2748,16 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobje
     state.emberlingBonded = gEmberling.bonded;
     state.emberlingStay = gEmberling.stay;
     state.discoveredSectors = gDiscoveredSectors;
+    state.capturedMobIndex = gCapturedMobIndex;
+    state.capturedCompanionStay = gCapturedMobIndex >= 0 && gCapturedCompanionStay;
+    state.companionRevision = gCompanionRevision;
+    state.campBuilt = gCampBuilt;
+    state.campX = gCampX;
+    state.campY = gCampY;
+    state.campZ = gCampZ;
+    state.campYaw = gCampYaw;
+    state.campScale = gCampScale;
+    state.campRevision = gCampRevision;
     const std::string value = forest::rpg::serializeCloudState(state);
     return env->NewStringUTF(value.c_str());
 }
@@ -2726,8 +2799,28 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     gEmberling.bonded = state.emberlingBonded;
     gEmberling.stay = state.emberlingStay;
     gEmberling.pulse = 0.0f;
+    gCampBuilt = state.campBuilt;
+    gCampX = std::clamp(state.campX, kSimulationMinX, kSimulationMaxX);
+    gCampY = std::clamp(state.campY, kSimulationMinY, kSimulationMaxY);
+    gCampZ = std::clamp(state.campZ, -8.0f, 32.0f);
+    gCampYaw = std::clamp(state.campYaw, -3.14159265f, 3.14159265f);
+    gCampScale = std::clamp(state.campScale, 0.75f, 1.25f);
+    gCampRevision = state.campRevision;
+    gCapturedMobIndex = state.capturedMobIndex >= 0 && state.capturedMobIndex < forest::mobs::kProfileCount ? state.capturedMobIndex : -1;
+    gCapturedCompanionStay = gCapturedMobIndex >= 0 && state.capturedCompanionStay;
+    gCompanionRevision = state.companionRevision;
+    for (MobState& mob : gMobs) mob.captured = false;
+    if (gCapturedMobIndex >= 0) {
+        MobState& companion = gMobs[gCapturedMobIndex];
+        companion.captured = true;
+        companion.health = static_cast<float>(forest::mobs::profile(companion.type).maxHealth) * 0.75f;
+        companion.position = {gPlayerX - 0.16f, gPlayerY + 0.13f};
+    }
     gEnemyHealth = gProgression.wardenDefeated ? 0.0f : kForestWardenMaxHealth;
     gDaysPlayed = state.day;
     gTime = state.worldTime;
+    if (gCampBuilt) {
+        gCampBuilt = std::isfinite(state.campX) && std::isfinite(state.campY);
+    }
     return JNI_TRUE;
 }

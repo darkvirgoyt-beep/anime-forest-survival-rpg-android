@@ -74,6 +74,8 @@ object NativeGameBridge {
     external fun setAuthoritativeOnline(enabled: Boolean)
     external fun setAuthoritativeBossHealth(health: Int)
     external fun applyAuthoritativeInventory(wood: Int, fiber: Int, stone: Int, emberKit: Boolean)
+    external fun applyAuthoritativeCompanion(creatureIndex: Int, stay: Boolean, revision: Int)
+    external fun applyAuthoritativeCamp(built: Boolean, x: Float, y: Float, z: Float, yaw: Float, scale: Float, revision: Int)
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun setPlayerCharacterTexture(width: Int, height: Int, pixels: IntArray)
@@ -191,6 +193,9 @@ class MainActivity : Activity(), SensorEventListener {
     private var lastCoOpTowerRevision = 0
     private var coOpRequestCounter = 0L
     private var coOpMemberRevision = 0
+    private var authoritativeCompanion: CompanionStateSnapshot? = null
+    private var authoritativeCamp: CampStateSnapshot? = null
+    private var authoritativeTargets: List<CompanionTarget> = emptyList()
     private var coOpSaveInFlight = false
     private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
@@ -1558,6 +1563,143 @@ class MainActivity : Activity(), SensorEventListener {
         return "$prefix-${System.currentTimeMillis()}-$coOpRequestCounter"
     }
 
+    private fun companionNativeIndex(creatureId: String): Int = when (creatureId) {
+        "moon_deer" -> 8
+        "mossback_boar" -> 9
+        "river_otter" -> 10
+        "canopy_fox" -> 11
+        else -> -1
+    }
+
+    private fun applyAuthoritativeCompanionSnapshot(companion: CompanionStateSnapshot?, camp: CampStateSnapshot?) {
+        authoritativeCompanion = companion
+        authoritativeCamp = camp
+        if (::gameView.isInitialized) {
+            gameView.queueEvent {
+                if (companion == null) {
+                    NativeGameBridge.applyAuthoritativeCompanion(-1, false, 0)
+                } else {
+                    val index = companionNativeIndex(companion.creatureId)
+                    if (index >= 0) NativeGameBridge.applyAuthoritativeCompanion(index, companion.command == "stay", companion.revision)
+                }
+                if (camp == null) {
+                    NativeGameBridge.applyAuthoritativeCamp(false, 0f, 0f, 0f, 0f, 1f, 0)
+                } else {
+                    runCatching {
+                        val transform = JSONObject(camp.transformJson)
+                        NativeGameBridge.applyAuthoritativeCamp(
+                            true,
+                            transform.optDouble("x", 0.0).toFloat(),
+                            transform.optDouble("y", 0.0).toFloat(),
+                            transform.optDouble("z", 0.0).toFloat(),
+                            transform.optDouble("yaw", 0.0).toFloat(),
+                            transform.optDouble("scale", 1.0).toFloat(),
+                            camp.revision
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun reconcileAuthoritativeCompanionCamp(roomCode: String) {
+        accountSession.fetchCompanionCampState(roomCode) { state, error ->
+            if (state != null) {
+                authoritativeTargets = state.targets
+                applyAuthoritativeCompanionSnapshot(state.companion, state.camp)
+                if (::coOpStatusLabel.isInitialized) {
+                    val companionLabel = state.companion?.displayName ?: "NO COMPANION"
+                    val campLabel = if (state.camp == null) "NO CAMP" else "CAMP R${state.camp.revision}"
+                    coOpStatusLabel.text = "CO-OP $roomCode  •  $companionLabel  •  $campLabel  •  AUTHORITY SYNCED"
+                }
+            } else if (error != null && ::coOpStatusLabel.isInitialized) {
+                coOpStatusLabel.text = "CO-OP $roomCode  •  AUTHORITY SYNC RETRY  •  $error"
+            }
+        }
+    }
+
+    private fun submitAuthoritativeCapture() {
+        if (!requireOnline("COMPANION CAPTURE")) return
+        val room = activeCoOpRoom
+        if (room == null) {
+            gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
+            return
+        }
+        gameView.queueEvent {
+            val local = NativeGameBridge.getCoOpLocalState().split('|')
+            val x = local.getOrNull(0)?.toFloatOrNull() ?: -0.55f
+            val y = local.getOrNull(1)?.toFloatOrNull() ?: -0.08f
+            val target = authoritativeTargets.minByOrNull { target -> hypot(target.x - x, target.y - y) }
+            runOnUiThread {
+                if (target == null) {
+                    coOpStatusLabel.text = "CO-OP ${room.code}  •  NO SERVER-KNOWN CREATURE TARGET"
+                    return@runOnUiThread
+                }
+                accountSession.captureCompanion(room.code, nextCoOpRequestId("capture"), target.creatureId) { result, error ->
+                    if (result != null) {
+                        coOpMemberRevision = maxOf(coOpMemberRevision, result.memberRevision)
+                        applyAuthoritativeCompanionSnapshot(result.companion, authoritativeCamp)
+                        authoritativeTargets = authoritativeTargets.filterNot { it.creatureId == result.companion.creatureId }
+                        gameView.queueEvent { NativeGameBridge.applyAuthoritativeInventory(result.wood, result.fiber, result.stone, result.emberKit) }
+                        coOpStatusLabel.text = "CO-OP ${room.code}  •  ${result.companion.displayName.uppercase()} CAPTURED  •  FIBER ${result.fiber}  •  R${result.companion.revision}"
+                    } else if (error != null) {
+                        coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+                        if (error.contains("already", ignoreCase = true) || error.contains("changed", ignoreCase = true)) reconcileAuthoritativeCompanionCamp(room.code)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun submitAuthoritativeCompanionCommand() {
+        if (!requireOnline("COMPANION COMMAND")) return
+        val room = activeCoOpRoom
+        val companion = authoritativeCompanion
+        if (room == null || companion == null) {
+            if (room == null) gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
+            else coOpStatusLabel.text = "CO-OP ${room.code}  •  NO ACTIVE COMPANION"
+            return
+        }
+        val nextCommand = if (companion.command == "stay") "follow" else "stay"
+        accountSession.setCompanionCommand(room.code, nextCoOpRequestId("companion"), nextCommand, companion.revision) { result, error ->
+            if (result != null) {
+                applyAuthoritativeCompanionSnapshot(result, authoritativeCamp)
+                coOpStatusLabel.text = "CO-OP ${room.code}  •  COMPANION ${result.command.uppercase()}  •  R${result.revision}"
+            } else if (error != null) {
+                coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+                if (error.contains("changed", ignoreCase = true)) reconcileAuthoritativeCompanionCamp(room.code)
+            }
+        }
+    }
+
+    private fun submitAuthoritativeCamp() {
+        if (!requireOnline("FIELD CAMP")) return
+        val room = activeCoOpRoom
+        if (room == null) {
+            gameView.queueEvent { NativeGameBridge.buildCamp() }
+            return
+        }
+        gameView.queueEvent {
+            val local = NativeGameBridge.getCoOpLocalState().split('|')
+            val x = local.getOrNull(0)?.toFloatOrNull() ?: -0.55f
+            val y = local.getOrNull(1)?.toFloatOrNull() ?: -0.08f
+            val transform = JSONObject().put("x", x).put("y", y).put("z", 0.0).put("yaw", 0.0).put("scale", 1.0)
+            runOnUiThread {
+                accountSession.placeFieldCamp(room.code, nextCoOpRequestId("camp"), transform, authoritativeCamp?.revision ?: 0) { result, error ->
+                    if (result != null) {
+                        coOpMemberRevision = maxOf(coOpMemberRevision, result.memberRevision)
+                        applyAuthoritativeCompanionSnapshot(authoritativeCompanion, result.camp)
+                        gameView.queueEvent { NativeGameBridge.applyAuthoritativeInventory(result.wood, result.fiber, result.stone, result.emberKit) }
+                        coOpStatusLabel.text = "CO-OP ${room.code}  •  FIELD CAMP BUILT  •  W ${result.wood} F ${result.fiber}  •  R${result.camp.revision}"
+                    } else if (error != null) {
+                        coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+                        if (error.contains("changed", ignoreCase = true) || error.contains("existing", ignoreCase = true)) reconcileAuthoritativeCompanionCamp(room.code)
+                    }
+                }
+            }
+        }
+    }
+
     private fun submitAuthoritativeCombat(action: String) {
         if (!requireOnline("COMBAT")) return
         val room = activeCoOpRoom
@@ -1623,6 +1765,7 @@ class MainActivity : Activity(), SensorEventListener {
                 coOpReconnectAttempts = 0
                 coOpNextReconnectAtMs = 0L
                 applyCoOpSnapshot(snapshot)
+                reconcileAuthoritativeCompanionCamp(snapshot.code)
                 if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP ${snapshot.code}  •  RECONNECTED  •  ${snapshot.participants.size}/${snapshot.maxPlayers}"
             } else {
                 val delay = (1_000L shl coOpReconnectAttempts.coerceIn(0, 3)).coerceAtMost(8_000L)
@@ -1683,6 +1826,7 @@ class MainActivity : Activity(), SensorEventListener {
                 gameView.queueEvent { NativeGameBridge.loadCloudState(playerSave.progressionStateJson) }
                 if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "${snapshot.worldName}  •  SAVED ITEMS + PROGRESSION RESTORED  •  ${snapshot.code}"
             }
+            reconcileAuthoritativeCompanionCamp(snapshot.code)
         }
         accountSession.loadCoOpWorldSave(snapshot.code) { worldSave, _ ->
             if (worldSave != null && ::coOpStatusLabel.isInitialized) {
@@ -2059,15 +2203,15 @@ class MainActivity : Activity(), SensorEventListener {
         val craft = gameplayButton("⌂  CRAFT") { submitAuthoritativeInventory("craft") }
         val companion = gameplayButton("✦  COMMAND") {
             audio.playEffect("ui")
-            gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
+            submitAuthoritativeCompanionCommand()
         }
         val capture = gameplayButton("◎  TAME ANIMAL") {
             audio.playEffect("ui")
-            gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
+            submitAuthoritativeCapture()
         }
         val camp = gameplayButton("⌂  BUILD CAMP") {
             audio.playEffect("craft")
-            gameView.queueEvent { NativeGameBridge.buildCamp() }
+            submitAuthoritativeCamp()
         }
         fun controlRow(first: View, second: View): LinearLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL

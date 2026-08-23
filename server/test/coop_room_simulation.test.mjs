@@ -18,10 +18,16 @@ function createMemoryPool() {
   const receipts = new Map();
   const worldSaves = new Map();
   const buildings = new Map();
+  const targets = new Map();
+  const companions = new Map();
+  const camps = new Map();
   let nextRoomId = 1;
   let nextBuildingId = 1;
+  let nextCompanionId = 1;
+  let nextCampId = 1;
 
   const key = (roomId, accountId) => `${roomId}:${accountId}`;
+  const targetKey = (roomId, creatureId) => `${roomId}:${creatureId}`;
   const roomByCode = code => [...rooms.values()].find(room => room.code === code);
   const memberFor = (roomId, accountId) => members.get(key(roomId, accountId));
   const participantRows = roomId => [...members.values()]
@@ -128,6 +134,27 @@ function createMemoryPool() {
       worldSaves.set(params[0], { worldState: { schemaVersion: 1, buildings: [], claimedResources: [], quests: {} }, saveRevision: 0, updatedBy: params[1], updatedAt: null });
       return { rowCount: 1, rows: [] };
     }
+    if (normalized.startsWith("INSERT INTO coop_creature_targets")) {
+      const target = { id: `target-${params[0]}-${params[1]}`, roomId: params[0], creature_id: params[1], position_x: Number(params[2]), position_y: Number(params[3]), health_fraction: Number(params[4]), active: true, revision: 0, captured_by: null };
+      targets.set(targetKey(target.roomId, target.creature_id), target);
+      return { rowCount: 1, rows: [] };
+    }
+    if (normalized.startsWith("SELECT companion_id, creature_id, display_name, command, bond, health_fraction, revision, captured_at, updated_at FROM coop_companions")) {
+      const companion = companions.get(key(params[0], params[1]));
+      return companion ? { rowCount: 1, rows: [companion] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT id, recipe_id, transform, state, revision, created_at, updated_at FROM coop_camps WHERE room_id")) {
+      const camp = camps.get(key(params[0], params[1]));
+      return camp ? { rowCount: 1, rows: [camp] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT id, creature_id, position_x, position_y, health_fraction, revision FROM coop_creature_targets")) {
+      if (normalized.includes("AND creature_id = $2")) {
+        const target = targets.get(targetKey(params[0], params[1]));
+        return target && target.active ? { rowCount: 1, rows: [{ ...target }] } : { rowCount: 0, rows: [] };
+      }
+      const roomId = params[0];
+      return { rowCount: [...targets.values()].filter(target => target.roomId === roomId && target.active).length, rows: [...targets.values()].filter(target => target.roomId === roomId && target.active).sort((a, b) => a.creature_id.localeCompare(b.creature_id)).map(({ id, creature_id, position_x, position_y, health_fraction, revision }) => ({ id, creature_id, position_x, position_y, health_fraction, revision })) };
+    }
     if (normalized.startsWith("SELECT m.item_state, m.progression_state, m.member_revision, r.created_by, r.world_name")) {
       const member = memberFor(rooms.get(roomByCode(params[0])?.id)?.id, params[1]);
       const room = roomByCode(params[0]);
@@ -199,6 +226,52 @@ function createMemoryPool() {
       const receipt = receipts.get(`${params[0]}:${params[1]}:${params[2]}`);
       return receipt ? { rowCount: 1, rows: [{ result: receipt }] } : { rowCount: 0, rows: [] };
     }
+    if (normalized.startsWith("SELECT id, creature_id, position_x, position_y, health_fraction, revision FROM coop_creature_targets WHERE room_id")) {
+      const target = targets.get(targetKey(params[0], params[1]));
+      return target && target.active ? { rowCount: 1, rows: [{ ...target }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT 1 FROM coop_companions")) {
+      return companions.has(key(params[0], params[1])) ? { rowCount: 1, rows: [{}] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT companion_id, creature_id, display_name, command, bond, health_fraction, revision, captured_at, updated_at FROM coop_companions")) {
+      const companion = companions.get(key(params[0], params[1]));
+      return companion ? { rowCount: 1, rows: [{ ...companion }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT id, recipe_id, transform, state, revision, created_at, updated_at FROM coop_camps WHERE id")) {
+      const camp = [...camps.values()].find(candidate => candidate.id === params[0]);
+      return camp ? { rowCount: 1, rows: [{ ...camp }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("SELECT id, recipe_id, transform, state, revision, created_at, updated_at FROM coop_camps WHERE room_id")) {
+      const camp = camps.get(key(params[0], params[1]));
+      return camp ? { rowCount: 1, rows: [{ ...camp }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("INSERT INTO coop_companions")) {
+      const companion = { companion_id: `companion-${nextCompanionId++}`, creature_id: params[2], display_name: params[3], command: "follow", bond: 0, health_fraction: 0.75, revision: 1, captured_at: null, updated_at: null };
+      companions.set(key(params[0], params[1]), companion);
+      return { rowCount: 1, rows: [{ ...companion }] };
+    }
+    if (normalized.startsWith("UPDATE coop_creature_targets SET active")) {
+      const target = [...targets.values()].find(candidate => candidate.id === params[0]);
+      if (target) { target.active = false; target.captured_by = params[1]; target.revision += 1; }
+      return { rowCount: 1, rows: [] };
+    }
+    if (normalized.startsWith("UPDATE coop_companions SET command")) {
+      const companion = companions.get(key(params[0], params[1]));
+      if (!companion) return { rowCount: 0, rows: [] };
+      companion.command = params[2];
+      companion.revision += 1;
+      return { rowCount: 1, rows: [{ ...companion }] };
+    }
+    if (normalized.startsWith("INSERT INTO coop_camps")) {
+      const camp = { id: `camp-${nextCampId++}`, recipe_id: params[2], transform: params[3], state: {}, revision: 1, created_at: null, updated_at: null };
+      camps.set(key(params[0], params[1]), camp);
+      return { rowCount: 1, rows: [{ ...camp }] };
+    }
+    if (normalized.startsWith("DELETE FROM coop_camps")) {
+      const camp = [...camps.entries()].find(([, value]) => value.id === params[0]);
+      if (camp) camps.delete(camp[0]);
+      return { rowCount: 1, rows: [] };
+    }
     if (normalized.startsWith("UPDATE coop_rooms SET boss_health")) {
       const room = rooms.get(params[0]);
       if (room) { room.bossHealth = params[1]; room.combatRevision = params[2]; }
@@ -210,16 +283,31 @@ function createMemoryPool() {
       return { rowCount: 1, rows: [] };
     }
     if (normalized.startsWith("INSERT INTO coop_action_receipts")) {
-      receipts.set(`${params[0]}:${params[1]}:${params[2]}`, params[3]);
+      const result = params.length >= 6 ? params[5] : params[4] ?? params[3];
+      receipts.set(`${params[0]}:${params[1]}:${params[2]}`, result);
       return { rowCount: 1, rows: [] };
     }
     if (normalized.startsWith("SELECT id FROM coop_rooms WHERE code = $1 FOR UPDATE")) {
       const room = roomByCode(params[0]);
       return room ? { rowCount: 1, rows: [{ id: room.id }] } : { rowCount: 0, rows: [] };
     }
+    if (normalized.startsWith("SELECT player_x, player_y, wood, fiber, stone, ember_kit, inventory_revision, member_revision, is_active")) {
+      const member = memberFor(params[0], params[1]);
+      return member ? { rowCount: 1, rows: [{ player_x: member.playerX, player_y: member.playerY, wood: member.wood, fiber: member.fiber, stone: member.stone, ember_kit: member.emberKit, inventory_revision: member.inventoryRevision, member_revision: member.memberRevision, is_active: member.isActive }] } : { rowCount: 0, rows: [] };
+    }
     if (normalized.startsWith("SELECT player_x, player_y, wood, fiber, stone, inventory_revision, ember_kit")) {
       const member = memberFor(params[0], params[1]);
       return member ? { rowCount: 1, rows: [{ player_x: member.playerX, player_y: member.playerY, wood: member.wood, fiber: member.fiber, stone: member.stone, inventory_revision: member.inventoryRevision, ember_kit: member.emberKit }] } : { rowCount: 0, rows: [] };
+    }
+    if (normalized.startsWith("UPDATE coop_members SET fiber = $3, inventory_revision = $4, member_revision = $5")) {
+      const member = memberFor(params[0], params[1]);
+      if (member) { member.fiber = params[2]; member.inventoryRevision = params[3]; member.memberRevision = params[4]; member.lastSeenAt = Date.now(); }
+      return { rowCount: 1, rows: [] };
+    }
+    if (normalized.startsWith("UPDATE coop_members SET wood = $3, fiber = $4, inventory_revision = $5, member_revision = $6")) {
+      const member = memberFor(params[0], params[1]);
+      if (member) { member.wood = params[2]; member.fiber = params[3]; member.inventoryRevision = params[4]; member.memberRevision = params[5]; member.lastSeenAt = Date.now(); }
+      return { rowCount: 1, rows: [] };
     }
     if (normalized.startsWith("UPDATE coop_members SET wood")) {
       const member = memberFor(params[0], params[1]);
@@ -230,7 +318,25 @@ function createMemoryPool() {
     throw new Error(`Unhandled simulation query: ${normalized}`);
   }
 
-  return { query, connect: async () => ({ query, release() {} }) };
+  return {
+    query,
+    connect: async () => ({ query, release() {} }),
+    setTargetHealth(code, creatureId, healthFraction) {
+      const room = roomByCode(code);
+      const target = room ? targets.get(targetKey(room.id, creatureId)) : null;
+      if (target) target.health_fraction = healthFraction;
+    },
+    setMemberPosition(code, accountId, playerX, playerY) {
+      const room = roomByCode(code);
+      const member = room ? memberFor(room.id, accountId) : null;
+      if (member) { member.playerX = playerX; member.playerY = playerY; }
+    },
+    setMemberResources(code, accountId, wood, fiber) {
+      const room = roomByCode(code);
+      const member = room ? memberFor(room.id, accountId) : null;
+      if (member) { member.wood = wood; member.fiber = fiber; }
+    }
+  };
 }
 
 async function request(baseUrl, token, path, method, body) {
@@ -274,6 +380,69 @@ try {
   assert.equal(joinedD.payload.participants.length, 4);
   const full = await request(baseUrl, tokenE, `/v1/coop/rooms/${code}/join`, "POST", {});
   assert.equal(full.status, 409);
+
+  pool.setMemberPosition(code, "account-a", -0.62, 0.42);
+  const capture = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/companions/capture`, "POST", { requestId: "capture-a-001", creatureId: "moon_deer" });
+  assert.equal(capture.status, 201);
+  assert.equal(capture.payload.companion.creature_id, "moon_deer");
+  assert.equal(capture.payload.inventory.fiber, 6);
+  const duplicateCapture = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/companions/capture`, "POST", { requestId: "capture-a-001", creatureId: "moon_deer" });
+  assert.equal(duplicateCapture.status, 200);
+  assert.deepEqual(duplicateCapture.payload, capture.payload);
+
+  const command = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/companions/command`, "POST", { requestId: "command-a-001", command: "stay", expectedRevision: 1 });
+  assert.equal(command.status, 200);
+  assert.equal(command.payload.companion.command, "stay");
+  assert.equal(command.payload.companion.revision, 2);
+  const staleCommand = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/companions/command`, "POST", { requestId: "command-a-stale", command: "follow", expectedRevision: 1 });
+  assert.equal(staleCommand.status, 409);
+  assert.equal(staleCommand.payload.companion.revision, 2);
+  const retriedCommand = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/companions/command`, "POST", { requestId: "command-a-002", command: "follow", expectedRevision: 2 });
+  assert.equal(retriedCommand.status, 200);
+  assert.equal(retriedCommand.payload.companion.revision, 3);
+
+  pool.setMemberPosition(code, "account-c", -0.62, 0.42);
+  const rangeRejectedCapture = await request(baseUrl, tokenC, `/v1/coop/rooms/${code}/companions/capture`, "POST", { requestId: "capture-c-range", creatureId: "moon_deer" });
+  assert.equal(rangeRejectedCapture.status, 404);
+  pool.setMemberPosition(code, "account-d", 0.64, 0.26);
+  pool.setTargetHealth(code, "canopy_fox", 0.9);
+  const healthRejectedCapture = await request(baseUrl, tokenD, `/v1/coop/rooms/${code}/companions/capture`, "POST", { requestId: "capture-d-health", creatureId: "canopy_fox" });
+  assert.equal(healthRejectedCapture.status, 422);
+  pool.setMemberPosition(code, "account-b", -0.28, 0.40);
+  pool.setMemberResources(code, "account-b", 12, 1);
+  const fiberRejectedCapture = await request(baseUrl, tokenB, `/v1/coop/rooms/${code}/companions/capture`, "POST", { requestId: "capture-b-fiber", creatureId: "mossback_boar" });
+  assert.equal(fiberRejectedCapture.status, 422);
+  pool.setMemberResources(code, "account-b", 12, 8);
+
+  const camp = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/camps`, "POST", { requestId: "camp-a-001", recipeId: "field_camp", expectedRevision: 0, transform: { x: -0.62, y: 0.42, z: 0, yaw: 0, scale: 1 } });
+  assert.equal(camp.status, 201);
+  assert.equal(camp.payload.camp.recipe_id, "field_camp");
+  assert.deepEqual(camp.payload.inventory, { wood: 6, fiber: 2, stone: 4, emberKit: false });
+  const duplicateCamp = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/camps`, "POST", { requestId: "camp-a-001", recipeId: "field_camp", expectedRevision: 0, transform: { x: -0.62, y: 0.42, z: 0, yaw: 0, scale: 1 } });
+  assert.equal(duplicateCamp.status, 201);
+  assert.deepEqual(duplicateCamp.payload, camp.payload);
+  const campConflictPlacement = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/camps`, "POST", { requestId: "camp-a-stale", recipeId: "field_camp", expectedRevision: 0, transform: { x: -0.62, y: 0.42, z: 0, yaw: 0, scale: 1 } });
+  assert.equal(campConflictPlacement.status, 409);
+  assert.equal(campConflictPlacement.payload.camp.revision, 1);
+
+  pool.setMemberPosition(code, "account-c", -0.55, -0.08);
+  const campRangeRejected = await request(baseUrl, tokenC, `/v1/coop/rooms/${code}/camps`, "POST", { requestId: "camp-c-range", recipeId: "field_camp", expectedRevision: 0, transform: { x: 0.5, y: 0.5, z: 0, yaw: 0, scale: 1 } });
+  assert.equal(campRangeRejected.status, 422);
+  pool.setMemberResources(code, "account-d", 5, 8);
+  const campMaterialsRejected = await request(baseUrl, tokenD, `/v1/coop/rooms/${code}/camps`, "POST", { requestId: "camp-d-materials", recipeId: "field_camp", expectedRevision: 0, transform: { x: 0.64, y: 0.26, z: 0, yaw: 0, scale: 1 } });
+  assert.equal(campMaterialsRejected.status, 422);
+  const campId = camp.payload.camp.id;
+  const staleRemoval = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/camps/${campId}`, "DELETE", { requestId: "camp-remove-stale", expectedRevision: 0 });
+  assert.equal(staleRemoval.status, 409);
+  assert.equal(staleRemoval.payload.camp.revision, 1);
+  const removedCamp = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/camps/${campId}`, "DELETE", { requestId: "camp-remove-001", expectedRevision: 1 });
+  assert.equal(removedCamp.status, 200);
+  assert.equal(removedCamp.payload.removedRevision, 2);
+  const authorityState = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/companions`, "GET");
+  assert.equal(authorityState.status, 200);
+  assert.equal(authorityState.payload.companion.command, "follow");
+  assert.equal(authorityState.payload.camp, null);
+  assert.equal(authorityState.payload.targets.length, 3);
 
   const tower = await request(baseUrl, tokenA, `/v1/coop/rooms/${code}/heartbeat`, "POST", { playerX: -0.06, playerY: 0.28, atTower: true, towerRevision: 1 });
   assert.equal(tower.status, 200);
@@ -379,7 +548,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     roomCode: code,
-    checks: ["room_created", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated", "player_save_persisted", "player_save_conflict_rejected", "leave_preserved_membership", "reconnect_restored_membership", "building_persisted", "world_owner_enforced", "world_save_conflict_rejected", "world_reload_includes_building"]
+    checks: ["room_created", "future_room_targets_seeded", "friend_joined", "four_player_cap_validated", "fifth_player_rejected", "companion_capture_validated", "companion_capture_retry_idempotent", "companion_command_revision_conflict_rejected", "companion_command_retry_validated", "capture_range_and_health_and_fiber_rejected", "camp_materials_and_range_rejected", "camp_placement_validated", "camp_retry_idempotent", "camp_revision_conflict_rejected", "camp_removal_validated", "authority_state_reloaded", "reconnect_presence_refreshed", "tower_revision_seen", "co_op_clock_read", "combat_validated", "combat_retry_idempotent", "combat_range_rejected", "inventory_reward_validated", "inventory_retry_idempotent", "craft_validated", "player_save_persisted", "player_save_conflict_rejected", "leave_preserved_membership", "reconnect_restored_membership", "building_persisted", "world_owner_enforced", "world_save_conflict_rejected", "world_reload_includes_building"]
   }, null, 2));
 } finally {
   await new Promise(resolve => server.close(resolve));

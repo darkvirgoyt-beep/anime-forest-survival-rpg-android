@@ -13,6 +13,12 @@ import {
   validateServerAuthCode,
   verifyAccessToken
 } from "./security.mjs";
+import {
+  COMPANION_TARGET_SEEDS,
+  companionProfile,
+  validateCampPlacement,
+  validateCaptureRequest
+} from "./companion-camp-authority.mjs";
 
 const { Pool } = pg;
 const googleIdTokenVerifier = new OAuth2Client();
@@ -385,6 +391,271 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     res.status(201).json({ building: result.rows[0] });
   });
 
+  app.get("/v1/coop/rooms/:code/companions", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    const room = await pool.query("SELECT id FROM coop_rooms WHERE code = $1", [code]);
+    if (room.rowCount !== 1) return res.status(404).json({ error: "room_not_found" });
+    const membership = await pool.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2 AND is_active = TRUE", [room.rows[0].id, req.accountId]);
+    if (membership.rowCount !== 1) return res.status(403).json({ error: "room_membership_required" });
+    const [companion, camp, targets] = await Promise.all([
+      pool.query("SELECT companion_id, creature_id, display_name, command, bond, health_fraction, revision, captured_at, updated_at FROM coop_companions WHERE room_id = $1 AND account_id = $2", [room.rows[0].id, req.accountId]),
+      pool.query("SELECT id, recipe_id, transform, state, revision, created_at, updated_at FROM coop_camps WHERE room_id = $1 AND account_id = $2", [room.rows[0].id, req.accountId]),
+      pool.query("SELECT id, creature_id, position_x, position_y, health_fraction, revision FROM coop_creature_targets WHERE room_id = $1 AND active = TRUE ORDER BY creature_id", [room.rows[0].id])
+    ]);
+    res.json({
+      companion: companion.rows[0] || null,
+      camp: camp.rows[0] || null,
+      targets: targets.rows
+    });
+  });
+
+  app.post("/v1/coop/rooms/:code/companions/capture", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const requestId = normalizeRequestId(req.body?.requestId);
+    const creatureId = typeof req.body?.creatureId === "string" ? req.body.creatureId.trim().toLowerCase() : "";
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (!requestId || !creatureId) return res.status(400).json({ error: "invalid_capture_request" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const roomResult = await client.query("SELECT id FROM coop_rooms WHERE code = $1 FOR UPDATE", [code]);
+      if (roomResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "room_not_found" });
+      }
+      const roomId = roomResult.rows[0].id;
+      const memberResult = await client.query("SELECT player_x, player_y, wood, fiber, stone, ember_kit, inventory_revision, member_revision, is_active FROM coop_members WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
+      if (memberResult.rowCount !== 1 || !memberResult.rows[0].is_active) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "active_world_membership_required" });
+      }
+      const duplicate = await client.query("SELECT result FROM coop_action_receipts WHERE room_id = $1 AND account_id = $2 AND request_id = $3", [roomId, req.accountId, requestId]);
+      if (duplicate.rowCount === 1) {
+        await client.query("COMMIT");
+        return res.json(duplicate.rows[0].result);
+      }
+      const targetResult = await client.query("SELECT id, creature_id, position_x, position_y, health_fraction, revision FROM coop_creature_targets WHERE room_id = $1 AND creature_id = $2 AND active = TRUE FOR UPDATE", [roomId, creatureId]);
+      if (targetResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "creature_target_not_found" });
+      }
+      const target = targetResult.rows[0];
+      const existing = await client.query("SELECT 1 FROM coop_companions WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId]);
+      const profile = companionProfile(target.creature_id);
+      const member = memberResult.rows[0];
+      const capture = validateCaptureRequest({
+        creatureId: target.creature_id,
+        distanceMeters: Math.hypot(Number(member.player_x) - Number(target.position_x), Number(member.player_y) - Number(target.position_y)),
+        healthFraction: Number(target.health_fraction),
+        fiber: Number(member.fiber),
+        hasCompanion: existing.rowCount !== 0
+      });
+      if (!capture.accepted) {
+        await client.query("ROLLBACK");
+        return res.status(capture.error === "companion_slot_full" ? 409 : 422).json({ error: capture.error });
+      }
+      const companion = await client.query(
+        `INSERT INTO coop_companions (room_id, account_id, creature_id, display_name, command, bond, health_fraction, revision)
+         VALUES ($1, $2, $3, $4, 'follow', 0, 0.75, 1)
+         RETURNING companion_id, creature_id, display_name, command, bond, health_fraction, revision, captured_at, updated_at`,
+        [roomId, req.accountId, target.creature_id, profile.displayName]
+      );
+      const inventoryRevision = Number(member.inventory_revision || 0) + 1;
+      const memberRevision = Number(member.member_revision || 0) + 1;
+      await client.query("UPDATE coop_members SET fiber = $3, inventory_revision = $4, member_revision = $5, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId, capture.remainingFiber, inventoryRevision, memberRevision]);
+      await client.query("UPDATE coop_creature_targets SET active = FALSE, captured_by = $2, revision = revision + 1, updated_at = now() WHERE id = $1", [target.id, req.accountId]);
+      const result = {
+        accepted: true,
+        companion: companion.rows[0],
+        inventory: { wood: Number(member.wood || 0), fiber: capture.remainingFiber, stone: Number(member.stone || 0), emberKit: Boolean(member.ember_kit) },
+        inventoryRevision,
+        memberRevision,
+        targetRevision: Number(target.revision || 0) + 1
+      };
+      await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, action_version, result) VALUES ($1, $2, $3, 'companion', 1, $4)", [roomId, req.accountId, requestId, result]);
+      await client.query("COMMIT");
+      return res.status(201).json(result);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post("/v1/coop/rooms/:code/companions/command", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const requestId = normalizeRequestId(req.body?.requestId);
+    const command = typeof req.body?.command === "string" ? req.body.command.trim().toLowerCase() : "";
+    const expectedRevision = Number.isInteger(req.body?.expectedRevision) ? req.body.expectedRevision : -1;
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (!requestId || !["follow", "stay"].includes(command) || expectedRevision < 0) return res.status(400).json({ error: "invalid_companion_command" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const roomResult = await client.query("SELECT id FROM coop_rooms WHERE code = $1 FOR UPDATE", [code]);
+      if (roomResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "room_not_found" });
+      }
+      const roomId = roomResult.rows[0].id;
+      const membership = await client.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2 AND is_active = TRUE", [roomId, req.accountId]);
+      if (membership.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "active_world_membership_required" });
+      }
+      const duplicate = await client.query("SELECT result FROM coop_action_receipts WHERE room_id = $1 AND account_id = $2 AND request_id = $3", [roomId, req.accountId, requestId]);
+      if (duplicate.rowCount === 1) {
+        await client.query("COMMIT");
+        return res.json(duplicate.rows[0].result);
+      }
+      const current = await client.query("SELECT companion_id, creature_id, display_name, command, bond, health_fraction, revision, captured_at, updated_at FROM coop_companions WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
+      if (current.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "companion_not_found" });
+      }
+      const companion = current.rows[0];
+      if (Number(companion.revision) !== expectedRevision) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "companion_revision_conflict", companion });
+      }
+      const updated = await client.query(
+        `UPDATE coop_companions SET command = $3, revision = revision + 1, updated_at = now()
+         WHERE room_id = $1 AND account_id = $2
+         RETURNING companion_id, creature_id, display_name, command, bond, health_fraction, revision, captured_at, updated_at`,
+        [roomId, req.accountId, command]
+      );
+      const result = { accepted: true, companion: updated.rows[0] };
+      await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, action_version, result) VALUES ($1, $2, $3, 'companion', 1, $4)", [roomId, req.accountId, requestId, result]);
+      await client.query("COMMIT");
+      res.json(result);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post("/v1/coop/rooms/:code/camps", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const requestId = normalizeRequestId(req.body?.requestId);
+    const recipeId = typeof req.body?.recipeId === "string" ? req.body.recipeId.trim().toLowerCase() : "";
+    const expectedRevision = Number.isInteger(req.body?.expectedRevision) ? req.body.expectedRevision : -1;
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (!requestId || !recipeId || expectedRevision < 0 || !isPlainObject(req.body?.transform)) return res.status(400).json({ error: "invalid_camp_request" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const roomResult = await client.query("SELECT id FROM coop_rooms WHERE code = $1 FOR UPDATE", [code]);
+      if (roomResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "room_not_found" });
+      }
+      const roomId = roomResult.rows[0].id;
+      const memberResult = await client.query("SELECT player_x, player_y, wood, fiber, stone, ember_kit, inventory_revision, member_revision, is_active FROM coop_members WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
+      if (memberResult.rowCount !== 1 || !memberResult.rows[0].is_active) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "active_world_membership_required" });
+      }
+      const duplicate = await client.query("SELECT result FROM coop_action_receipts WHERE room_id = $1 AND account_id = $2 AND request_id = $3", [roomId, req.accountId, requestId]);
+      if (duplicate.rowCount === 1) {
+        await client.query("COMMIT");
+        return res.status(201).json(duplicate.rows[0].result);
+      }
+      const member = memberResult.rows[0];
+      const existing = await client.query("SELECT id, recipe_id, transform, state, revision, created_at, updated_at FROM coop_camps WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
+      const currentCamp = existing.rows[0] || null;
+      const currentRevision = currentCamp ? Number(currentCamp.revision || 0) : 0;
+      if (expectedRevision !== currentRevision) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "camp_revision_conflict", camp: currentCamp });
+      }
+      const placement = validateCampPlacement({
+        recipeId,
+        transform: req.body.transform,
+        playerPosition: { x: Number(member.player_x), y: Number(member.player_y) },
+        slope: 0,
+        existingCampCount: existing.rowCount
+      });
+      if (!placement.accepted) {
+        await client.query("ROLLBACK");
+        return res.status(422).json({ error: placement.error });
+      }
+      if (Number(member.wood) < placement.recipe.woodCost || Number(member.fiber) < placement.recipe.fiberCost) {
+        await client.query("ROLLBACK");
+        return res.status(422).json({ error: "insufficient_camp_materials" });
+      }
+      const camp = await client.query(
+        `INSERT INTO coop_camps (room_id, account_id, recipe_id, transform, state, revision)
+         VALUES ($1, $2, $3, $4, '{}'::jsonb, 1)
+         RETURNING id, recipe_id, transform, state, revision, created_at, updated_at`,
+        [roomId, req.accountId, recipeId, placement.transform]
+      );
+      const wood = Number(member.wood) - placement.recipe.woodCost;
+      const fiber = Number(member.fiber) - placement.recipe.fiberCost;
+      const inventoryRevision = Number(member.inventory_revision || 0) + 1;
+      const memberRevision = Number(member.member_revision || 0) + 1;
+      await client.query("UPDATE coop_members SET wood = $3, fiber = $4, inventory_revision = $5, member_revision = $6, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId, wood, fiber, inventoryRevision, memberRevision]);
+      const result = { accepted: true, camp: camp.rows[0], inventory: { wood, fiber, stone: Number(member.stone || 0), emberKit: Boolean(member.ember_kit) }, inventoryRevision, memberRevision };
+      await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, action_version, result) VALUES ($1, $2, $3, 'camp', 1, $4)", [roomId, req.accountId, requestId, result]);
+      await client.query("COMMIT");
+      res.status(201).json(result);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  app.delete("/v1/coop/rooms/:code/camps/:campId", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const requestId = normalizeRequestId(req.body?.requestId || req.get("x-request-id"));
+    const expectedRevision = Number.isInteger(req.body?.expectedRevision) ? req.body.expectedRevision : -1;
+    if (!code || !requestId || expectedRevision < 0) return res.status(400).json({ error: "invalid_camp_delete_request" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const roomResult = await client.query("SELECT id FROM coop_rooms WHERE code = $1 FOR UPDATE", [code]);
+      if (roomResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "room_not_found" });
+      }
+      const roomId = roomResult.rows[0].id;
+      const membership = await client.query("SELECT 1 FROM coop_members WHERE room_id = $1 AND account_id = $2 AND is_active = TRUE", [roomId, req.accountId]);
+      if (membership.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "active_world_membership_required" });
+      }
+      const duplicate = await client.query("SELECT result FROM coop_action_receipts WHERE room_id = $1 AND account_id = $2 AND request_id = $3", [roomId, req.accountId, requestId]);
+      if (duplicate.rowCount === 1) {
+        await client.query("COMMIT");
+        return res.json(duplicate.rows[0].result);
+      }
+      const current = await client.query("SELECT id, recipe_id, transform, state, revision, created_at, updated_at FROM coop_camps WHERE id = $1 AND room_id = $2 AND account_id = $3 FOR UPDATE", [req.params.campId, roomId, req.accountId]);
+      if (current.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "camp_not_found" });
+      }
+      if (Number(current.rows[0].revision) !== expectedRevision) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "camp_revision_conflict", camp: current.rows[0] });
+      }
+      await client.query("DELETE FROM coop_camps WHERE id = $1", [req.params.campId]);
+      const result = { accepted: true, campId: req.params.campId, removedRevision: expectedRevision + 1 };
+      await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, action_version, result) VALUES ($1, $2, $3, 'camp', 1, $4)", [roomId, req.accountId, requestId, result]);
+      await client.query("COMMIT");
+      res.json(result);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   app.post("/v1/coop/rooms/:code/combat", requireSession, async (req, res) => {
     const code = normalizeRoomCode(req.params.code);
     const requestId = normalizeRequestId(req.body?.requestId);
@@ -564,6 +835,12 @@ async function createCoOpRoom(pool, accountId, region, worldName = "Aethelgard S
       if (created.rowCount === 1) {
         await pool.query("INSERT INTO coop_members (room_id, account_id, is_active) VALUES ($1, $2, TRUE)", [created.rows[0].id, accountId]);
         await pool.query("INSERT INTO coop_world_saves (room_id, updated_by) VALUES ($1, $2) ON CONFLICT (room_id) DO NOTHING", [created.rows[0].id, accountId]);
+        for (const [creatureId, target] of Object.entries(COMPANION_TARGET_SEEDS)) {
+          await pool.query(
+            "INSERT INTO coop_creature_targets (room_id, creature_id, position_x, position_y, health_fraction) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (room_id, creature_id) DO NOTHING",
+            [created.rows[0].id, creatureId, target.x, target.y, target.healthFraction]
+          );
+        }
         return code;
       }
     } catch (error) {

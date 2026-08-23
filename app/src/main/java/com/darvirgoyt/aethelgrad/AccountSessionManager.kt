@@ -113,6 +113,60 @@ data class AuthoritativeCombatResult(
     val combatRevision: Int
 )
 
+data class CompanionTarget(
+    val id: String,
+    val creatureId: String,
+    val x: Float,
+    val y: Float,
+    val healthFraction: Float,
+    val revision: Int
+)
+
+data class CompanionStateSnapshot(
+    val companionId: String,
+    val creatureId: String,
+    val displayName: String,
+    val command: String,
+    val bond: Int,
+    val healthFraction: Float,
+    val revision: Int
+)
+
+data class CampStateSnapshot(
+    val id: String,
+    val recipeId: String,
+    val transformJson: String,
+    val stateJson: String,
+    val revision: Int
+)
+
+data class CompanionCampSnapshot(
+    val companion: CompanionStateSnapshot?,
+    val camp: CampStateSnapshot?,
+    val targets: List<CompanionTarget>
+)
+
+data class AuthoritativeCompanionResult(
+    val companion: CompanionStateSnapshot,
+    val wood: Int,
+    val fiber: Int,
+    val stone: Int,
+    val emberKit: Boolean,
+    val inventoryRevision: Int,
+    val memberRevision: Int,
+    val targetRevision: Int
+)
+
+data class AuthoritativeCampResult(
+    val camp: CampStateSnapshot,
+    val wood: Int,
+    val fiber: Int,
+    val stone: Int,
+    val emberKit: Boolean,
+    val inventoryRevision: Int,
+    val memberRevision: Int
+)
+
 data class AuthoritativeInventoryResult(
     val operation: String,
     val wood: Int,
@@ -739,6 +793,125 @@ class AccountSessionManager {
         }
     }
 
+    fun fetchCompanionCampState(roomCode: String, onComplete: (CompanionCampSnapshot?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val response = getJson(cloudEndpoint("/coop/rooms/$normalized/companions"), token)
+                if (response.statusCode !in 200..299) {
+                    publishCompanionCampResult(onComplete, null, "Could not load companion and camp state (${response.statusCode}).")
+                    return@execute
+                }
+                publishCompanionCampResult(onComplete, parseCompanionCampSnapshot(response.body), null)
+            } catch (_: Exception) {
+                publishCompanionCampResult(onComplete, null, "Could not load companion and camp state.")
+            }
+        }
+    }
+
+    fun captureCompanion(roomCode: String, requestId: String, creatureId: String, onComplete: (AuthoritativeCompanionResult?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("requestId", requestId).put("creatureId", creatureId).toString()
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/companions/capture"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishAuthoritativeCompanionResult(onComplete, null, when (response.statusCode) {
+                        409 -> "You already have an active companion."
+                        404 -> "That creature is no longer available."
+                        422 -> "The creature cannot be captured yet, or you need more Fiber."
+                        else -> "Companion capture rejected (${response.statusCode})."
+                    })
+                    return@execute
+                }
+                val root = JSONObject(response.body)
+                val inventory = root.optJSONObject("inventory") ?: JSONObject()
+                val companion = parseCompanion(root.getJSONObject("companion"))
+                publishAuthoritativeCompanionResult(onComplete, AuthoritativeCompanionResult(companion, inventory.optInt("wood"), inventory.optInt("fiber"), inventory.optInt("stone"), inventory.optBoolean("emberKit"), root.optInt("inventoryRevision"), root.optInt("memberRevision"), root.optInt("targetRevision")), null)
+            } catch (_: Exception) {
+                publishAuthoritativeCompanionResult(onComplete, null, "Companion capture service unavailable.")
+            }
+        }
+    }
+
+    fun setCompanionCommand(roomCode: String, requestId: String, command: String, expectedRevision: Int, onComplete: (CompanionStateSnapshot?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("requestId", requestId).put("command", command).put("expectedRevision", expectedRevision).toString()
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/companions/command"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishCompanionStateResult(onComplete, null, if (response.statusCode == 409) "Your companion changed elsewhere. Reload its state." else "Companion command rejected (${response.statusCode}).")
+                    return@execute
+                }
+                publishCompanionStateResult(onComplete, parseCompanion(JSONObject(response.body).getJSONObject("companion")), null)
+            } catch (_: Exception) {
+                publishCompanionStateResult(onComplete, null, "Companion command service unavailable.")
+            }
+        }
+    }
+
+    fun placeFieldCamp(roomCode: String, requestId: String, transform: JSONObject, expectedRevision: Int = 0, onComplete: (AuthoritativeCampResult?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("requestId", requestId).put("recipeId", "field_camp").put("expectedRevision", expectedRevision).put("transform", transform).toString()
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/camps"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishAuthoritativeCampResult(onComplete, null, if (response.statusCode == 422) "Camp placement rejected: check range, materials, or your existing camp." else "Camp placement rejected (${response.statusCode}).")
+                    return@execute
+                }
+                val root = JSONObject(response.body)
+                val inventory = root.optJSONObject("inventory") ?: JSONObject()
+                publishAuthoritativeCampResult(onComplete, AuthoritativeCampResult(parseCamp(root.getJSONObject("camp")), inventory.optInt("wood"), inventory.optInt("fiber"), inventory.optInt("stone"), inventory.optBoolean("emberKit"), root.optInt("inventoryRevision"), root.optInt("memberRevision")), null)
+            } catch (_: Exception) {
+                publishAuthoritativeCampResult(onComplete, null, "Camp building service unavailable.")
+            }
+        }
+    }
+
+    fun removeFieldCamp(roomCode: String, campId: String, requestId: String, expectedRevision: Int, onComplete: (Boolean, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(false, "Your persistent world session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("requestId", requestId).put("expectedRevision", expectedRevision).toString()
+                val response = requestJson("DELETE", cloudEndpoint("/coop/rooms/$normalized/camps/${campId.trim()}"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishBooleanResult(onComplete, false, if (response.statusCode == 409) "Your camp changed elsewhere. Reload the world." else "Camp removal rejected (${response.statusCode}).")
+                    return@execute
+                }
+                publishBooleanResult(onComplete, true, null)
+            } catch (_: Exception) {
+                publishBooleanResult(onComplete, false, "Camp building service unavailable.")
+            }
+        }
+    }
+
     fun leaveCoOpRoom(roomCode: String) {
         val token = currentAccessToken()
         val normalized = roomCode.trim().uppercase()
@@ -774,6 +947,51 @@ class AccountSessionManager {
             participants = participants,
             worldName = room.optString("worldName", "Aethelgard Shared World"),
             ownerAccountId = room.optString("ownerAccountId").takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun parseCompanionCampSnapshot(json: String): CompanionCampSnapshot {
+        val root = JSONObject(json)
+        val companion = root.optJSONObject("companion")?.let(::parseCompanion)
+        val camp = root.optJSONObject("camp")?.let(::parseCamp)
+        val targetsJson = root.optJSONArray("targets") ?: JSONArray()
+        val targets = buildList {
+            for (index in 0 until targetsJson.length()) {
+                val target = targetsJson.optJSONObject(index) ?: continue
+                val id = target.optString("id")
+                val creatureId = target.optString("creature_id", target.optString("creatureId"))
+                if (id.isNotBlank() && creatureId.isNotBlank()) add(CompanionTarget(
+                    id = id,
+                    creatureId = creatureId,
+                    x = target.optDouble("position_x", target.optDouble("x", 0.0)).toFloat(),
+                    y = target.optDouble("position_y", target.optDouble("y", 0.0)).toFloat(),
+                    healthFraction = target.optDouble("health_fraction", target.optDouble("healthFraction", 1.0)).toFloat(),
+                    revision = target.optInt("revision", 0)
+                ))
+            }
+        }
+        return CompanionCampSnapshot(companion, camp, targets)
+    }
+
+    private fun parseCompanion(json: JSONObject): CompanionStateSnapshot = CompanionStateSnapshot(
+        companionId = json.optString("companion_id", json.optString("companionId")),
+        creatureId = json.optString("creature_id", json.optString("creatureId")),
+        displayName = json.optString("display_name", json.optString("displayName", "Companion")),
+        command = json.optString("command", "follow"),
+        bond = json.optInt("bond", 0),
+        healthFraction = json.optDouble("health_fraction", json.optDouble("healthFraction", 0.75)).toFloat(),
+        revision = json.optInt("revision", 0)
+    )
+
+    private fun parseCamp(json: JSONObject): CampStateSnapshot {
+        val transform = json.optJSONObject("transform")?.toString() ?: json.optString("transform", "{}")
+        val state = json.optJSONObject("state")?.toString() ?: json.optString("state", "{}")
+        return CampStateSnapshot(
+            id = json.optString("id"),
+            recipeId = json.optString("recipe_id", json.optString("recipeId")),
+            transformJson = transform,
+            stateJson = state,
+            revision = json.optInt("revision", 0)
         )
     }
 
@@ -876,6 +1094,11 @@ class AccountSessionManager {
     private fun publishCoOpSaveResult(callback: (CoOpPlayerSave?, String?) -> Unit, result: CoOpPlayerSave?, error: String?) = mainHandler.post { callback(result, error) }
     private fun publishIntResult(callback: (Int?, String?) -> Unit, result: Int?, error: String?) = mainHandler.post { callback(result, error) }
     private fun publishCoOpWorldSaveResult(callback: (CoOpWorldSave?, String?) -> Unit, result: CoOpWorldSave?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishCompanionCampResult(callback: (CompanionCampSnapshot?, String?) -> Unit, result: CompanionCampSnapshot?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishAuthoritativeCompanionResult(callback: (AuthoritativeCompanionResult?, String?) -> Unit, result: AuthoritativeCompanionResult?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishCompanionStateResult(callback: (CompanionStateSnapshot?, String?) -> Unit, result: CompanionStateSnapshot?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishAuthoritativeCampResult(callback: (AuthoritativeCampResult?, String?) -> Unit, result: AuthoritativeCampResult?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishBooleanResult(callback: (Boolean, String?) -> Unit, result: Boolean, error: String?) = mainHandler.post { callback(result, error) }
 
     private fun restorePersistedSession(): Boolean {
         val owner = activity ?: return false

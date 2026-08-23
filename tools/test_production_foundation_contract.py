@@ -43,6 +43,16 @@ CHECKS = (
     ("app/src/main/cpp/rpg/encounter_director.h", "encounterBudgetFor", "deterministic encounter budget"),
     ("app/src/main/cpp/rpg/quality_profile.h", "qualityProfileFor", "runtime quality profiles"),
     ("tests/rpg_systems_test.cpp", "companionAssistDamage", "native RPG domain test"),
+    ("server/sql/007_companion_camp_authority.sql", "CREATE TABLE IF NOT EXISTS coop_companions", "companion authority migration"),
+    ("server/sql/007_companion_camp_authority.sql", "CREATE TABLE IF NOT EXISTS coop_camps", "camp authority migration"),
+    ("server/src/server.mjs", "/v1/coop/rooms/:code/companions/capture", "server companion capture route"),
+    ("server/src/server.mjs", "/v1/coop/rooms/:code/camps", "server field camp route"),
+    ("server/src/companion-camp-authority.mjs", "validateCampPlacement", "pure camp validation module"),
+    ("app/src/main/cpp/rpg/cloud_state.h", "schemaVersion", "schema 5 cloud persistence"),
+    ("app/src/main/cpp/forest_game.cpp", "applyAuthoritativeCompanion", "native companion reconciliation JNI"),
+    ("app/src/main/cpp/forest_game.cpp", "applyAuthoritativeCamp", "native camp reconciliation JNI"),
+    ("app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt", "fetchCompanionCampState", "typed Android authority wrapper"),
+    ("docs/COMPANION_CAMP_AUTHORITY_DESIGN.md", "Deployment order", "authority deployment documentation"),
 )
 
 
