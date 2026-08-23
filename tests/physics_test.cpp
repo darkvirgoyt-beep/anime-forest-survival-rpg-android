@@ -20,9 +20,18 @@ int main() {
     assert(std::abs(body.position.y - (-0.50f)) < 0.01f);
 
     body.jump();
-    assert(body.velocity.y > 0.0f);
+    assert(body.verticalVelocity > 0.0f);
     body.jump();
-    assert(body.velocity.y > 0.0f);
+    assert(body.verticalVelocity > 0.0f);
+
+    CharacterBody jumpMover;
+    jumpMover.position = {0.0f, -0.20f};
+    jumpMover.grounded = true;
+    jumpMover.jump();
+    const float forwardBeforeJumpStep = jumpMover.position.y;
+    jumpMover.step({0.0f, 1.0f}, 1.0f / 60.0f, nullptr, 0);
+    assert(jumpMover.position.y > forwardBeforeJumpStep);
+    assert(jumpMover.verticalPosition > 0.0f);
 
     CharacterBody blocked;
     blocked.position = {-0.06f, -0.20f};

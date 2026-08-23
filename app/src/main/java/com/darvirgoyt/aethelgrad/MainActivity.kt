@@ -192,6 +192,9 @@ class MainActivity : Activity(), SensorEventListener {
         gameView.applyTargetFps(selectedTargetFps)
         gameView.applyGraphicsTier(selectedGraphicsTier)
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
+        rootContainer.addView(LookPadView(this) { dx, dy ->
+            gameView.queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f, dy * 0.0032f) }
+        })
         rootContainer.addView(buildHud())
         rootContainer.addView(JoystickView(this) { x, y ->
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
@@ -1127,7 +1130,7 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(210)
         })
         val orbitHint = TextView(this).apply {
-            text = "SWIPE RIGHT TO ORBIT 540°  •  FULL HORIZONTAL + VERTICAL LOOK  •  GYRO OPTIONAL"
+            text = "DRAG LOOK PAD TO ORBIT 540°  •  FULL HORIZONTAL + VERTICAL LOOK  •  GYRO OPTIONAL"
             textSize = 10f
             letterSpacing = 0.08f
             setTextColor(Color.rgb(229, 211, 167))
@@ -1168,7 +1171,7 @@ class MainActivity : Activity(), SensorEventListener {
                 cornerRadius = dp(16).toFloat()
             }
         }
-        val sprintSlide = actionButton("SPRINT / SLIDE") { }
+        val sprintSlide = gameplayButton("↯  SPRINT") { }
         sprintSlide.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> gameView.queueEvent { NativeGameBridge.setSprintHeld(true) }
@@ -1182,13 +1185,13 @@ class MainActivity : Activity(), SensorEventListener {
             }
             true
         }
-        val attack = actionButton("ATTACK") { submitAuthoritativeCombat("attack") }
-        val heavy = actionButton("HEAVY") { submitAuthoritativeCombat("heavy_attack") }
-        val jump = actionButton("JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
-        val dodge = actionButton("DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
-        val gather = actionButton("GATHER") { submitAuthoritativeInventory("gather") }
-        val craft = actionButton("CRAFT") { submitAuthoritativeInventory("craft") }
-        val emberling = actionButton("EMBERLING") {
+        val attack = gameplayButton("⚔  ATTACK") { submitAuthoritativeCombat("attack") }
+        val heavy = gameplayButton("✦  HEAVY") { submitAuthoritativeCombat("heavy_attack") }
+        val jump = gameplayButton("⬆  JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
+        val dodge = gameplayButton("◆  DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
+        val gather = gameplayButton("✧  GATHER") { submitAuthoritativeInventory("gather") }
+        val craft = gameplayButton("⌂  CRAFT") { submitAuthoritativeInventory("craft") }
+        val emberling = gameplayButton("✦  EMBERLING") {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.interactEmberling() }
         }
@@ -1600,6 +1603,33 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
+    private fun gameplayButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
+        text = label
+        textSize = 11f
+        isAllCaps = false
+        minHeight = 0
+        minimumHeight = 0
+        minWidth = 0
+        minimumWidth = 0
+        letterSpacing = 0.04f
+        setPadding(dp(8), 0, dp(8), 0)
+        setTextColor(Color.rgb(248, 239, 213))
+        elevation = dp(4).toFloat()
+        background = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(166, 101, 54))
+                setStroke(dp(2), Color.rgb(255, 231, 154))
+            })
+            addState(intArrayOf(), GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(225, 34, 47, 52))
+                setStroke(dp(2), Color.rgb(214, 171, 91))
+            })
+        }
+        setOnClickListener { onClick() }
+    }
+
     private fun actionButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
         text = label
         textSize = 12f
@@ -1805,6 +1835,107 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
             }
         }
         return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+}
+
+private class LookPadView(context: Context, private val onOrbit: (Float, Float) -> Unit) : View(context) {
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
+    private var lastX = 0f
+    private var lastY = 0f
+    private var centerX = 0f
+    private var centerY = 0f
+    private var radius = 1f
+    private val density = context.resources.displayMetrics.density
+
+    private fun dp(value: Int): Int = (value * density).roundToInt()
+
+    init {
+        setWillNotDraw(false)
+        layoutParams = FrameLayout.LayoutParams(-1, -1)
+        isClickable = true
+    }
+
+    override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
+        centerX = width * 0.80f
+        centerY = height * 0.61f
+        radius = (width.coerceAtMost(dp(720)) * 0.105f).coerceAtLeast(dp(58).toFloat())
+    }
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        super.onDraw(canvas)
+        if (width <= 0 || height <= 0) return
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        paint.color = Color.argb(34, 214, 239, 231)
+        canvas.drawCircle(centerX, centerY, radius * 1.55f, paint)
+        paint.color = Color.argb(45, 18, 31, 35)
+        canvas.drawCircle(centerX, centerY, radius * 1.18f, paint)
+        paint.style = android.graphics.Paint.Style.STROKE
+        paint.strokeWidth = dp(2).toFloat()
+        paint.color = Color.argb(150, 226, 198, 126)
+        canvas.drawCircle(centerX, centerY, radius, paint)
+        paint.color = Color.argb(92, 237, 244, 227)
+        canvas.drawCircle(centerX, centerY, radius * 0.56f, paint)
+        canvas.drawLine(centerX - radius * 0.72f, centerY, centerX + radius * 0.72f, centerY, paint)
+        canvas.drawLine(centerX, centerY - radius * 0.72f, centerX, centerY + radius * 0.72f, paint)
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.textSize = dp(10).toFloat()
+        paint.textAlign = android.graphics.Paint.Align.CENTER
+        paint.color = Color.argb(205, 241, 224, 178)
+        canvas.drawText("LOOK", centerX, centerY + radius * 1.72f, paint)
+    }
+
+    private fun isLookRegion(x: Float, y: Float): Boolean =
+        x >= width * 0.43f && y >= height * 0.23f
+
+    private fun begin(event: MotionEvent, index: Int): Boolean {
+        val x = event.getX(index)
+        val y = event.getY(index)
+        if (!isLookRegion(x, y)) return false
+        activePointerId = event.getPointerId(index)
+        lastX = x
+        lastY = y
+        return true
+    }
+
+    private fun release() {
+        activePointerId = MotionEvent.INVALID_POINTER_ID
+        invalidate()
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> return begin(event, event.actionIndex)
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (activePointerId == MotionEvent.INVALID_POINTER_ID) begin(event, event.actionIndex)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val index = event.findPointerIndex(activePointerId)
+                if (index >= 0) {
+                    val dx = (event.getX(index) - lastX).coerceIn(-96f, 96f)
+                    val dy = (event.getY(index) - lastY).coerceIn(-96f, 96f)
+                    if (kotlin.math.abs(dx) >= 0.35f || kotlin.math.abs(dy) >= 0.35f) onOrbit(dx, dy)
+                    lastX = event.getX(index)
+                    lastY = event.getY(index)
+                }
+                return true
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.getPointerId(event.actionIndex) == activePointerId) release()
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                release()
+                performClick()
+                return true
+            }
+        }
+        return activePointerId != MotionEvent.INVALID_POINTER_ID
     }
 
     override fun performClick(): Boolean {

@@ -411,26 +411,101 @@ void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float widt
     glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
+void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices,
+                 float x, float y, float z, float width, float height, float depth,
+                 float r, float g, float b, float a = 1.0f, GLenum primitive = GL_TRIANGLES) {
+    if (vertices.empty()) return;
+    glUseProgram(g3DProgram);
+    const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
+    glUniformMatrix4fv(g3DMvp, 1, GL_FALSE, mvp.v);
+    glUniform4f(g3DColor, r, g, b, a);
+    glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, vertices.data());
+    glEnableVertexAttribArray(g3DPosition);
+    glDrawArrays(primitive, 0, static_cast<GLsizei>(vertices.size() / 3));
+}
+
+void draw3DCylinder(const Mat4& viewProjection, float x, float y, float z,
+                    float radius, float height, float r, float g, float b, float a = 1.0f) {
+    constexpr int segments = 12;
+    std::vector<GLfloat> vertices;
+    vertices.reserve(segments * 36);
+    const float halfHeight = height * 0.5f;
+    for (int i = 0; i < segments; ++i) {
+        const float angle0 = (static_cast<float>(i) / segments) * 2.0f * PI;
+        const float angle1 = (static_cast<float>(i + 1) / segments) * 2.0f * PI;
+        const float x0 = std::cos(angle0) * radius;
+        const float z0 = std::sin(angle0) * radius;
+        const float x1 = std::cos(angle1) * radius;
+        const float z1 = std::sin(angle1) * radius;
+        vertices.insert(vertices.end(), {
+            x0, -halfHeight, z0, x1, -halfHeight, z1, x1, halfHeight, z1,
+            x0, -halfHeight, z0, x1, halfHeight, z1, x0, halfHeight, z0,
+            0.0f, halfHeight, 0.0f, x1, halfHeight, z1, x0, halfHeight, z0,
+            0.0f, -halfHeight, 0.0f, x0, -halfHeight, z0, x1, -halfHeight, z1
+        });
+    }
+    draw3DMesh(viewProjection, vertices, x, y, z, 1.0f, 1.0f, 1.0f, r, g, b, a);
+}
+
+void draw3DSphere(const Mat4& viewProjection, float x, float y, float z,
+                  float radius, float r, float g, float b, float a = 1.0f) {
+    constexpr int slices = 14;
+    constexpr int stacks = 8;
+    std::vector<GLfloat> vertices;
+    vertices.reserve(slices * stacks * 18);
+    for (int stack = 0; stack < stacks; ++stack) {
+        const float phi0 = -PI * 0.5f + PI * static_cast<float>(stack) / stacks;
+        const float phi1 = -PI * 0.5f + PI * static_cast<float>(stack + 1) / stacks;
+        for (int slice = 0; slice < slices; ++slice) {
+            const float theta0 = 2.0f * PI * static_cast<float>(slice) / slices;
+            const float theta1 = 2.0f * PI * static_cast<float>(slice + 1) / slices;
+            const auto point = [](float phi, float theta) {
+                return Vec3{std::cos(phi) * std::cos(theta), std::sin(phi), std::cos(phi) * std::sin(theta)};
+            };
+            const Vec3 a0 = point(phi0, theta0);
+            const Vec3 b0 = point(phi0, theta1);
+            const Vec3 a1 = point(phi1, theta0);
+            const Vec3 b1 = point(phi1, theta1);
+            vertices.insert(vertices.end(), {
+                a0.x, a0.y, a0.z, b0.x, b0.y, b0.z, b1.x, b1.y, b1.z,
+                a0.x, a0.y, a0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z
+            });
+        }
+    }
+    draw3DMesh(viewProjection, vertices, x, y, z, radius, radius, radius, r, g, b, a);
+}
+
 void draw3DTree(const Mat4& viewProjection, float x, float z, float scale, float tint) {
-    draw3DBox(viewProjection, x, 0.42f * scale, z, 0.20f * scale, 0.84f * scale, 0.20f * scale, 0.25f, 0.12f, 0.07f);
-    draw3DBox(viewProjection, x, 1.03f * scale, z, 0.92f * scale, 0.82f * scale, 0.92f * scale, 0.06f + tint, 0.24f + tint, 0.18f);
-    draw3DBox(viewProjection, x - 0.24f * scale, 0.87f * scale, z + 0.08f, 0.46f * scale, 0.50f * scale, 0.46f * scale, 0.04f + tint, 0.18f + tint, 0.14f);
+    draw3DCylinder(viewProjection, x, 0.42f * scale, z, 0.12f * scale, 0.84f * scale, 0.25f, 0.12f, 0.07f);
+    draw3DSphere(viewProjection, x, 1.03f * scale, z, 0.52f * scale, 0.06f + tint, 0.24f + tint, 0.18f);
+    draw3DSphere(viewProjection, x - 0.24f * scale, 0.87f * scale, z + 0.08f, 0.29f * scale, 0.04f + tint, 0.18f + tint, 0.14f);
 }
 
 void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
+    const float jumpHeight = gController.body.verticalPosition;
     if (firstPerson) {
-        draw3DBox(viewProjection, 0.36f, -0.18f, -0.72f, 0.08f, 0.08f, 0.82f, 0.78f, 0.81f, 0.84f, 0.92f);
-        draw3DBox(viewProjection, 0.36f, -0.25f, -0.36f, 0.16f, 0.06f, 0.10f, 0.92f, 0.62f, 0.22f, 0.96f);
+        draw3DBox(viewProjection, 0.36f, -0.18f + jumpHeight, -0.72f, 0.08f, 0.08f, 0.82f, 0.78f, 0.81f, 0.84f, 0.92f);
+        draw3DBox(viewProjection, 0.36f, -0.25f + jumpHeight, -0.36f, 0.16f, 0.06f, 0.10f, 0.92f, 0.62f, 0.22f, 0.96f);
         return;
     }
     const float px = gPlayerX * 4.3f;
     const float pz = -gPlayerY * 4.0f;
-    const float bob = std::sin(gTime * 4.0f) * 0.025f;
-    draw3DBox(viewProjection, px, 0.12f + bob, pz, 0.42f, 0.24f, 0.28f, 0.13f, 0.05f, 0.16f);
-    draw3DBox(viewProjection, px, 0.58f + bob, pz, 0.34f, 0.82f, 0.24f, 0.45f, 0.10f, 0.28f);
-    draw3DBox(viewProjection, px, 1.18f + bob, pz, 0.42f, 0.42f, 0.42f, 0.73f, 0.37f, 0.26f);
-    draw3DBox(viewProjection, px, 1.42f + bob, pz, 0.48f, 0.18f, 0.48f, 0.10f, 0.04f, 0.18f);
-    draw3DBox(viewProjection, px + 0.32f, 0.62f + bob, pz, 0.08f, 0.66f, 0.08f, 0.88f, 0.67f, 0.22f);
+    const float speed = std::sqrt(gController.body.velocity.x * gController.body.velocity.x +
+                                  gController.body.velocity.y * gController.body.velocity.y);
+    const float bob = gController.body.grounded && speed > 0.05f ? std::sin(gTime * 14.0f) * 0.035f : 0.0f;
+    const float y = jumpHeight + bob;
+
+    // A soft contact shadow grounds the avatar while the independent vertical
+    // offset makes the jump readable from the third-person camera.
+    draw3DBox(viewProjection, px, 0.026f, pz, 0.58f, 0.025f, 0.38f, 0.02f, 0.03f, 0.04f, 0.52f);
+    draw3DCylinder(viewProjection, px - 0.10f, 0.25f + y, pz, 0.07f, 0.50f, 0.08f, 0.04f, 0.14f);
+    draw3DCylinder(viewProjection, px + 0.10f, 0.25f + y, pz, 0.07f, 0.50f, 0.10f, 0.05f, 0.17f);
+    draw3DBox(viewProjection, px, 0.72f + y, pz, 0.42f, 0.70f, 0.28f, 0.45f, 0.10f, 0.28f);
+    draw3DSphere(viewProjection, px, 1.24f + y, pz, 0.23f, 0.73f, 0.37f, 0.26f);
+    draw3DSphere(viewProjection, px, 1.40f + y, pz - 0.015f, 0.25f, 0.10f, 0.04f, 0.18f);
+    draw3DBox(viewProjection, px - 0.28f, 0.78f + y, pz, 0.10f, 0.56f, 0.11f, 0.48f, 0.12f, 0.30f);
+    draw3DBox(viewProjection, px + 0.28f, 0.78f + y, pz, 0.10f, 0.56f, 0.11f, 0.48f, 0.12f, 0.30f);
+    draw3DCylinder(viewProjection, px + 0.38f, 0.80f + y, pz, 0.025f, 0.94f, 0.90f, 0.70f, 0.24f);
 }
 
 void drawTeleportationTower(const Mat4& viewProjection) {
@@ -568,18 +643,19 @@ void draw3DWorld() {
     const float pz = -gPlayerY * 4.0f;
     const float yaw = gController.camera.yaw;
     const float pitch = gController.camera.pitch;
+    const float jumpHeight = gController.body.verticalPosition;
     const bool firstPerson = gViewMode == ViewMode::FirstPerson;
     const float horizontal = std::cos(pitch);
     const float vertical = std::sin(pitch);
     Vec3 eye{};
     Vec3 target{};
     if (firstPerson) {
-        eye = {px, 1.48f, pz};
-        target = {px + std::sin(yaw) * horizontal, 1.48f + vertical, pz + std::cos(yaw) * horizontal};
+        eye = {px, 1.48f + jumpHeight, pz};
+        target = {px + std::sin(yaw) * horizontal, 1.48f + jumpHeight + vertical, pz + std::cos(yaw) * horizontal};
     } else {
-        const float distance = 4.7f;
-        target = {px, 0.72f, pz};
-        eye = {px - std::sin(yaw) * horizontal * distance, 0.72f + vertical * distance + 1.0f, pz - std::cos(yaw) * horizontal * distance};
+        const float distance = std::clamp(gController.camera.distance, gController.camera.minDistance, gController.camera.maxDistance);
+        target = {px, 0.72f + jumpHeight, pz};
+        eye = {px - std::sin(yaw) * horizontal * distance, 0.72f + jumpHeight + vertical * distance + 1.0f, pz - std::cos(yaw) * horizontal * distance};
     }
     const Mat4 viewProjection = multiplyMatrix(perspectiveMatrix(1.03f, aspect, 0.05f, 60.0f), lookAtMatrix(eye, target));
     float daylight = 1.0f;
@@ -1024,8 +1100,8 @@ void simulatePhysicsStep() {
     updateCalendar();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
     // Android screen and world handedness are opposite on the horizontal axis in
-    // this camera setup. Mirror X exactly once here so rightward thumb movement
-    // produces rightward visible traversal regardless of joystick placement.
+    // this camera setup. Mirror both axes exactly once here so thumb movement
+    // produces intuitive visible traversal regardless of joystick placement.
     const forest::controller::InputFrame input{-gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
@@ -1244,6 +1320,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gGraphicsQuality = 2;
     gController.body.position = {-0.55f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
+    gController.body.verticalPosition = 0.0f;
+    gController.body.verticalVelocity = 0.0f;
     if (gProgram == 0) createProgram();
     if (g3DProgram == 0) create3DProgram();
     glViewport(0, 0, width, height);
@@ -1343,6 +1421,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_teleportToTower(JNIEnv*, jobject
     if (gTowerCooldown > 0.0f) return;
     gController.body.position = {-0.06f, 0.28f};
     gController.body.velocity = {0.0f, 0.0f};
+    gController.body.verticalPosition = 0.0f;
+    gController.body.verticalVelocity = 0.0f;
     gPlayerX = gController.body.position.x;
     gPlayerY = gController.body.position.y;
     gTowerGlow = 1.8f;
@@ -1355,6 +1435,8 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_syncTeleportToTower(JNIEnv*, jobject, jint revision) {
     gController.body.position = {-0.06f, 0.28f};
     gController.body.velocity = {0.0f, 0.0f};
+    gController.body.verticalPosition = 0.0f;
+    gController.body.verticalVelocity = 0.0f;
     gPlayerX = gController.body.position.x;
     gPlayerY = gController.body.position.y;
     gTowerGlow = 1.8f;
@@ -1540,6 +1622,10 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     gPlayerX = std::clamp(state.playerX, kSimulationMinX, kSimulationMaxX);
     gPlayerY = std::clamp(state.playerY, kSimulationMinY, kSimulationMaxY);
     gController.body.position = {gPlayerX, gPlayerY};
+    gController.body.velocity = {0.0f, 0.0f};
+    gController.body.verticalPosition = 0.0f;
+    gController.body.verticalVelocity = 0.0f;
+    gController.body.grounded = true;
     gController.health = state.health;
     gController.stamina = state.stamina;
     gHunger = state.hunger;

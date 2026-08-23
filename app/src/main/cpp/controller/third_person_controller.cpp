@@ -96,7 +96,7 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
     secondaryMotion.step(body.velocity, {0.018f * std::sin(motionTime * 0.7f), 0.004f * std::cos(motionTime * 0.43f)}, dt, body.water.overlapping);
 
     if (body.water.submerged) state = LocomotionState::Swim;
-    else if (!body.grounded) state = body.velocity.y > 0.0f ? LocomotionState::Jump : LocomotionState::Fall;
+    else if (!body.grounded) state = body.verticalVelocity > 0.0f ? LocomotionState::Jump : LocomotionState::Fall;
     else if (sprinting) state = LocomotionState::Sprint;
     else if (moving) state = LocomotionState::Walk;
     else state = LocomotionState::Idle;

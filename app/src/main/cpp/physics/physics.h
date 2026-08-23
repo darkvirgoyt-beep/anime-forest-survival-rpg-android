@@ -53,9 +53,13 @@ struct SecondaryMotion {
 };
 
 struct CharacterBody {
+    // Position and velocity are the walkable X/Z plane. Vertical jump motion
+    // is intentionally separate so forward/back movement never fights gravity.
     Vec2 position{};
     Vec2 velocity{};
     Vec2 halfExtents{0.045f, 0.08f};
+    float verticalPosition = 0.0f;
+    float verticalVelocity = 0.0f;
     float acceleration = 5.8f;
     float maxSpeed = 0.55f;
     float friction = 7.0f;

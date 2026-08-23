@@ -49,7 +49,8 @@ void resolveCollision(CharacterBody& body, const StaticObstacle& obstacle) {
         body.velocity.x = 0.0f;
     } else {
         body.position.y += dy < 0.0f ? py + kSkinWidth : -py - kSkinWidth;
-        if (dy > 0.0f) body.grounded = true;
+        // Obstacles are walls in the walkable X/Z plane; they do not provide
+        // vertical support for a character that is airborne.
         body.velocity.y = 0.0f;
     }
 }
@@ -107,26 +108,30 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
         velocity.y = approach(velocity.y, water.current.y, friction * dt);
     }
 
-    grounded = false;
-    velocity.y += gravity * dt;
+    // Vertical motion is independent from the X/Z walkable plane. This keeps
+    // forward/back input responsive while a jump is in progress.
+    verticalVelocity += gravity * dt;
     if (water.overlapping) {
         const float depth = water.depth;
         const float buoyancyForce = -gravity * water.buoyancy * depth;
-        velocity.y += buoyancyForce * dt;
+        verticalVelocity += buoyancyForce * dt;
         const float dragFactor = std::max(0.0f, 1.0f - water.drag * depth * dt);
         velocity.x = velocity.x * dragFactor + water.current.x * dt;
         velocity.y = velocity.y * dragFactor + water.current.y * dt;
-        if (depth > 0.82f && velocity.y < 0.0f) velocity.y *= 0.35f;
+        if (depth > 0.82f && verticalVelocity < 0.0f) verticalVelocity *= 0.35f;
+    }
+
+    verticalPosition += verticalVelocity * dt;
+    grounded = false;
+    if (verticalPosition <= 0.0f) {
+        verticalPosition = 0.0f;
+        verticalVelocity = 0.0f;
+        grounded = true;
     }
 
     position += velocity * dt;
     for (int i = 0; i < obstacleCount; ++i) resolveCollision(*this, obstacles[i]);
 
-    if (position.y <= -0.50f) {
-        position.y = -0.50f;
-        velocity.y = 0.0f;
-        grounded = true;
-    }
     if (position.x <= -0.90f || position.x >= 0.90f) velocity.x = 0.0f;
     if (position.y <= -0.50f || position.y >= 0.52f) velocity.y = 0.0f;
     position.x = std::clamp(position.x, -0.90f, 0.90f);
@@ -136,7 +141,8 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
 
 void CharacterBody::jump() {
     if (!grounded) return;
-    velocity.y = jumpVelocity * (water.overlapping ? waterJumpMultiplier : 1.0f);
+    verticalVelocity = jumpVelocity * (water.overlapping ? waterJumpMultiplier : 1.0f);
+    verticalPosition = 0.001f;
     grounded = false;
 }
 
