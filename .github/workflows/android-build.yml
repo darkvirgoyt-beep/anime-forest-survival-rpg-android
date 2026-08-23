@@ -159,6 +159,11 @@ jobs:
           ./cloud_state_test
           g++ -std=c++17 -Wall -Wextra -Wpedantic \
             -Iapp/src/main/cpp \
+            tests/exploration_progression_test.cpp \
+            -o exploration_progression_test
+          ./exploration_progression_test
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
             tests/emberling_companion_test.cpp \
             -o emberling_companion_test
           ./emberling_companion_test
