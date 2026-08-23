@@ -1290,31 +1290,47 @@ class MainActivity : Activity(), SensorEventListener {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(126), dp(12), dp(158), 0)
+            setPadding(dp(126), dp(9), dp(158), dp(0))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.argb(188, 8, 18, 23), Color.argb(132, 10, 22, 26), Color.argb(22, 8, 18, 23))
+            ).apply {
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.argb(130, 221, 186, 105))
+            }
         }
         val title = TextView(this).apply {
             text = currentPlayerName
             textSize = 15f
-            setTextColor(Color.rgb(244, 218, 155))
+            letterSpacing = 0.10f
+            setTextColor(Color.rgb(255, 226, 151))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setShadowLayer(5f, 0f, 2f, Color.argb(180, 0, 0, 0))
         }
         hudPlayerTitle = title
         stateLabel = TextView(this).apply {
             text = "FOREST  •  DAY 1  •  DAY  •  CLEAR  •  HP 100  •  STA 100  •  LV 1"
-            textSize = 13f
-            setTextColor(Color.WHITE)
-            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            textSize = 12f
+            letterSpacing = 0.035f
+            setTextColor(Color.rgb(235, 244, 238))
+            setShadowLayer(5f, 1f, 2f, Color.argb(210, 0, 0, 0))
             setSingleLine(true)
             ellipsize = android.text.TextUtils.TruncateAt.END
         }
         questLabel = TextView(this).apply {
             text = "THE FIRST EMBER  -  Aurora arrives - gather 3 caches for the camp"
-            textSize = 13f
+            textSize = 12f
+            letterSpacing = 0.025f
             setTextColor(Color.rgb(255, 226, 164))
-            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            setShadowLayer(5f, 1f, 2f, Color.argb(210, 0, 0, 0))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(150, 8, 17, 21))
+                setStroke(dp(1), Color.argb(120, 220, 182, 96))
+            }
+            setPadding(dp(12), dp(4), dp(18), dp(4))
             setSingleLine(true)
             ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(0, 0, dp(24), 0)
         }
         gyroButton = actionButton("GYRO: OFF") {
             audio.playEffect("ui")
@@ -1330,7 +1346,7 @@ class MainActivity : Activity(), SensorEventListener {
             topMargin = dp(72)
             rightMargin = dp(18)
         })
-        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
+        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(62), dp(62), Gravity.CENTER))
         overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply {
             topMargin = dp(54)
             leftMargin = dp(126)
@@ -1466,10 +1482,13 @@ class MainActivity : Activity(), SensorEventListener {
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(4), dp(4), dp(4), dp(4))
-            background = GradientDrawable().apply {
-                setColor(Color.argb(34, 0, 0, 0))
-                cornerRadius = dp(16).toFloat()
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(205, 7, 18, 23), Color.argb(150, 8, 14, 18))
+            ).apply {
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.argb(180, 214, 171, 91))
             }
         }
         val sprintSlide = roundControlButton("SPRINT") { }
@@ -2058,7 +2077,8 @@ class MainActivity : Activity(), SensorEventListener {
         letterSpacing = 0.04f
         setPadding(dp(8), 0, dp(8), 0)
         setTextColor(Color.rgb(248, 239, 213))
-        elevation = dp(2).toFloat()
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        elevation = dp(3).toFloat()
         background = android.graphics.drawable.StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply {
                 cornerRadius = dp(10).toFloat()
@@ -2067,8 +2087,8 @@ class MainActivity : Activity(), SensorEventListener {
             })
             addState(intArrayOf(), GradientDrawable().apply {
                 cornerRadius = dp(10).toFloat()
-                setColor(Color.argb(238, 24, 39, 45))
-                setStroke(dp(1), Color.rgb(214, 171, 91))
+                setColor(Color.argb(235, 19, 40, 46))
+                setStroke(dp(1), Color.rgb(225, 184, 102))
             })
         }
         setOnClickListener { onClick() }
@@ -2084,6 +2104,7 @@ class MainActivity : Activity(), SensorEventListener {
         minimumWidth = 0
         setPadding(dp(8), 0, dp(8), 0)
         setTextColor(Color.rgb(14, 26, 27))
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
         setOnClickListener { onClick() }
         background = GradientDrawable().apply {
             cornerRadius = 18f

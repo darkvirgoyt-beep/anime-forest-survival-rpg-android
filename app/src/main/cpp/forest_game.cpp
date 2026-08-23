@@ -28,6 +28,9 @@ GLint gOffset = -1;
 GLint g3DPosition = -1;
 GLint g3DColor = -1;
 GLint g3DMvp = -1;
+GLint g3DLightLevel = -1;
+GLint g3DFogColor = -1;
+GLint g3DFogAmount = -1;
 GLuint gBillboardProgram = 0;
 GLint gBillboardPosition = -1;
 GLint gBillboardUv = -1;
@@ -36,6 +39,11 @@ GLint gBillboardTexture = -1;
 float gWidth = 1.0f;
 float gHeight = 1.0f;
 float gTime = 0.0f;
+float gSceneLightLevel = 1.0f;
+float gSceneFogR = 0.12f;
+float gSceneFogG = 0.20f;
+float gSceneFogB = 0.22f;
+float gSceneFogAmount = 0.14f;
 int gDaysPlayed = 1;
 float gPlayerX = -0.55f;
 float gPlayerY = -0.08f;
@@ -354,9 +362,13 @@ layout(location = 0) in vec3 aPosition;
 uniform mat4 uMvp;
 uniform vec4 uColor;
 out vec4 vColor;
+out float vHeightShade;
 void main() {
     gl_Position = uMvp * vec4(aPosition, 1.0);
     vColor = uColor;
+    // Procedural meshes carry no normal stream, so their local height gives us
+    // a stable stylized top-light gradient on every low-poly primitive.
+    vHeightShade = clamp(aPosition.y * 0.72 + 0.5, 0.0, 1.0);
 }
 )GLSL";
 
@@ -364,8 +376,18 @@ const char* k3DFragmentShader = R"GLSL(
 #version 300 es
 precision mediump float;
 in vec4 vColor;
+in float vHeightShade;
+uniform float uLightLevel;
+uniform vec3 uFogColor;
+uniform float uFogAmount;
 out vec4 fragColor;
-void main() { fragColor = vColor; }
+void main() {
+    float topLight = mix(0.78, 1.16, vHeightShade);
+    vec3 litColor = vColor.rgb * (uLightLevel * topLight + 0.12);
+    // Depth fog adds the soft atmospheric separation seen in stylized open worlds.
+    float depthFog = clamp(pow(gl_FragCoord.z, 2.2) * uFogAmount, 0.0, 0.86);
+    fragColor = vec4(mix(litColor, uFogColor, depthFog), vColor.a);
+}
 )GLSL";
 
 const char* kBillboardVertexShader = R"GLSL(
@@ -492,6 +514,9 @@ void create3DProgram() {
     g3DPosition = glGetAttribLocation(g3DProgram, "aPosition");
     g3DColor = glGetUniformLocation(g3DProgram, "uColor");
     g3DMvp = glGetUniformLocation(g3DProgram, "uMvp");
+    g3DLightLevel = glGetUniformLocation(g3DProgram, "uLightLevel");
+    g3DFogColor = glGetUniformLocation(g3DProgram, "uFogColor");
+    g3DFogAmount = glGetUniformLocation(g3DProgram, "uFogAmount");
 }
 
 void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float width, float height, float depth,
@@ -514,6 +539,9 @@ void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float widt
     const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
     glUniformMatrix4fv(g3DMvp, 1, GL_FALSE, mvp.v);
     glUniform4f(g3DColor, r, g, b, a);
+    glUniform1f(g3DLightLevel, gSceneLightLevel);
+    glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
+    glUniform1f(g3DFogAmount, gSceneFogAmount);
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, cube);
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -527,6 +555,9 @@ void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices
     const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
     glUniformMatrix4fv(g3DMvp, 1, GL_FALSE, mvp.v);
     glUniform4f(g3DColor, r, g, b, a);
+    glUniform1f(g3DLightLevel, gSceneLightLevel);
+    glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
+    glUniform1f(g3DFogAmount, gSceneFogAmount);
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, vertices.data());
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(primitive, 0, static_cast<GLsizei>(vertices.size() / 3));
@@ -624,10 +655,42 @@ void draw3DSphere(const Mat4& viewProjection, float x, float y, float z,
     draw3DMesh(viewProjection, vertices, x, y, z, radius, radius, radius, r, g, b, a);
 }
 
+void draw3DGlowOrb(const Mat4& viewProjection, float x, float y, float z, float radius,
+                   float r, float g, float b, float intensity) {
+    const float pulse = 0.90f + 0.10f * std::sin(gTime * 4.0f + x * 0.4f);
+    draw3DSphere(viewProjection, x, y, z, radius * (1.75f + 0.10f * pulse), r, g, b,
+                 std::clamp(intensity * 0.12f, 0.02f, 0.26f));
+    draw3DSphere(viewProjection, x, y, z, radius, std::min(1.0f, r * 1.35f),
+                 std::min(1.0f, g * 1.25f), std::min(1.0f, b * 1.18f), std::clamp(intensity, 0.16f, 1.0f));
+}
+
 void draw3DTree(const Mat4& viewProjection, float x, float z, float scale, float tint) {
     draw3DCylinder(viewProjection, x, 0.42f * scale, z, 0.12f * scale, 0.84f * scale, 0.25f, 0.12f, 0.07f);
+    draw3DCylinder(viewProjection, x + 0.06f * scale, 0.50f * scale, z - 0.03f * scale,
+                   0.045f * scale, 0.65f * scale, 0.34f, 0.17f, 0.08f);
     draw3DSphere(viewProjection, x, 1.03f * scale, z, 0.52f * scale, 0.06f + tint, 0.24f + tint, 0.18f);
     draw3DSphere(viewProjection, x - 0.24f * scale, 0.87f * scale, z + 0.08f, 0.29f * scale, 0.04f + tint, 0.18f + tint, 0.14f);
+    draw3DSphere(viewProjection, x + 0.24f * scale, 0.92f * scale, z - 0.06f, 0.27f * scale, 0.05f + tint, 0.20f + tint, 0.15f);
+    draw3DSphere(viewProjection, x + 0.02f * scale, 1.25f * scale, z + 0.02f,
+                 0.21f * scale, 0.16f + tint, 0.40f + tint, 0.22f);
+}
+
+void draw3DRock(const Mat4& viewProjection, float x, float z, float scale, float r, float g, float b) {
+    draw3DBox(viewProjection, x, 0.075f * scale, z, 0.72f * scale, 0.14f * scale, 0.52f * scale,
+              r * 0.52f, g * 0.52f, b * 0.52f, 0.72f);
+    draw3DSphere(viewProjection, x - 0.05f * scale, 0.19f * scale, z, 0.30f * scale,
+                 r, g, b, 0.96f);
+    draw3DSphere(viewProjection, x + 0.18f * scale, 0.15f * scale, z + 0.05f, 0.18f * scale,
+                 std::min(1.0f, r * 1.16f), std::min(1.0f, g * 1.16f), std::min(1.0f, b * 1.16f), 0.92f);
+}
+
+void draw3DGrassTuft(const Mat4& viewProjection, float x, float z, float scale, float r, float g, float b) {
+    const float sway = 0.025f * std::sin(gTime * 2.4f + x * 1.7f + z);
+    draw3DBox(viewProjection, x, 0.14f * scale, z, 0.035f * scale, 0.28f * scale, 0.035f * scale, r, g, b, 0.92f);
+    draw3DBox(viewProjection, x + sway, 0.18f * scale, z + 0.02f, 0.032f * scale, 0.36f * scale, 0.032f,
+              std::min(1.0f, r * 1.18f), std::min(1.0f, g * 1.12f), std::min(1.0f, b * 1.10f), 0.88f);
+    draw3DBox(viewProjection, x - sway, 0.15f * scale, z - 0.02f, 0.028f * scale, 0.30f * scale, 0.028f,
+              r * 0.82f, g * 0.92f, b * 0.84f, 0.86f);
 }
 
 void draw3DMob(const Mat4& viewProjection, const MobState& mob, bool combatTarget) {
@@ -834,6 +897,7 @@ void drawTeleportationTower(const Mat4& viewProjection) {
     draw3DBox(viewProjection, 0.0f, 1.0f, -1.15f, 1.08f, 2.0f, 1.08f, 0.07f, 0.11f, 0.17f);
     draw3DBox(viewProjection, 0.0f, 2.18f, -1.15f, 0.72f, 0.42f, 0.72f, 0.30f, 0.13f, 0.26f);
     draw3DBox(viewProjection, 0.0f, 2.62f, -1.15f, 0.22f, 0.58f, 0.22f, 0.93f, 0.66f, 0.22f, pulse);
+    draw3DGlowOrb(viewProjection, 0.0f, 3.04f, -1.15f, 0.14f, 1.0f, 0.60f, 0.18f, pulse);
     draw3DBox(viewProjection, -0.46f, 1.15f, -1.15f, 0.16f, 1.62f, 0.16f, 0.72f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 0.46f, 1.15f, -1.15f, 0.16f, 1.62f, 0.16f, 0.72f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 0.0f, 0.08f, -1.15f, 1.50f, 0.08f, 1.50f, 0.95f, 0.69f, 0.24f, 0.55f);
@@ -870,6 +934,7 @@ void draw3DEmberling(const Mat4& viewProjection) {
     draw3DBox(viewProjection, px - 0.16f, 0.52f + bob, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
     draw3DBox(viewProjection, px + 0.16f, 0.52f + bob, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
     draw3DBox(viewProjection, px, 0.73f + bob, pz + 0.07f, 0.06f, 0.18f, 0.06f, 1.0f, 0.68f, 0.20f, glow);
+    draw3DGlowOrb(viewProjection, px, 0.78f + bob, pz + 0.07f, 0.075f, 1.0f, 0.38f, 0.08f, glow);
 }
 
 void draw3DWeather(const Mat4& viewProjection) {
@@ -987,8 +1052,28 @@ void draw3DWorld() {
         case TimePhase::Night: daylight = 0.22f; break;
     }
     if (currentWeather() == WeatherState::Thunderstorm) daylight *= 0.72f;
-    const float sky = 0.075f * daylight;
-    glClearColor(0.018f * daylight, sky, 0.10f * daylight + 0.012f, 1.0f);
+    gSceneLightLevel = daylight;
+    switch (currentBiome()) {
+        case Biome::Forest:
+            gSceneFogR = 0.10f; gSceneFogG = 0.24f; gSceneFogB = 0.23f;
+            break;
+        case Biome::Sand:
+            gSceneFogR = 0.34f; gSceneFogG = 0.20f; gSceneFogB = 0.12f;
+            break;
+        case Biome::Snow:
+            gSceneFogR = 0.34f; gSceneFogG = 0.52f; gSceneFogB = 0.66f;
+            break;
+    }
+    if (currentTimePhase() == TimePhase::Night) {
+        gSceneFogR *= 0.42f; gSceneFogG *= 0.46f; gSceneFogB *= 0.72f;
+    }
+    gSceneFogAmount = 0.10f + 0.045f * static_cast<float>(gGraphicsQuality);
+    if (currentWeather() == WeatherState::Rain) gSceneFogAmount += 0.08f;
+    if (currentWeather() == WeatherState::Thunderstorm) gSceneFogAmount += 0.14f;
+    const float skyR = 0.028f + 0.085f * daylight;
+    const float skyG = 0.060f + 0.21f * daylight;
+    const float skyB = 0.12f + 0.38f * daylight;
+    glClearColor(skyR, skyG, skyB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -998,11 +1083,27 @@ void draw3DWorld() {
     draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
     draw3DBox(viewProjection, 4.4f, 0.0f, 0.7f, 4.2f, 0.08f, 7.0f, 0.40f, 0.62f, 0.72f);
     draw3DBox(viewProjection, 0.4f, -0.015f, 1.0f, 0.90f, 0.04f, 7.0f, 0.15f, 0.38f, 0.39f);
+    // A narrow reflective stream and warm path make the biome transition feel authored
+    // rather than like three disconnected color planes.
+    draw3DBox(viewProjection, 0.42f, 0.045f, 0.85f, 0.52f, 0.035f, 7.1f, 0.045f, 0.26f, 0.38f, 0.90f);
+    draw3DBox(viewProjection, 0.42f, 0.071f, 0.85f, 0.34f, 0.012f, 7.0f, 0.22f, 0.68f, 0.76f, 0.48f);
+    draw3DBox(viewProjection, 0.0f, 0.082f, 0.85f, 0.56f, 0.016f, 7.0f, 0.58f, 0.38f, 0.16f, 0.74f);
     draw3DTree(viewProjection, -5.0f, -1.0f, 1.25f, 0.02f);
     draw3DTree(viewProjection, -3.3f, 2.2f, 0.96f, 0.04f);
     draw3DTree(viewProjection, -5.5f, 3.3f, 1.48f, 0.01f);
+    draw3DTree(viewProjection, -2.9f, -2.8f, 0.78f, 0.06f);
+    draw3DTree(viewProjection, -5.8f, 0.4f, 0.74f, 0.08f);
     draw3DTree(viewProjection, 4.8f, 2.6f, 1.18f, 0.08f);
     draw3DTree(viewProjection, 5.5f, -0.8f, 0.90f, 0.12f);
+    draw3DRock(viewProjection, -2.5f, 0.9f, 0.78f, 0.28f, 0.38f, 0.32f);
+    draw3DRock(viewProjection, 2.2f, 2.2f, 0.90f, 0.56f, 0.38f, 0.20f);
+    draw3DRock(viewProjection, 5.0f, -2.0f, 1.10f, 0.48f, 0.64f, 0.72f);
+    if (gGraphicsQuality >= 1) {
+        draw3DGrassTuft(viewProjection, -4.1f, -1.9f, 0.90f, 0.12f, 0.42f, 0.18f);
+        draw3DGrassTuft(viewProjection, -2.0f, 1.9f, 0.68f, 0.16f, 0.50f, 0.20f);
+        draw3DGrassTuft(viewProjection, 2.7f, -2.0f, 0.74f, 0.48f, 0.36f, 0.12f);
+        draw3DGrassTuft(viewProjection, 4.0f, 1.1f, 0.86f, 0.56f, 0.78f, 0.80f);
+    }
     draw3DBox(viewProjection, 3.8f, 0.10f, -1.2f, 1.2f, 0.20f, 0.8f, 0.78f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 3.8f, 0.28f, -1.2f, 0.75f, 0.18f, 0.52f, 0.92f, 0.65f, 0.22f);
     drawTeleportationTower(viewProjection);
