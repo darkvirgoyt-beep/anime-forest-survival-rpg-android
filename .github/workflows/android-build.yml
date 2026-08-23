@@ -281,6 +281,27 @@ jobs:
           ANDROID_NDK_VERSION: "28.0.12433566"
         run: tools/check_16kb_alignment.sh app/build/outputs/apk/release/app-release.apk
 
+      - name: Build and verify standalone expansion OBB
+        run: |
+          rm -rf build/obb-staging build/expansion-obb
+          mkdir -p build/obb-staging
+          cp app/src/main/assets/asset_manifest.json build/obb-staging/asset_manifest.json
+          cp -R app/src/main/assets/asset_packs build/obb-staging/asset_packs
+          python3 tools/build_expansion_obb.py \
+            --input-dir build/obb-staging \
+            --output-dir build/expansion-obb \
+            --package-name com.darvirgoyt.aethelgrad \
+            --version-code 3 \
+            --content-version "prototype-${GITHUB_SHA}"
+          python3 tools/verify_expansion_obb.py build/expansion-obb/main.3.com.darvirgoyt.aethelgrad.obb
+
+      - name: Upload standalone expansion OBB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aethelgard-expansion-obb
+          path: build/expansion-obb/main.3.com.darvirgoyt.aethelgrad.obb
+          if-no-files-found: error
+
       - name: Upload direct APK artifact
         uses: actions/upload-artifact@v4
         with:
