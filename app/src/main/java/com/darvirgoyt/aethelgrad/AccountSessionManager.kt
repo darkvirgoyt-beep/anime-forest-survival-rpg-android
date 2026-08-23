@@ -178,7 +178,7 @@ class AccountSessionManager {
         is GetCredentialProviderConfigurationException -> "Google sign-in services are unavailable on this device. Update Google Play services and the game, then try again."
         is GetCredentialUnsupportedException -> "This device does not support the required Google credential service. Update Android and Google Play services, then try again."
         is GetCredentialInterruptedException -> "Google sign-in was interrupted. Re-open the game and try again."
-        is GetCredentialCancellationException -> "Google sign-in was cancelled. If you did not cancel it, verify this app's Android OAuth package name and SHA-1 fingerprint in Google Cloud."
+        is GetCredentialCancellationException -> "Google sign-in ended before the game server. If you did not close it, register this installed APK's SHA-1 with package com.darvirgoyt.aethelgrad in the Android OAuth client, then retry."
         else -> "Google sign-in could not complete (${error::class.java.simpleName}). Verify the Android OAuth package name and SHA-1 fingerprint, then try again."
     }
 

@@ -27,3 +27,4 @@
 - [x] Connect the Android login configuration to the managed backend after the Web OAuth client ID is created
 - [x] Surface actionable Android Credential Manager failure diagnostics instead of a generic cancelled-or-unavailable message.
 - [ ] Verify the release signing certificate fingerprint and Google Android OAuth registration required for device Google Sign-In.
+- [x] Diagnose the reported Google Credential Manager cancellation before backend exchange and improve the device-facing remediation guidance.
