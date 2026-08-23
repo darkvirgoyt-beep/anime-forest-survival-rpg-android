@@ -9,5 +9,7 @@
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowBackground">@drawable/aethelgard_launch_background</item>
+        <item name="android:windowSplashScreenBackground">#000000</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/aethelgard_launch_art</item>
     </style>
 </resources>

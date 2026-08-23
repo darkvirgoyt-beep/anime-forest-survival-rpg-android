@@ -7,20 +7,26 @@
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:icon="@drawable/aethelgard_profile_gold"
-        android:roundIcon="@drawable/aethelgard_profile_gold"
+        android:icon="@drawable/aethelgard_launch_art"
+        android:roundIcon="@drawable/aethelgard_launch_art"
         android:supportsRtl="true"
         android:name=".ForestSliceApplication"
         android:theme="@style/Theme.ForestSlice">
         <activity
-            android:name=".MainActivity"
+            android:name=".LaunchActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
-            android:screenOrientation="landscape">
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.ForestSlice">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false"
+            android:screenOrientation="landscape" />
     </application>
 </manifest>
