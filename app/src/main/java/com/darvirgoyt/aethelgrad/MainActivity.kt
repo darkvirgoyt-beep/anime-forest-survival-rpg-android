@@ -1938,11 +1938,11 @@ class MainActivity : Activity(), SensorEventListener {
         val dodge = gameplayButton("◆  DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
         val gather = gameplayButton("✧  GATHER") { submitAuthoritativeInventory("gather") }
         val craft = gameplayButton("⌂  CRAFT") { submitAuthoritativeInventory("craft") }
-        val companion = gameplayButton("✦  COMPANION") {
+        val companion = gameplayButton("✦  COMMAND") {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
         }
-        val capture = gameplayButton("◎  CAPTURE") {
+        val capture = gameplayButton("◎  TAME ANIMAL") {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
         }

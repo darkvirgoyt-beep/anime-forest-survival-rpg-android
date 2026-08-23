@@ -85,6 +85,13 @@ jobs:
           grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
           grep -q 'draw3DForestWarden(viewProjection)' app/src/main/cpp/forest_game.cpp
           grep -q 'draw3DEmberling(viewProjection)' app/src/main/cpp/forest_game.cpp
+          grep -q 'MobType::MoonDeer' app/src/main/cpp/mobs/mob_catalog.h
+          grep -q 'MobType::MossbackBoar' app/src/main/cpp/mobs/mob_catalog.h
+          grep -q 'MobType::RiverOtter' app/src/main/cpp/mobs/mob_catalog.h
+          grep -q 'MobType::CanopyFox' app/src/main/cpp/mobs/mob_catalog.h
+          grep -q 'mobProfile.tameable' app/src/main/cpp/forest_game.cpp
+          grep -q 'TAME ANIMAL' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          test -f docs/MOB_AND_TAMING_IMPLEMENTATION.md
           grep -q 'void draw3DPlayer' app/src/main/cpp/forest_game.cpp
           grep -q 'LocomotionState::Sprint' app/src/main/cpp/forest_game.cpp
           grep -q 'gAttackPulse > 0' app/src/main/cpp/forest_game.cpp

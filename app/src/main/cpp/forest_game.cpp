@@ -111,7 +111,11 @@ MobState gMobs[forest::mobs::kProfileCount] = {
     {forest::mobs::MobType::Necromancer, {-0.38f, 0.22f}, {-0.38f, 0.22f}, 52.0f, 0.0f, 0.0f, 0.0f},
     {forest::mobs::MobType::Samurai, {0.05f, 0.28f}, {0.05f, 0.28f}, 76.0f, 0.0f, 0.0f, 0.0f},
     {forest::mobs::MobType::Artificer, {0.42f, 0.12f}, {0.42f, 0.12f}, 62.0f, 0.0f, 0.0f, 0.0f},
-    {forest::mobs::MobType::Druid, {-0.72f, 0.18f}, {-0.72f, 0.18f}, 70.0f, 0.0f, 0.0f, 0.0f}
+    {forest::mobs::MobType::Druid, {-0.72f, 0.18f}, {-0.72f, 0.18f}, 70.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::MoonDeer, {-0.62f, 0.42f}, {-0.62f, 0.42f}, 58.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::MossbackBoar, {-0.28f, 0.40f}, {-0.28f, 0.40f}, 82.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::RiverOtter, {0.42f, -0.34f}, {0.42f, -0.34f}, 44.0f, 0.0f, 0.0f, 0.0f},
+    {forest::mobs::MobType::CanopyFox, {0.64f, 0.26f}, {0.64f, 0.26f}, 50.0f, 0.0f, 0.0f, 0.0f}
 };
 
 void resetMobs() {
@@ -151,6 +155,7 @@ const char* nearestMobStatus() {
     const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
     std::ostringstream status;
     status << mobProfile.displayName << '_' << static_cast<int>(std::round(mob.health));
+    if (mobProfile.tameable) status << "_TAME_" << mobProfile.tamingCost;
     static std::string value;
     value = status.str();
     return value.c_str();
@@ -739,13 +744,17 @@ void draw3DMob(const Mat4& viewProjection, const MobState& mob, bool combatTarge
         return;
     }
 
-    // All archetypes share a readable contact shadow and a low-poly humanoid base.
+    // Every creature has a readable contact shadow; only humanoids inherit the
+    // two-legged base because wildlife gets its own four-legged silhouette below.
     draw3DBox(viewProjection, x, 0.026f, z, 0.48f * scale, 0.025f, 0.34f * scale,
               0.015f, 0.025f, 0.035f, 0.50f);
-    draw3DCylinder(viewProjection, x - 0.075f * scale, 0.25f * scale, z,
-                   0.055f * scale, 0.44f * scale, 0.10f, 0.07f, 0.10f);
-    draw3DCylinder(viewProjection, x + 0.075f * scale, 0.25f * scale, z,
-                   0.055f * scale, 0.44f * scale, 0.10f, 0.07f, 0.10f);
+    if (!mobProfile.tameable) {
+        draw3DCylinder(viewProjection, x - 0.075f * scale, 0.25f * scale, z,
+                       0.055f * scale, 0.44f * scale, 0.10f, 0.07f, 0.10f);
+        draw3DCylinder(viewProjection, x + 0.075f * scale, 0.25f * scale, z,
+                       0.055f * scale, 0.44f * scale, 0.10f, 0.07f, 0.10f);
+    }
+    const float gait = std::sin(gTime * 9.0f + x * 0.4f);
 
     switch (mob.type) {
         case forest::mobs::MobType::ArcaneWizard:
@@ -864,6 +873,84 @@ void draw3DMob(const Mat4& viewProjection, const MobState& mob, bool combatTarge
             draw3DSphere(viewProjection, x - 0.32f * scale, 0.50f * scale + y, z + 0.10f,
                          0.075f * scale, 0.98f, 0.48f, 0.14f);
             break;
+        case forest::mobs::MobType::MoonDeer: {
+            const float leap = std::max(0.0f, gait) * 0.06f;
+            draw3DBox(viewProjection, x, 0.48f * scale + y + leap, z, 0.62f * scale, 0.38f * scale, 0.24f * scale,
+                      std::min(1.0f, 0.58f + flash), std::min(1.0f, 0.28f + flash * 0.50f), 0.16f);
+            draw3DSphere(viewProjection, x + 0.34f * scale, 0.76f * scale + y + leap, z - 0.02f,
+                         0.16f * scale, 0.64f, 0.34f, 0.18f);
+            for (int leg = 0; leg < 4; ++leg) {
+                const float side = leg % 2 == 0 ? -0.20f : 0.20f;
+                const float strideLeg = (leg < 2 ? gait : -gait) * 0.035f;
+                draw3DCylinder(viewProjection, x + side * scale + strideLeg,
+                               0.22f * scale + y + leap, z + (leg < 2 ? 0.07f : -0.07f) * scale,
+                               0.035f * scale, 0.46f * scale, 0.25f, 0.13f, 0.08f);
+            }
+            draw3DBox(viewProjection, x + 0.46f * scale, 1.04f * scale + y + leap, z,
+                      0.05f * scale, 0.34f * scale, 0.05f * scale, 0.90f, 0.78f, 0.28f);
+            draw3DGlowOrb(viewProjection, x + 0.43f * scale, 0.77f * scale + y + leap, z - 0.13f * scale,
+                          0.028f * scale, 0.86f, 0.94f, 0.98f, 0.62f);
+            break;
+        }
+        case forest::mobs::MobType::MossbackBoar: {
+            const float snort = std::sin(gTime * 5.4f + z) * 0.018f;
+            const float stomp = std::abs(std::sin(gTime * 10.5f)) * 0.028f;
+            draw3DBox(viewProjection, x, 0.42f * scale + y + stomp, z, 0.74f * scale, 0.46f * scale, 0.48f * scale,
+                      std::min(1.0f, 0.20f + flash), std::min(1.0f, 0.27f + flash * 0.50f), 0.18f);
+            draw3DSphere(viewProjection, x + 0.40f * scale + snort, 0.48f * scale + y + stomp, z - 0.02f,
+                         0.22f * scale, 0.24f, 0.32f, 0.26f);
+            for (int leg = 0; leg < 4; ++leg) {
+                const float side = leg % 2 == 0 ? -0.24f : 0.24f;
+                const float strideLeg = (leg < 2 ? -gait : gait) * 0.024f;
+                draw3DCylinder(viewProjection, x + side * scale + strideLeg,
+                               0.18f * scale + y + stomp, z + (leg < 2 ? 0.14f : -0.14f) * scale,
+                               0.055f * scale, 0.34f * scale, 0.12f, 0.18f, 0.13f);
+            }
+            draw3DBox(viewProjection, x - 0.38f * scale, 0.62f * scale + y + stomp, z + 0.05f,
+                      0.08f * scale, 0.20f * scale, 0.32f * scale, 0.18f, 0.26f, 0.18f);
+            draw3DGlowOrb(viewProjection, x + 0.55f * scale, 0.53f * scale + y + stomp, z - 0.17f * scale,
+                          0.035f * scale, 0.76f, 0.94f, 0.42f, 0.52f);
+            break;
+        }
+        case forest::mobs::MobType::RiverOtter: {
+            const float swim = std::sin(gTime * 8.0f + x) * 0.035f;
+            draw3DSphere(viewProjection, x, 0.30f * scale + y + std::abs(swim), z, 0.28f * scale,
+                         0.18f, 0.30f, 0.34f);
+            draw3DSphere(viewProjection, x + 0.24f * scale, 0.44f * scale + y + std::abs(swim), z - 0.02f,
+                         0.16f * scale, 0.38f, 0.52f, 0.54f);
+            draw3DBox(viewProjection, x - 0.26f * scale, 0.24f * scale + y, z + swim,
+                      0.50f * scale, 0.08f * scale, 0.12f * scale, 0.12f, 0.23f, 0.28f);
+            for (int paw = 0; paw < 4; ++paw) {
+                const float side = paw % 2 == 0 ? -0.13f : 0.13f;
+                draw3DSphere(viewProjection, x + side * scale, 0.16f * scale + y,
+                             z + (paw < 2 ? 0.12f : -0.12f) * scale + swim,
+                             0.055f * scale, 0.20f, 0.42f, 0.44f);
+            }
+            draw3DGlowOrb(viewProjection, x + 0.29f * scale, 0.47f * scale + y + std::abs(swim), z - 0.13f * scale,
+                          0.022f * scale, 0.48f, 0.88f, 0.94f, 0.48f);
+            break;
+        }
+        case forest::mobs::MobType::CanopyFox: {
+            const float pounce = std::max(0.0f, std::sin(gTime * 11.0f + z)) * 0.045f;
+            draw3DSphere(viewProjection, x, 0.40f * scale + y + pounce, z, 0.24f * scale,
+                         std::min(1.0f, 0.78f + flash), std::min(1.0f, 0.27f + flash * 0.45f), 0.08f);
+            draw3DSphere(viewProjection, x + 0.27f * scale, 0.61f * scale + y + pounce, z - 0.02f,
+                         0.16f * scale, 0.92f, 0.40f, 0.12f);
+            draw3DBox(viewProjection, x - 0.26f * scale, 0.50f * scale + y + pounce, z + 0.02f,
+                      0.12f * scale, 0.46f * scale, 0.12f * scale, 0.66f, 0.18f, 0.08f);
+            for (int paw = 0; paw < 4; ++paw) {
+                const float side = paw % 2 == 0 ? -0.15f : 0.15f;
+                const float pawStep = (paw < 2 ? gait : -gait) * 0.025f;
+                draw3DCylinder(viewProjection, x + side * scale + pawStep,
+                               0.15f * scale + y + pounce, z + (paw < 2 ? 0.10f : -0.10f) * scale,
+                               0.034f * scale, 0.30f * scale, 0.32f, 0.13f, 0.07f);
+            }
+            draw3DBox(viewProjection, x + 0.02f * scale, 0.77f * scale + y + pounce, z + 0.02f,
+                      0.08f * scale, 0.16f * scale, 0.08f * scale, 0.98f, 0.54f, 0.16f);
+            draw3DGlowOrb(viewProjection, x + 0.33f * scale, 0.64f * scale + y + pounce, z - 0.13f * scale,
+                          0.022f * scale, 1.0f, 0.72f, 0.24f, 0.55f);
+            break;
+        }
     }
 
     if (combatTarget) {
@@ -2376,17 +2463,17 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_captureNearestCreature(JNIEnv*, 
     const float dx = mob.position.x - gPlayerX;
     const float dy = mob.position.y - gPlayerY;
     const float distance = std::sqrt(dx * dx + dy * dy);
-    if (distance > 0.38f || mob.health > static_cast<float>(mobProfile.maxHealth) * 0.38f || gFiber < 2) return;
-    gFiber -= 2;
+    if (!mobProfile.tameable) return;
+    if (distance > 0.38f || mob.health > static_cast<float>(mobProfile.maxHealth) * 0.38f || gFiber < mobProfile.tamingCost) return;
+    gFiber -= mobProfile.tamingCost;
     mob.captured = true;
     mob.health = static_cast<float>(mobProfile.maxHealth) * 0.75f;
     mob.position = {gPlayerX - 0.16f, gPlayerY + 0.13f};
     gCapturedMobIndex = target;
     gCapturedCompanionStay = false;
-    gQuestPulse = 150;
-    awardExperience(24);
+        gQuestPulse = 150;
+    awardExperience(24 + mobProfile.tamingCost * 4);
 }
-
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleCompanionCommand(JNIEnv*, jobject) {
     if (gCapturedMobIndex >= 0) {
