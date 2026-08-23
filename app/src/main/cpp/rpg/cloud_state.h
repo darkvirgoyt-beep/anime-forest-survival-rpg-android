@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <cstring>
 #include <string>
 
 namespace forest::rpg {
@@ -86,7 +85,9 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
     // avoids a second formatted scan before the actual parse.
     constexpr char kSchemaPrefix[] = "{\"schemaVersion\":";
     constexpr std::size_t kSchemaPrefixLength = sizeof(kSchemaPrefix) - 1;
-    if (std::strncmp(payload, kSchemaPrefix, kSchemaPrefixLength) != 0) return false;
+    for (std::size_t prefixIndex = 0; prefixIndex < kSchemaPrefixLength; ++prefixIndex) {
+        if (payload[prefixIndex] != kSchemaPrefix[prefixIndex]) return false;
+    }
     const char versionDigit = payload[kSchemaPrefixLength];
     if (versionDigit < '1' || versionDigit > '5') return false;
     schemaVersion = versionDigit - '0';
