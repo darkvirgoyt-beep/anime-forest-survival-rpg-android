@@ -9,7 +9,12 @@ import androidx.credentials.CredentialManagerCallback
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.GetCredentialInterruptedException
+import androidx.credentials.exceptions.GetCredentialProviderConfigurationException
+import androidx.credentials.exceptions.GetCredentialUnsupportedException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import org.json.JSONArray
@@ -125,11 +130,21 @@ class AccountSessionManager {
                 }
 
                 override fun onError(error: GetCredentialException) {
-                    publish(SessionSnapshot(SessionState.DENIED, message = "Google sign-in was cancelled or unavailable. Check your Google account and try again."))
+                    publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error)))
                 }
             }
         )
         return snapshot
+    }
+
+    /** Maps provider failures to safe player-facing actions; token/account details are never logged or displayed. */
+    private fun describeGoogleCredentialFailure(error: GetCredentialException): String = when (error) {
+        is NoCredentialException -> "No usable Google account is available. Add or re-authenticate a Google account on this phone, then try again."
+        is GetCredentialProviderConfigurationException -> "Google sign-in services are unavailable on this device. Update Google Play services and the game, then try again."
+        is GetCredentialUnsupportedException -> "This device does not support the required Google credential service. Update Android and Google Play services, then try again."
+        is GetCredentialInterruptedException -> "Google sign-in was interrupted. Re-open the game and try again."
+        is GetCredentialCancellationException -> "Google sign-in was cancelled. If you did not cancel it, verify this app's Android OAuth package name and SHA-1 fingerprint in Google Cloud."
+        else -> "Google sign-in could not complete (${error::class.java.simpleName}). Verify the Android OAuth package name and SHA-1 fingerprint, then try again."
     }
 
     private fun exchangeGoogleIdToken(idToken: String) {

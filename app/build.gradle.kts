@@ -3,6 +3,12 @@ plugins {
     kotlin("android")
 }
 
+val ciKeystorePath = providers.environmentVariable("AETHELGARD_RELEASE_KEYSTORE_PATH").orNull
+val ciKeystorePassword = providers.environmentVariable("AETHELGARD_RELEASE_STORE_PASSWORD").orNull
+val ciKeyAlias = providers.environmentVariable("AETHELGARD_RELEASE_KEY_ALIAS").orNull
+val ciKeyPassword = providers.environmentVariable("AETHELGARD_RELEASE_KEY_PASSWORD").orNull
+val hasCiReleaseSigning = listOf(ciKeystorePath, ciKeystorePassword, ciKeyAlias, ciKeyPassword).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.darvirgoyt.aethelgrad"
     compileSdk = 35
@@ -29,6 +35,17 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasCiReleaseSigning) {
+            create("ciRelease") {
+                storeFile = file(ciKeystorePath!!)
+                storePassword = ciKeystorePassword
+                keyAlias = ciKeyAlias
+                keyPassword = ciKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField("boolean", "PROTOTYPE_MODE", "true")
@@ -43,8 +60,8 @@ android {
         release {
             isMinifyEnabled = false
             buildConfigField("boolean", "PROTOTYPE_MODE", "false")
-            // Test-distribution signing only. Replace with a protected release keystore for Play Store publishing.
-            signingConfig = signingConfigs.getByName("debug")
+            // GitHub CI uses protected secrets when configured; local builds remain debug-signed for test distribution.
+            signingConfig = if (hasCiReleaseSigning) signingConfigs.getByName("ciRelease") else signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
