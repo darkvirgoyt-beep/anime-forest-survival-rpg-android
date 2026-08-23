@@ -54,9 +54,9 @@ android {
         }
         create("prototype") {
             initWith(getByName("debug"))
-            applicationId = "com.darvirgoyt.aethelgrad"
+            // The prototype inherits the production application ID from defaultConfig.
+            // Only the version name is differentiated for local/device-lab installs.
             versionNameSuffix = "-prototype"
-            // Keep the prototype build task, but install it under the production-compatible application ID.
             buildConfigField("boolean", "PROTOTYPE_MODE", "false")
             matchingFallbacks += listOf("debug")
         }
