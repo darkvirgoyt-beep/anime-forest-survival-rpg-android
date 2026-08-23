@@ -1172,6 +1172,7 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
     private val renderer = GameRenderer()
     private var targetFps = 60
     private var surfaceReady = false
+    private var activeLookPointerId = MotionEvent.INVALID_POINTER_ID
     private var lastLookX = 0f
     private var lastLookY = 0f
 
@@ -1188,6 +1189,7 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
 
         override fun surfaceDestroyed(holder: SurfaceHolder) {
             surfaceReady = false
+            activeLookPointerId = MotionEvent.INVALID_POINTER_ID
         }
     }
 
@@ -1231,25 +1233,63 @@ private class GameSurfaceView(context: Context) : GLSurfaceView(context) {
         queueEvent { NativeGameBridge.setGraphicsQuality(renderer.graphicsTier) }
     }
 
+    override fun onPause() {
+        activeLookPointerId = MotionEvent.INVALID_POINTER_ID
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        renderer.resetFrameClock()
+        applyFrameRateIfSurfaceReady()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                lastLookX = event.x
-                lastLookY = event.y
+                if (event.x >= width * 0.42f) {
+                    activeLookPointerId = event.getPointerId(event.actionIndex)
+                    lastLookX = event.x
+                    lastLookY = event.y
+                }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                val index = event.actionIndex
+                if (activeLookPointerId == MotionEvent.INVALID_POINTER_ID && event.getX(index) >= width * 0.42f) {
+                    activeLookPointerId = event.getPointerId(index)
+                    lastLookX = event.getX(index)
+                    lastLookY = event.getY(index)
+                }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (event.x > width * 0.42f) {
-                    val dx = event.x - lastLookX
-                    val dy = event.y - lastLookY
-                    queueEvent { NativeGameBridge.orbitCamera(dx * 0.006f, dy * 0.004f) }
+                if (activeLookPointerId != MotionEvent.INVALID_POINTER_ID) {
+                    val index = event.findPointerIndex(activeLookPointerId)
+                    if (index >= 0) {
+                        val dx = (event.getX(index) - lastLookX).coerceIn(-96f, 96f)
+                        val dy = (event.getY(index) - lastLookY).coerceIn(-96f, 96f)
+                        if (kotlin.math.abs(dx) >= 0.35f || kotlin.math.abs(dy) >= 0.35f) {
+                            queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f, dy * 0.0032f) }
+                        }
+                        lastLookX = event.getX(index)
+                        lastLookY = event.getY(index)
+                    }
                 }
-                lastLookX = event.x
-                lastLookY = event.y
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.getPointerId(event.actionIndex) == activeLookPointerId) {
+                    activeLookPointerId = MotionEvent.INVALID_POINTER_ID
+                }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                queueEvent { NativeGameBridge.setMove(0f, 0f) }
+                activeLookPointerId = MotionEvent.INVALID_POINTER_ID
+                performClick()
             }
         }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
         return true
     }
 }
@@ -1258,14 +1298,26 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     private var centerX = 0f
     private var centerY = 0f
     private var radius = 1f
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
+    private val density = context.resources.displayMetrics.density
+    private val deadZone = 0.12f
+
+    private fun dp(value: Int): Int = (value * density).roundToInt()
 
     init {
         setWillNotDraw(false)
         alpha = 0.9f
-        layoutParams = FrameLayout.LayoutParams(230, 230, Gravity.BOTTOM or Gravity.START).apply {
-            leftMargin = 28
-            bottomMargin = 24
+        layoutParams = FrameLayout.LayoutParams(dp(230), dp(230), Gravity.BOTTOM or Gravity.START).apply {
+            leftMargin = dp(28)
+            bottomMargin = dp(24)
         }
+        isClickable = true
+    }
+
+    override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
+        centerX = width / 2f
+        centerY = height / 2f
+        radius = width * 0.38f
     }
 
     override fun onDraw(canvas: android.graphics.Canvas) {
@@ -1282,21 +1334,55 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         canvas.drawCircle(centerX, centerY, radius * 0.45f, paint)
     }
 
+    private fun emitMove(event: MotionEvent, index: Int) {
+        val dx = event.getX(index) - centerX
+        val dy = event.getY(index) - centerY
+        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+        if (distance <= radius * deadZone) {
+            onMove(0f, 0f)
+            return
+        }
+        val clampedDistance = distance.coerceAtMost(radius)
+        val normalizedDistance = ((clampedDistance / radius) - deadZone) / (1f - deadZone)
+        val directionX = dx / distance
+        val directionY = dy / distance
+        onMove(
+            (directionX * normalizedDistance).coerceIn(-1f, 1f),
+            (directionY * normalizedDistance).coerceIn(-1f, 1f)
+        )
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val dx = event.x - centerX
-        val dy = event.y - centerY
-        val length = hypot(dx.toDouble(), dy.toDouble()).toFloat().coerceAtLeast(1f)
-        val scale = (radius / length).coerceAtMost(1f)
-        when (event.action) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                onMove((dx / radius * scale).coerceIn(-1f, 1f), (dy / radius * scale).coerceIn(-1f, 1f))
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                activePointerId = event.getPointerId(event.actionIndex)
+                emitMove(event, event.actionIndex)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val index = event.findPointerIndex(activePointerId)
+                if (index >= 0) emitMove(event, index)
+                return true
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (event.getPointerId(event.actionIndex) == activePointerId) {
+                    activePointerId = MotionEvent.INVALID_POINTER_ID
+                    onMove(0f, 0f)
+                }
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                activePointerId = MotionEvent.INVALID_POINTER_ID
                 onMove(0f, 0f)
+                performClick()
                 return true
             }
         }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
         return true
     }
 }
@@ -1305,6 +1391,10 @@ private class GameRenderer : GLSurfaceView.Renderer {
     var targetFps: Int = 60
     var graphicsTier: Int = 2
     private var lastFrameNanos = 0L
+
+    fun resetFrameClock() {
+        lastFrameNanos = 0L
+    }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         NativeGameBridge.init(1, 1)

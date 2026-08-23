@@ -46,3 +46,8 @@ Use the left virtual joystick to move and right-side drag input to orbit the cam
 After this slice is stable on a reference Android device, the next milestone replaces placeholder geometry with original or licensed Unreal assets, adds authored animation graphs and material instances, moves the forest into a streamed 3D micro-region, and adds one real camp/bed interaction. Only after those checks pass should the project add additional regions, advanced hair/cloth, boss behaviors, co-op authority, cinematics, and the full 10 GiB asset-pack content set.
 
 The prototype is not presented as finished AAA graphics or a complete RPG. Its purpose is to prove the controls, game loop, data contracts, and build path before expensive production content is authored.
+
+
+## Mobile controls test plan
+
+Use [`MOBILE_CONTROL_TEST_PLAN.md`](MOBILE_CONTROL_TEST_PLAN.md) to validate joystick response, multi-touch separation, camera orbit, sprint/slide, dodge, jump, water movement, pause/resume, and frame pacing on the reference phone.

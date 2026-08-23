@@ -36,6 +36,28 @@ int main() {
     assert(controller.state == forest::controller::LocomotionState::Jump);
     assert(!controller.jump());
 
+    controller = {};
+    controller.body.position = {0.0f, -0.50f};
+    controller.body.grounded = true;
+    const forest::controller::InputFrame walkInput{1.0f, 0.0f, 0.0f, false};
+    controller.tick(walkInput, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
+    assert(controller.body.velocity.x > 0.0f);
+    assert(controller.state == forest::controller::LocomotionState::Walk);
+
+    const float staminaBeforeSprint = controller.stamina;
+    const forest::controller::InputFrame sprintInput{1.0f, 0.0f, 0.0f, true};
+    controller.tick(sprintInput, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
+    assert(controller.state == forest::controller::LocomotionState::Sprint);
+    assert(controller.stamina < staminaBeforeSprint);
+
+    const forest::physics::WaterVolume stream{
+        {{{0.0f, -0.25f}, {0.30f, 0.30f}}}, -0.05f, {0.02f, 0.0f}, 0.80f, 3.0f
+    };
+    controller.body.position = {0.0f, -0.10f};
+    controller.tick(walkInput, 1.0f / 60.0f, nullptr, 0, &stream, 1);
+    assert(controller.body.water.overlapping);
+    assert(controller.state == forest::controller::LocomotionState::Swim || controller.state == forest::controller::LocomotionState::Walk);
+
     std::cout << "combat_controller_test: PASS\n";
     return 0;
 }
