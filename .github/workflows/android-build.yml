@@ -100,7 +100,7 @@ jobs:
           grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'VIEW ART REFERENCES' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'Opening Aethelgard online as a guest' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'Connecting to Aethelgard online' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'requestGuestSignIn' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'requestProductionContent' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
           grep -q 'resourceTier.storageLabel' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
