@@ -428,6 +428,10 @@ void drawTeleportationTower(const Mat4& viewProjection) {
     }
 }
 
+void drawQuad(float x, float y, float width, float height, float r, float g, float b, float a);
+void drawTriangle(float x, float y, float width, float height, float r, float g, float b, float a);
+void drawCircle(float x, float y, float radius, float r, float g, float b, float a);
+
 void draw3DMapOverlay() {
     glDisable(GL_DEPTH_TEST);
     glUseProgram(gProgram);
