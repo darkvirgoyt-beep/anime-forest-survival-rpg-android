@@ -5,6 +5,6 @@ plugins {
 assetPack {
     packName.set("assetpack_pipeline_cache")
     dynamicDelivery {
-        deliveryType.set("fast-follow")
+        deliveryType.set("on-demand")
     }
 }

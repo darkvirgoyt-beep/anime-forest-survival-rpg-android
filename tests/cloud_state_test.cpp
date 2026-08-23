@@ -27,10 +27,11 @@ int main() {
     original.emberlingTrust = 3;
     original.emberlingBonded = true;
     original.emberlingStay = true;
+    original.discoveredSectors = 15;
 
     forest::rpg::CloudState restored{};
     assert(forest::rpg::parseCloudState(forest::rpg::serializeCloudState(original).c_str(), restored));
-    assert(restored.schemaVersion == 4);
+    assert(restored.schemaVersion == 5);
     assert(std::abs(restored.playerX - original.playerX) < 0.001f);
     assert(restored.wood == original.wood);
     assert(restored.day == original.day);
@@ -41,10 +42,12 @@ int main() {
     assert(restored.gatheringActions == 3 && restored.questStage == 3);
     assert(restored.emberKitCrafted && restored.wardenDefeated);
     assert(restored.emberlingTrust == 3 && restored.emberlingBonded && restored.emberlingStay);
+    assert(restored.discoveredSectors == 15);
 
     assert(!forest::rpg::parseCloudState("{\"schemaVersion\":2}", restored));
     assert(forest::rpg::parseCloudState("{\"schemaVersion\":2,\"playerX\":0,\"playerY\":0,\"health\":0.5,\"stamina\":0.5,\"hunger\":0.5,\"wood\":1,\"fiber\":2,\"stone\":3,\"experience\":84,\"day\":2,\"worldTime\":5,\"gatheringActions\":1,\"questStage\":1,\"emberKitCrafted\":0,\"wardenDefeated\":0}", restored));
     assert(restored.schemaVersion == 2 && restored.experience == 84);
+    assert(restored.discoveredSectors == 1);
     assert(restored.level == 0 && restored.experienceToNext == 991 && restored.totalExperience == 0);
     assert(restored.emberlingTrust == 0 && !restored.emberlingBonded && !restored.emberlingStay);
 

@@ -5,6 +5,6 @@ plugins {
 assetPack {
     packName.set("assetpack_cinematics")
     dynamicDelivery {
-        deliveryType.set("fast-follow")
+        deliveryType.set("on-demand")
     }
 }

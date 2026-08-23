@@ -47,7 +47,7 @@ class AssetPackCatalog(context: Context) {
     )
 
     companion object {
-        /** High-resource content stays outside the base APK and is downloaded independently. */
+        /** The launch slice is prepared before world entry; later sectors are on demand. */
         val productionPackNames: List<String>
             get() = ContentDownloadPlan.requiredPackNames
     }
@@ -57,7 +57,7 @@ class AssetPackCatalog(context: Context) {
     private var listener: AssetPackStateUpdateListener? = null
 
     fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH): Preflight {
-        val requiredBytes = (ContentDownloadPlan.totalMiBFor(tier) + 512).toLong() * 1024L * 1024L
+        val requiredBytes = (ContentDownloadPlan.startupMiBFor(tier) + 512).toLong() * 1024L * 1024L
         return try {
             val stats = StatFs(appContext.filesDir.absolutePath)
             val availableBytes = stats.availableBytes
@@ -104,18 +104,40 @@ class AssetPackCatalog(context: Context) {
         manager.fetch(listOf(packName))
     }
 
-    /**
-     * Starts the BGMI-style post-install download for the selected resource tier.
-     * The AAB keeps these packs outside the base install; Play handles resumable
-     * delivery, storage, and pack updates independently.
-     */
+    /** Starts only the compact launch slice; discovered sectors are requested separately. */
     fun requestProductionContent(
         tier: ContentDownloadPlan.ResourceTier,
         onProgress: (ProductionProgress) -> Unit
     ) {
-        val requestedPackNames = ContentDownloadPlan.packNamesFor(tier)
-        val targetMiB = ContentDownloadPlan.totalMiBFor(tier)
-        if (productionContentReady(tier)) {
+        // packNamesFor(tier) remains the full installed-footprint estimate; startup uses only the launch slice.
+        val requestedPackNames = ContentDownloadPlan.startupPackNamesFor(tier)
+        requestPackSet(requestedPackNames, ContentDownloadPlan.startupMiBFor(tier), onProgress)
+    }
+
+    /** Requests the immutable pack group associated with a newly discovered sector. */
+    fun requestWorldSector(
+        tier: ContentDownloadPlan.ResourceTier,
+        sector: ContentDownloadPlan.WorldSector,
+        onProgress: (ProductionProgress) -> Unit
+    ) {
+        val requestedPackNames = ContentDownloadPlan.packNamesForSector(tier, sector)
+        if (requestedPackNames.isEmpty()) {
+            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, 0L, 0L))
+            return
+        }
+        requestPackSet(requestedPackNames, ContentDownloadPlan.sectorMiBFor(tier, sector), onProgress)
+    }
+
+    /** Backward-compatible high-resource request for existing callers and tests. */
+    fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) =
+        requestProductionContent(ContentDownloadPlan.ResourceTier.HIGH, onProgress)
+
+    private fun requestPackSet(
+        requestedPackNames: List<String>,
+        targetMiB: Int,
+        onProgress: (ProductionProgress) -> Unit
+    ) {
+        if (requestedPackNames.isEmpty() || requestedPackNames.all(::isReady)) {
             onProgress(
                 ProductionProgress(
                     status = AssetPackStatus.COMPLETED,
@@ -126,7 +148,7 @@ class AssetPackCatalog(context: Context) {
             )
             return
         }
-        val preflight = checkProductionPreflight(tier)
+        val preflight = checkPreflight(targetMiB)
         if (!preflight.ready) {
             onProgress(
                 ProductionProgress(
@@ -161,16 +183,32 @@ class AssetPackCatalog(context: Context) {
                     percent = 0,
                     bytesDownloaded = 0L,
                     totalBytes = targetMiB.toLong() * 1024L * 1024L,
-                    failedPack = error.message ?: "production-content",
+                    failedPack = error.message ?: requestedPackNames.joinToString(),
                     errorCode = -1
                 )
             )
         }
     }
 
-    /** Backward-compatible high-resource request for existing callers and tests. */
-    fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) =
-        requestProductionContent(ContentDownloadPlan.ResourceTier.HIGH, onProgress)
+    private fun checkPreflight(targetMiB: Int): Preflight {
+        val requiredBytes = (targetMiB + 512).toLong() * 1024L * 1024L
+        return try {
+            val stats = StatFs(appContext.filesDir.absolutePath)
+            val availableBytes = stats.availableBytes
+            Preflight(
+                ready = availableBytes >= requiredBytes,
+                detail = if (availableBytes >= requiredBytes) {
+                    "Storage check passed: ${availableBytes / (1024L * 1024L)} MB available."
+                } else {
+                    "Not enough free storage: ${availableBytes / (1024L * 1024L)} MB available; ${(requiredBytes / (1024L * 1024L))} MB required."
+                },
+                availableBytes = availableBytes,
+                requiredBytes = requiredBytes
+            )
+        } catch (error: Exception) {
+            Preflight(false, "Storage check failed: ${error.message ?: "unable to inspect free space"}", 0L, requiredBytes)
+        }
+    }
 
     private fun emitProductionProgress(
         requestedPackNames: List<String>,
@@ -188,14 +226,9 @@ class AssetPackCatalog(context: Context) {
             states[packName]?.status == AssetPackStatus.COMPLETED || isReady(packName)
         }
         // Play reports packs independently. Until every pack total is known, use
-        // the selected tier envelope as a stable denominator so discovering
-        // another pack cannot make the visible bar move backward.
+        // the selected envelope as a stable denominator so the visible bar never moves backward.
         val allTotalsKnown = requestedPackNames.all { (states[it]?.totalBytes ?: 0L) > 0L }
-        val totalBytes = if (allTotalsKnown) {
-            reportedTotalBytes
-        } else {
-            maxOf(reportedTotalBytes, targetMiB.toLong() * 1024L * 1024L)
-        }
+        val totalBytes = if (allTotalsKnown) reportedTotalBytes else maxOf(reportedTotalBytes, targetMiB.toLong() * 1024L * 1024L)
         val percent = when {
             complete -> 100
             totalBytes > 0L -> (bytesDownloaded.toDouble() * 100.0 / totalBytes.toDouble()).toInt().coerceIn(1, 99)
@@ -220,11 +253,7 @@ class AssetPackCatalog(context: Context) {
         )
     }
 
-    /**
-     * Shows Play's consent dialog for a large fast-follow/on-demand download.
-     * A successful task result means the user accepted the dialog; the caller
-     * should call requestProductionContent again so Play resumes the request.
-     */
+    /** Shows Play's consent dialog for a large fast-follow/on-demand download. */
     fun showDownloadConfirmation(activity: Activity, onResult: (accepted: Boolean) -> Unit) {
         manager.showConfirmationDialog(activity)
             .addOnSuccessListener { result -> onResult(result == Activity.RESULT_OK) }
@@ -236,7 +265,10 @@ class AssetPackCatalog(context: Context) {
     fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)
 
     fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean =
-        ContentDownloadPlan.packNamesFor(tier).all(::isReady)
+        ContentDownloadPlan.startupPackNamesFor(tier).all(::isReady)
+
+    fun sectorContentReady(tier: ContentDownloadPlan.ResourceTier, sector: ContentDownloadPlan.WorldSector): Boolean =
+        ContentDownloadPlan.packNamesForSector(tier, sector).all(::isReady)
 
     fun assetPath(packName: String, relativePath: String): String? {
         val location = manager.getPackLocation(packName) ?: return null

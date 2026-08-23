@@ -65,6 +65,7 @@ bool gCapturedCompanionStay = false;
 int gWood = 12;
 int gFiber = 8;
 int gStone = 4;
+int gDiscoveredSectors = 1; // forest launch sector; bits 1, 2, 3 are sand, snow, dungeon
 int gCraftPulse = 0;
 int gAttackPulse = 0;
 int gDodgePulse = 0;
@@ -214,6 +215,16 @@ Biome currentBiome() {
     if (worldX < 34.0f) return Biome::Forest;
     if (worldX < 68.0f) return Biome::Sand;
     return Biome::Snow;
+}
+
+void refreshDiscoveredSectors() {
+    const float worldX = worldXFromSimulation(gPlayerX);
+    if (worldX >= 34.0f) gDiscoveredSectors |= 1 << 1;
+    if (worldX >= 68.0f) gDiscoveredSectors |= 1 << 2;
+    if (worldX >= 82.0f || gProgression.questStage == forest::rpg::QuestStage::Complete) {
+        gDiscoveredSectors |= 1 << 3;
+    }
+    gDiscoveredSectors = std::clamp(gDiscoveredSectors, 1, 15);
 }
 
 const char* biomeName() {
@@ -2093,6 +2104,7 @@ void simulatePhysicsStep() {
     }
     gPlayerX = gController.body.position.x;
     gPlayerY = gController.body.position.y;
+    refreshDiscoveredSectors();
     forest::rpg::updateEmberling(gEmberling, gPlayerX, gPlayerY, kPhysicsStep, currentWeather() == WeatherState::Thunderstorm);
     const float campDistance = std::sqrt((gPlayerX + 0.64f) * (gPlayerX + 0.64f) + (gPlayerY - 0.52f) * (gPlayerY - 0.52f));
     if (gCampBuilt && campDistance < 0.26f) {
@@ -2257,6 +2269,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gPhysicsAccumulator = 0.0;
     gTime = 0.0f;
     gDaysPlayed = 1;
+    gDiscoveredSectors = 1;
     gWidth = static_cast<float>(std::max(1, width));
     gHeight = static_cast<float>(std::max(1, height));
     gController = {};
@@ -2632,7 +2645,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY") << '|'
           << (gCapturedMobIndex >= 0 ? "CAPTURED_COMPANION" : forest::rpg::emberlingStatus(gEmberling)) << '|'
           << nearestMobStatus() << '|'
-          << (gCampBuilt ? "CAMP_BUILT" : "NO_CAMP");
+          << (gCampBuilt ? "CAMP_BUILT" : "NO_CAMP") << '|'
+          << gDiscoveredSectors;
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }
@@ -2670,6 +2684,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobje
     state.emberlingTrust = gEmberling.trust;
     state.emberlingBonded = gEmberling.bonded;
     state.emberlingStay = gEmberling.stay;
+    state.discoveredSectors = gDiscoveredSectors;
     const std::string value = forest::rpg::serializeCloudState(state);
     return env->NewStringUTF(value.c_str());
 }
@@ -2685,6 +2700,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     if (!parsed) return JNI_FALSE;
     gPlayerX = std::clamp(state.playerX, kSimulationMinX, kSimulationMaxX);
     gPlayerY = std::clamp(state.playerY, kSimulationMinY, kSimulationMaxY);
+    gDiscoveredSectors = std::clamp(state.discoveredSectors, 1, 15);
+    refreshDiscoveredSectors();
     gController.body.position = {gPlayerX, gPlayerY};
     gController.body.velocity = {0.0f, 0.0f};
     gController.body.verticalPosition = 0.0f;

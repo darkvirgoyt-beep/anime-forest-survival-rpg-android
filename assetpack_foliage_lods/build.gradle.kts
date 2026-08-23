@@ -5,6 +5,6 @@ plugins {
 assetPack {
     packName.set("assetpack_foliage_lods")
     dynamicDelivery {
-        deliveryType.set("fast-follow")
+        deliveryType.set("on-demand")
     }
 }

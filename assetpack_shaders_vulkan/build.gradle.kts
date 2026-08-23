@@ -5,6 +5,6 @@ plugins {
 assetPack {
     packName.set("assetpack_shaders_vulkan")
     dynamicDelivery {
-        deliveryType.set("fast-follow")
+        deliveryType.set("on-demand")
     }
 }

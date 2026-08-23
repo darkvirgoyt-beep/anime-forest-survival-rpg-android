@@ -178,6 +178,9 @@ class MainActivity : Activity(), SensorEventListener {
     private val characterCreation = CharacterCreationState()
     private var activeCloudWorld: CloudWorldManifest? = null
     private var cloudSaveInFlight = false
+    private val requestedProgressiveSectors = mutableSetOf<ContentDownloadPlan.WorldSector>()
+    private var progressiveContentNotice: String? = null
+    private var progressiveConfirmationInFlight = false
     private var cloudRecoveryNotice: String? = null
     private var activeCoOpRoom: CoOpRoomSnapshot? = null
     private var coOpHeartbeatInFlight = false
@@ -604,6 +607,51 @@ class MainActivity : Activity(), SensorEventListener {
             cloudRecoveryNotice = "CLOUD CONFLICT • SAVES PAUSED • REOPEN THIS WORLD TO RECOVER THE NEWER REVISION"
         }
         cloudSaveInFlight = false
+    }
+
+    private fun requestDiscoveredSectorContent(discoveredMask: Int) {
+        if (!resourcePreparationComplete || !networkOnline) return
+        val tier = selectedResourceTier ?: return
+        ContentDownloadPlan.WorldSector.values().forEach { sector ->
+            if (discoveredMask and sector.bit == 0) return@forEach
+            if (assetPacks.sectorContentReady(tier, sector)) return@forEach
+            if (!requestedProgressiveSectors.add(sector)) return@forEach
+            val label = sector.label
+            val size = ContentDownloadPlan.sectorMiBFor(tier, sector)
+            progressiveContentNotice = "EXPANSION UNLOCKED  •  $label  •  PREPARING ${size} MB"
+            assetPacks.requestWorldSector(tier, sector) { event ->
+                when {
+                    event.complete -> {
+                        progressiveContentNotice = "$label READY  •  LOCAL WORLD SIZE INCREASED"
+                    }
+                    event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
+                        progressiveContentNotice = "$label  •  CONFIRM DOWNLOAD TO CONTINUE"
+                        if (!progressiveConfirmationInFlight) {
+                            progressiveConfirmationInFlight = true
+                            assetPacks.showDownloadConfirmation(this) { accepted ->
+                                progressiveConfirmationInFlight = false
+                                requestedProgressiveSectors.remove(sector)
+                                if (accepted) requestDiscoveredSectorContent(discoveredMask) else {
+                                    progressiveContentNotice = "$label PAUSED  •  DOWNLOAD CAN RESUME LATER"
+                                }
+                            }
+                        }
+                    }
+                    event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
+                        progressiveContentNotice = "$label WAITING FOR WI-FI  •  GAMEPLAY CONTINUES"
+                    }
+                    event.failed -> {
+                        requestedProgressiveSectors.remove(sector)
+                        progressiveContentNotice = "$label DOWNLOAD PAUSED  •  RETRY WHEN ONLINE"
+                    }
+                    else -> {
+                        val downloaded = event.bytesDownloaded / (1024 * 1024)
+                        val total = event.totalBytes / (1024 * 1024)
+                        progressiveContentNotice = "$label  •  ${event.percent}%  •  ${downloaded} / ${total.coerceAtLeast(size)} MB"
+                    }
+                }
+            }
+        }
     }
 
     private fun buildOnboardingOverlay(): View {
@@ -2071,6 +2119,8 @@ class MainActivity : Activity(), SensorEventListener {
         val target = values.getOrNull(23)?.replace('_', ' ')?.ifBlank { "NO TARGET" } ?: "NO TARGET"
         val companionState = values.getOrNull(24)?.replace('_', ' ')?.ifBlank { companion } ?: companion
         val campState = values.getOrNull(25)?.replace('_', ' ')?.ifBlank { "NO CAMP" } ?: "NO CAMP"
+        val discoveredSectors = number(26)
+        requestDiscoveredSectorContent(discoveredSectors)
         stateLabel.text = "$biome  •  DAY $daysPlayed  •  $phase  •  $weather  •  $viewMode  •  TARGET $target  •  HP $health  •  STA $stamina  •  LV $level"
         stateLabel.setTextColor(
             when {
@@ -2081,7 +2131,8 @@ class MainActivity : Activity(), SensorEventListener {
             }
         )
         val recoveryNotice = cloudRecoveryNotice
-        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  WARDEN HP $warden/100  •  $locomotion  •  $companionState" else if (target != "NO TARGET") "$objective  •  TARGET $target  •  $biome  •  $weather  •  W $wood  F $fiber  S $stone  •  $companionState  •  $campState" else "$objective  •  $biome  •  $weather  •  $water  •  W $wood  F $fiber  S $stone  •  $xpLabel  •  $companionState  •  $campState"
+        val localContent = progressiveContentNotice
+        questLabel.text = recoveryNotice ?: localContent ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  WARDEN HP $warden/100  •  $locomotion  •  $companionState" else if (target != "NO TARGET") "$objective  •  TARGET $target  •  $biome  •  $weather  •  W $wood  F $fiber  S $stone  •  $companionState  •  $campState" else "$objective  •  $biome  •  $weather  •  $water  •  W $wood  F $fiber  S $stone  •  $xpLabel  •  $companionState  •  $campState"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
@@ -2499,7 +2550,7 @@ class MainActivity : Activity(), SensorEventListener {
                         status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
                         details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
                         note.text = if (event.errorCode == -2) {
-                            "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
+                            "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.startupMiBFor(resourceTier) + 512)} MB."
                         } else {
                             "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs. Production world entry requires Play Asset Delivery."
                         }

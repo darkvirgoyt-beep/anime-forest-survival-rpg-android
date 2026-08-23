@@ -3,9 +3,9 @@ package com.darvirgoyt.aethelgrad
 /**
  * Production download envelope for the real cooked 3D Aethelgard experience.
  *
- * These are physical Play Asset Delivery pack targets, not padding. The
- * online Android client requires the selected production content packs before
- * it enters the world.
+ * The launch slice is small enough to prepare before world entry. Larger region
+ * and presentation packs are requested only after the matching sector is
+ * discovered, so the installed footprint grows with exploration.
  */
 object ContentDownloadPlan {
     data class QualityEnvelope(
@@ -51,54 +51,61 @@ object ContentDownloadPlan {
         LOW(
             storageLabel = "4.2 GB",
             graphicsTierIndex = 0,
-            description = "Complete world sectors, gameplay characters, low-resolution textures, GLES shaders, terrain LODs, animation, and core effects."
+            description = "Launch forest first, then download biome sectors, low-resolution textures, GLES shaders, terrain LODs, animation, and core effects as they are discovered."
         ),
         HIGH(
             storageLabel = "6.6 GB",
             graphicsTierIndex = 4,
-            description = "Complete world sectors, high-resolution characters and photos, HD textures, dense foliage, Vulkan/GLES shaders, pipeline cache, VFX, audio, cinematics, and animation."
+            description = "Launch forest first, then stream high-resolution biomes, characters, HD textures, foliage, VFX, audio, cinematics, and animation as the world opens."
         )
+    }
+
+    enum class WorldSector(val bit: Int, val label: String) {
+        SAND(1 shl 1, "SAND FRONTIER"),
+        SNOW(1 shl 2, "SNOW FRONTIER"),
+        DUNGEON(1 shl 3, "ROOT DUNGEON")
     }
 
     data class Pack(
         val playPackName: String,
         val targetMiB: Int,
         val contents: String,
-        val requiredBeforeStart: Boolean = true
+        val requiredBeforeStart: Boolean = true,
+        val sector: WorldSector? = null
     )
 
     val packs = listOf(
         Pack("assetpack_graphics_base", 450, "compiled materials, base shaders, shared meshes, mobile render resources"),
         Pack("assetpack_forest", 350, "forest launch region, village, foliage, water, collision, navigation"),
-        Pack("assetpack_sand", 400, "sand biome terrain, settlements, rocks, foliage, weather"),
-        Pack("assetpack_snow", 400, "snow biome terrain, caves, ice materials, weather"),
         Pack("assetpack_characters", 500, "heroes, NPCs, animals, enemies, rigs, animation bindings, character photos"),
-        Pack("assetpack_audio_hd", 450, "music, ambience, combat sounds, wildlife and high-quality mixes"),
-        Pack("assetpack_cinematics", 450, "story scenes, pre-rendered sequences, camera animation data"),
-        Pack("assetpack_hd_textures", 500, "high-resolution PBR textures, virtual-texture pages, decals"),
-        Pack("assetpack_dungeons", 400, "dungeon cells, props, traps, encounter data, lighting data"),
-        Pack("assetpack_vfx", 300, "Niagara systems, GPU particles, weather effects, impact effects"),
-        Pack("assetpack_voice", 250, "dialogue, localization voice banks, subtitles metadata"),
-        Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources"),
         Pack("assetpack_shaders_gles", 250, "compiled OpenGL ES shader libraries and pipeline state resources"),
-        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data"),
         Pack("assetpack_world_streaming", 400, "world partition descriptors, streamed sublevels, nav data for all world sectors"),
-        Pack("assetpack_foliage_lods", 400, "foliage clusters, impostors, Nanite-disabled mobile LODs"),
         Pack("assetpack_terrain_lod", 425, "terrain heightfields, landscape LODs, virtual shadow maps"),
-        Pack("assetpack_animation_sets", 425, "locomotion, combat, traversal, emotes, montage sections")
+        Pack("assetpack_animation_sets", 425, "locomotion, combat, traversal, emotes, montage sections"),
+        Pack("assetpack_sand", 400, "sand biome terrain, settlements, rocks, foliage, weather", requiredBeforeStart = false, sector = WorldSector.SAND),
+        Pack("assetpack_snow", 400, "snow biome terrain, caves, ice materials, weather", requiredBeforeStart = false, sector = WorldSector.SNOW),
+        Pack("assetpack_dungeons", 400, "dungeon cells, props, traps, encounter data, lighting data", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_hd_textures", 500, "high-resolution PBR textures, virtual-texture pages, decals", requiredBeforeStart = false, sector = WorldSector.SAND),
+        Pack("assetpack_foliage_lods", 400, "foliage clusters, impostors, Nanite-disabled mobile LODs", requiredBeforeStart = false, sector = WorldSector.SAND),
+        Pack("assetpack_audio_hd", 450, "music, ambience, combat sounds, wildlife and high-quality mixes", requiredBeforeStart = false, sector = WorldSector.SNOW),
+        Pack("assetpack_vfx", 300, "Niagara systems, weather effects, impact effects", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_cinematics", 450, "story scenes, pre-rendered sequences, camera animation data", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_voice", 250, "dialogue, localization voice banks, subtitles metadata", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", requiredBeforeStart = false, sector = WorldSector.DUNGEON)
     )
 
     private val lowResourcePackNames = setOf(
         "assetpack_graphics_base",
         "assetpack_forest",
-        "assetpack_sand",
-        "assetpack_snow",
         "assetpack_characters",
-        "assetpack_dungeons",
         "assetpack_shaders_gles",
         "assetpack_world_streaming",
         "assetpack_terrain_lod",
-        "assetpack_animation_sets"
+        "assetpack_animation_sets",
+        "assetpack_sand",
+        "assetpack_snow",
+        "assetpack_dungeons"
     )
 
     fun packsFor(tier: ResourceTier): List<Pack> = when (tier) {
@@ -106,11 +113,24 @@ object ContentDownloadPlan {
         ResourceTier.HIGH -> packs
     }
 
-    fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier)
-        .filter { it.requiredBeforeStart }
-        .map { it.playPackName }
+    /** All packs in a tier, used for the full installed-footprint estimate. */
+    fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
+
+    /** Only the compact launch slice required before the first playable world entry. */
+    fun startupPacksFor(tier: ResourceTier): List<Pack> = packsFor(tier).filter { it.requiredBeforeStart }
+
+    fun startupPackNamesFor(tier: ResourceTier): List<String> = startupPacksFor(tier).map { it.playPackName }
+
+    fun packsForSector(tier: ResourceTier, sector: WorldSector): List<Pack> = packsFor(tier)
+        .filter { it.sector == sector }
+
+    fun packNamesForSector(tier: ResourceTier, sector: WorldSector): List<String> = packsForSector(tier, sector).map { it.playPackName }
 
     fun totalMiBFor(tier: ResourceTier): Int = packsFor(tier).sumOf { it.targetMiB }
+
+    fun startupMiBFor(tier: ResourceTier): Int = startupPacksFor(tier).sumOf { it.targetMiB }
+
+    fun sectorMiBFor(tier: ResourceTier, sector: WorldSector): Int = packsForSector(tier, sector).sumOf { it.targetMiB }
 
     fun totalGiBLabelFor(tier: ResourceTier): String = "%.1f GB".format(totalMiBFor(tier) / 1024.0)
 
@@ -120,5 +140,5 @@ object ContentDownloadPlan {
     val minimumFreeSpaceMiB: Int = requiredMiB + 512
     val totalGiBLabel: String = "%.1f GB".format(requiredMiB / 1024.0)
     val summary: String = packs.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }
-    val requiredPackNames: List<String> = packNamesFor(ResourceTier.HIGH)
+    val requiredPackNames: List<String> = startupPackNamesFor(ResourceTier.HIGH)
 }

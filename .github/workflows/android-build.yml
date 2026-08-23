@@ -72,9 +72,10 @@ jobs:
           test -f tools/test_production_foundation_contract.py
           test -f tools/test_online_only_contract.py
           test -f tools/test_persistent_multiplayer_contract.py
+          test -f tools/test_progressive_content_contract.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
@@ -118,6 +119,7 @@ jobs:
           python3 tools/test_production_foundation_contract.py
           python3 tools/test_online_only_contract.py
           python3 tools/test_persistent_multiplayer_contract.py
+          python3 tools/test_progressive_content_contract.py
 
   native-tests:
     runs-on: ubuntu-latest
