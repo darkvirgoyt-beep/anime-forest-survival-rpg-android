@@ -126,6 +126,8 @@ jobs:
           grep -q 'ProgressionComponent' Unreal/Source/ForestSlice/Private/ForestSliceCharacter.cpp
           grep -q 'leftZoneFraction' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'drawPrototypeTerrainChunks' app/src/main/cpp/forest_game.cpp
+          grep -q 'interactEmberling' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'Emberling Companion Milestone' docs/EMBERLING_COMPANION_MILESTONE.md
           grep -q 'GroundInstances' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
           grep -q 'GetChunkPresentationAlpha' Unreal/Source/ForestSlice/Public/ForestSliceProceduralForest.h
           grep -q 'InitializeMapLayout' Unreal/Source/ForestSlice/Private/ForestSliceProceduralForest.cpp
@@ -168,6 +170,11 @@ jobs:
             tests/cloud_state_test.cpp \
             -o cloud_state_test
           ./cloud_state_test
+          g++ -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/emberling_companion_test.cpp \
+            -o emberling_companion_test
+          ./emberling_companion_test
 
   online-service-tests:
     runs-on: ubuntu-latest

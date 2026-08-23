@@ -13,6 +13,7 @@
 #include "combat/combat_system.h"
 #include "rpg/progression.h"
 #include "rpg/cloud_state.h"
+#include "rpg/emberling_companion.h"
 
 namespace {
 constexpr float PI = 3.14159265359f;
@@ -53,6 +54,7 @@ constexpr float kPhysicsStep = 1.0f / 60.0f;
 forest::controller::ThirdPersonController gController{};
 forest::combat::CombatSystem gCombat{};
 forest::rpg::Progression gProgression{};
+forest::rpg::EmberlingState gEmberling{};
 bool gHitRegistered = false;
 constexpr float kForestWardenMaxHealth = 100.0f;
 constexpr int kPlayerMaxHealthHp = 100;
@@ -461,6 +463,19 @@ void draw3DPeer(const Mat4& viewProjection, const CoOpPeer& peer, int index) {
     }
 }
 
+void draw3DEmberling(const Mat4& viewProjection) {
+    const float px = gEmberling.x * 4.3f;
+    const float pz = -gEmberling.y * 4.0f;
+    const float bob = 0.05f + 0.028f * std::sin(gTime * 5.1f);
+    const float glow = 0.34f + 0.20f * gEmberling.pulse + (gEmberling.bonded ? 0.16f : 0.0f);
+    draw3DBox(viewProjection, px, 0.08f, pz, 0.58f, 0.035f, 0.58f, 1.0f, 0.46f, 0.12f, glow * 0.34f);
+    draw3DBox(viewProjection, px, 0.30f + bob, pz, 0.42f, 0.32f, 0.56f, 0.18f, 0.30f, 0.34f);
+    draw3DBox(viewProjection, px, 0.54f + bob, pz + 0.06f, 0.30f, 0.25f, 0.30f, 0.58f, 0.84f, 0.90f);
+    draw3DBox(viewProjection, px - 0.16f, 0.52f + bob, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
+    draw3DBox(viewProjection, px + 0.16f, 0.52f + bob, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
+    draw3DBox(viewProjection, px, 0.73f + bob, pz + 0.07f, 0.06f, 0.18f, 0.06f, 1.0f, 0.68f, 0.20f, glow);
+}
+
 void draw3DWeather(const Mat4& viewProjection) {
     const float intensity = rainIntensity();
     if (intensity <= 0.0f) return;
@@ -599,6 +614,7 @@ void draw3DWorld() {
         draw3DBox(viewProjection, -1.4f, 1.18f, 1.6f, 0.88f, 0.18f, 0.88f, 0.58f, 0.28f, 0.77f);
     }
     for (const CoOpPeer& peer : gCoOpPeers) draw3DPeer(viewProjection, peer, static_cast<int>(&peer - gCoOpPeers));
+    draw3DEmberling(viewProjection);
     draw3DPlayer(viewProjection, firstPerson);
     draw3DWeather(viewProjection);
     glDisable(GL_CULL_FACE);
@@ -1046,6 +1062,7 @@ void simulatePhysicsStep() {
     }
     gPlayerX = gController.body.position.x;
     gPlayerY = gController.body.position.y;
+    forest::rpg::updateEmberling(gEmberling, gPlayerX, gPlayerY, kPhysicsStep, currentWeather() == WeatherState::Thunderstorm);
     gHunger = std::max(0.0f, gHunger - kPhysicsStep * 0.001f);
     if (gHunger < 0.20f) gController.health = std::max(0.0f, gController.health - kPhysicsStep * 0.004f);
     gLevelPulse = std::max(0, gLevelPulse - 1);
@@ -1211,6 +1228,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gTowerRevision = 0;
     for (CoOpPeer& peer : gCoOpPeers) peer = {};
     gProgression = {};
+    gEmberling = {};
     gWood = 12;
     gFiber = 8;
     gStone = 4;
@@ -1428,6 +1446,18 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_craft(JNIEnv*, jobject) {
     }
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_interactEmberling(JNIEnv*, jobject) {
+    const forest::rpg::EmberlingInteraction outcome = forest::rpg::interactWithEmberling(
+        gEmberling, gProgression.emberKitCrafted, gFiber, gPlayerX, gPlayerY);
+    if (outcome == forest::rpg::EmberlingInteraction::Bonded) {
+        awardExperience(30);
+        gQuestPulse = 150;
+    } else if (outcome == forest::rpg::EmberlingInteraction::BondAdvanced || outcome == forest::rpg::EmberlingInteraction::CommandChanged) {
+        gQuestPulse = 90;
+    }
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject) {
     std::ostringstream state;
@@ -1452,7 +1482,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << weatherName() << '|'
           << (gViewMode == ViewMode::FirstPerson ? "FIRST_PERSON" : "THIRD_PERSON") << '|'
           << (gWorldMapVisible ? "MAP_ON" : "MAP_OFF") << '|'
-          << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY");
+          << (gTowerCooldown > 0.0f ? "TOWER_COOLDOWN" : "TOWER_READY") << '|'
+          << forest::rpg::emberlingStatus(gEmberling);
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }
@@ -1487,6 +1518,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobje
     state.questStage = static_cast<int>(gProgression.questStage);
     state.emberKitCrafted = gProgression.emberKitCrafted;
     state.wardenDefeated = gProgression.wardenDefeated;
+    state.emberlingTrust = gEmberling.trust;
+    state.emberlingBonded = gEmberling.bonded;
+    state.emberlingStay = gEmberling.stay;
     const std::string value = forest::rpg::serializeCloudState(state);
     return env->NewStringUTF(value.c_str());
 }
@@ -1518,6 +1552,10 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobj
     gProgression.questStage = static_cast<forest::rpg::QuestStage>(std::clamp(state.questStage, 0, 3));
     gProgression.emberKitCrafted = state.emberKitCrafted;
     gProgression.wardenDefeated = state.wardenDefeated;
+    gEmberling.trust = state.emberlingTrust;
+    gEmberling.bonded = state.emberlingBonded;
+    gEmberling.stay = state.emberlingStay;
+    gEmberling.pulse = 0.0f;
     gEnemyHealth = gProgression.wardenDefeated ? 0.0f : kForestWardenMaxHealth;
     gDaysPlayed = state.day;
     gTime = state.worldTime;

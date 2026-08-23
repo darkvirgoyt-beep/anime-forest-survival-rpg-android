@@ -74,6 +74,7 @@ object NativeGameBridge {
     external fun slide()
     external fun gather()
     external fun craft()
+    external fun interactEmberling()
     external fun getHudState(): String
     external fun setGraphicsQuality(level: Int)
     external fun getCloudState(): String
@@ -1140,7 +1141,10 @@ class MainActivity : Activity(), SensorEventListener {
         val dodge = actionButton("DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
         val gather = actionButton("GATHER") { submitAuthoritativeInventory("gather") }
         val craft = actionButton("CRAFT") { submitAuthoritativeInventory("craft") }
-        val settings = actionButton("GRAPHICS / FPS") { showGraphicsSettings() }
+        val emberling = actionButton("EMBERLING") {
+            audio.playEffect("ui")
+            gameView.queueEvent { NativeGameBridge.interactEmberling() }
+        }
         fun controlRow(first: View, second: View): LinearLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -1151,7 +1155,7 @@ class MainActivity : Activity(), SensorEventListener {
         actions.addView(controlRow(sprintSlide, attack), rowParams())
         actions.addView(controlRow(heavy, jump), rowParams())
         actions.addView(controlRow(dodge, gather), rowParams())
-        actions.addView(controlRow(craft, settings), LinearLayout.LayoutParams(-1, dp(50)))
+        actions.addView(controlRow(craft, emberling), LinearLayout.LayoutParams(-1, dp(50)))
         overlay.addView(actions, FrameLayout.LayoutParams(dp(360), -2, Gravity.BOTTOM or Gravity.END).apply {
             rightMargin = dp(16)
             bottomMargin = dp(16)
@@ -1186,7 +1190,8 @@ class MainActivity : Activity(), SensorEventListener {
         val viewMode = values.getOrNull(19)?.replace('_', ' ')?.ifBlank { "THIRD PERSON" } ?: "THIRD PERSON"
         val mapState = values.getOrNull(20)?.ifBlank { "MAP OFF" } ?: "MAP OFF"
         val towerState = values.getOrNull(21)?.replace('_', ' ')?.ifBlank { "TOWER READY" } ?: "TOWER READY"
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  HP $health/100  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level/100  |  $xpLabel  |  W $wood  F $fiber  S $stone"
+        val emberling = values.getOrNull(22)?.replace('_', ' ')?.ifBlank { "EMBERLING WILD" } ?: "EMBERLING WILD"
+        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  $emberling  |  HP $health/100  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level/100  |  $xpLabel  |  W $wood  F $fiber  S $stone"
         stateLabel.setTextColor(
             when {
                 levelPulse -> Color.rgb(255, 236, 157)
