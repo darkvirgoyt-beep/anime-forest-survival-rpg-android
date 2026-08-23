@@ -96,6 +96,11 @@ jobs:
           grep -q 'LocomotionState::Sprint' app/src/main/cpp/forest_game.cpp
           grep -q 'gAttackPulse > 0' app/src/main/cpp/forest_game.cpp
           test -f docs/3D_ANIMATION_IMPLEMENTATION.md
+          test -f app/src/main/java/com/darvirgoyt/aethelgrad/StandaloneExpansionFile.kt
+          grep -q 'automaticExpansion' app/src/main/assets/asset_manifest.json
+          grep -q 'deliveryType.set("fast-follow")' assetpack_forest/build.gradle.kts
+          grep -q 'beginAutomaticContentPreparation' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          grep -q 'showDownloadConfirmation' app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt
           test -f app/src/main/cpp/mobs/mob_catalog.h
           test -f assetpack_core/build.gradle.kts
           test -f assetpack_forest/build.gradle.kts

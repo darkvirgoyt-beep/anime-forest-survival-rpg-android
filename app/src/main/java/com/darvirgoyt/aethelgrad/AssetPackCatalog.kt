@@ -1,5 +1,6 @@
 package com.darvirgoyt.aethelgrad
 
+import android.app.Activity
 import android.content.Context
 import android.os.StatFs
 import com.google.android.play.core.assetpacks.AssetPackManager
@@ -217,6 +218,17 @@ class AssetPackCatalog(context: Context) {
                 errorCode = failed?.errorCode ?: 0
             )
         )
+    }
+
+    /**
+     * Shows Play's consent dialog for a large fast-follow/on-demand download.
+     * A successful task result means the user accepted the dialog; the caller
+     * should call requestProductionContent again so Play resumes the request.
+     */
+    fun showDownloadConfirmation(activity: Activity, onResult: (accepted: Boolean) -> Unit) {
+        manager.showConfirmationDialog(activity)
+            .addOnSuccessListener { result -> onResult(result == Activity.RESULT_OK) }
+            .addOnFailureListener { onResult(false) }
     }
 
     fun isReady(packName: String): Boolean = manager.getPackLocation(packName) != null

@@ -5,6 +5,6 @@ plugins {
 assetPack {
     packName.set("assetpack_graphics_base")
     dynamicDelivery {
-        deliveryType.set("on-demand")
+        deliveryType.set("fast-follow")
     }
 }

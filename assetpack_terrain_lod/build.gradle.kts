@@ -5,6 +5,6 @@ plugins {
 assetPack {
     packName.set("assetpack_terrain_lod")
     dynamicDelivery {
-        deliveryType.set("on-demand")
+        deliveryType.set("fast-follow")
     }
 }

@@ -160,6 +160,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var resourcePreparationComplete = false
     private var resourceTierChooserVisible = false
     private var pendingWorldEntry: (() -> Unit)? = null
+    private lateinit var standaloneExpansionFile: StandaloneExpansionFile
     private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
     private lateinit var characterNameInput: EditText
@@ -284,6 +285,7 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this) { markWorldLoadingTaskReady("renderer") }
         assetPacks = AssetPackCatalog(this)
+        standaloneExpansionFile = StandaloneExpansionFile(this)
         gameView.applyTargetFps(selectedTargetFps)
         gameView.applyGraphicsTier(selectedGraphicsTier)
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
@@ -344,29 +346,34 @@ class MainActivity : Activity(), SensorEventListener {
             }
             return
         }
-        if (selectedResourceTier == null) {
-            if (!resourceTierChooserVisible) {
-                resourceTierChooserVisible = true
-                showResourceTierChooser { chosenTier ->
-                    resourceTierChooserVisible = false
-                    applyResourceTier(chosenTier)
-                    showAssetPatchOverlay()
-                }
-            }
-        } else if (!resourcePreparationComplete) {
-            if (assetPacks.productionContentReady(selectedResourceTier!!)) {
-                markProductionContentReady()
-                continuePendingWorldEntry()
-            } else {
-                showAssetPatchOverlay()
-            }
-        }
+        beginAutomaticContentPreparation()
         when (accountSession.snapshot.state) {
             SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> requestOnlineGuestSession()
             SessionState.AUTHENTICATED -> {
                 if (!authenticationTransitionStarted) applyAccountSnapshot(accountSession.snapshot)
             }
             else -> Unit
+        }
+    }
+
+    private fun beginAutomaticContentPreparation() {
+        if (resourcePreparationComplete) return
+        if (selectedResourceTier == null) {
+            val highPreflight = assetPacks.checkProductionPreflight(ContentDownloadPlan.ResourceTier.HIGH)
+            val automaticTier = if (highPreflight.ready) {
+                ContentDownloadPlan.ResourceTier.HIGH
+            } else {
+                ContentDownloadPlan.ResourceTier.LOW
+            }
+            applyResourceTier(automaticTier)
+        }
+        val tier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.LOW
+        val legacyObbReady = standaloneExpansionFile.inspect(BuildConfig.VERSION_CODE).ready
+        if (legacyObbReady || assetPacks.productionContentReady(tier)) {
+            markProductionContentReady()
+            continuePendingWorldEntry()
+        } else {
+            showAssetPatchOverlay()
         }
     }
 
@@ -2399,7 +2406,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The APK is only the bootstrap. Download the selected ${resourceTier.storageLabel} package of compiled graphics, world sectors, shaders, VFX, audio, and gameplay resources. Gameplay stays locked until this preparation finishes."
+            text = "The APK starts the expansion automatically. Play Asset Delivery resumes the selected ${resourceTier.storageLabel} package after restart. For direct APK testing, place the matching OBB in Android/obb/${packageName} or install the signed Play AAB."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2448,6 +2455,7 @@ class MainActivity : Activity(), SensorEventListener {
             retry.visibility = View.GONE
             progress.progress = 0
             var failureShown = false
+            var confirmationInFlight = false
             assetPacks.requestProductionContent(resourceTier) { event ->
                 if (event.failed) {
                     if (!failureShown) {
@@ -2472,15 +2480,22 @@ class MainActivity : Activity(), SensorEventListener {
                             status.text = "${envelope.id.uppercase()} CONTENT READY"
                             details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
-                        event.status == AssetPackStatus.WAITING_FOR_WIFI -> {
-                            status.text = "WAITING FOR WI-FI  •  GAME LOCKED"
-                            details.text = "The ${resourceTier.storageLabel} download will resume on Wi-Fi. Gameplay remains locked until every required pack is ready."
+                        event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
+                            status.text = "DOWNLOAD READY TO RESUME  •  GAME LOCKED"
+                            details.text = "Allow the ${resourceTier.storageLabel} Play download to continue over mobile data, or connect to Wi-Fi. Gameplay remains locked until every required pack is ready."
                             retry.visibility = View.VISIBLE
-                        }
-                        event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
-                            status.text = "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED"
-                            details.text = "Confirm the ${resourceTier.storageLabel} Play download, then press retry to continue preparation."
-                            retry.visibility = View.VISIBLE
+                            if (!confirmationInFlight) {
+                                confirmationInFlight = true
+                                assetPacks.showDownloadConfirmation(this) { accepted ->
+                                    confirmationInFlight = false
+                                    if (accepted) {
+                                        retry.visibility = View.GONE
+                                        startPreparation()
+                                    } else {
+                                        details.text = "Download paused. Press resume when you are ready, or connect to Wi-Fi."
+                                    }
+                                }
+                            }
                         }
                         event.status == AssetPackStatus.CANCELED -> {
                             status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
@@ -2497,7 +2512,10 @@ class MainActivity : Activity(), SensorEventListener {
                 }
             }
         }
-        retry.setOnClickListener { startPreparation() }
+        retry.setOnClickListener {
+            retry.visibility = View.GONE
+            startPreparation()
+        }
         startPreparation()
     }
 
