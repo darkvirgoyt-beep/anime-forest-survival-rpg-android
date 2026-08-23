@@ -14,6 +14,10 @@ android {
     compileSdk = 35
     ndkVersion = "28.0.12433566"
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.darvirgoyt.aethelgrad"
         minSdk = 26
