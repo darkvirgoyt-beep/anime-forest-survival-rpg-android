@@ -1357,36 +1357,66 @@ void draw3DMapOverlay() {
     glEnable(GL_DEPTH_TEST);
 }
 
-float terrainHeight(int chunkX, int chunkZ) {
-    const float x = static_cast<float>(chunkX);
-    const float z = static_cast<float>(chunkZ);
-    return 0.018f * std::sin(x * 1.7f + z * 0.8f) + 0.012f * std::cos(z * 1.2f - x * 0.4f);
+float terrainHeightAt(float worldX, float worldZ) {
+    // A compact, deterministic height field gives the procedural Android slice
+    // the same designer-readable composition used for large-world blockouts:
+    // raised biome landmarks, a protected central traversal corridor, and a
+    // shallow stream valley.  It keeps the gameplay surface close to y = 0 so
+    // the existing collision controller remains stable on mobile.
+    const auto falloff = [](float x, float z, float cx, float cz, float spread) {
+        const float dx = x - cx;
+        const float dz = z - cz;
+        return std::exp(-(dx * dx + dz * dz) * spread);
+    };
+    const float forestRidge = 0.115f * falloff(worldX, worldZ, -4.6f, 1.8f, 0.10f);
+    const float amberPlateau = 0.090f * falloff(worldX, worldZ, 3.8f, -2.2f, 0.13f);
+    const float frostSpine = 0.135f * falloff(worldX, worldZ, 5.5f, 3.4f, 0.09f);
+    const float riverValley = 0.082f * std::exp(-std::pow((worldX - 0.42f) * 1.25f, 2.0f));
+    const float roadFlatten = 0.030f * std::exp(-std::pow((worldZ - 0.85f) * 1.05f, 2.0f));
+    const float rolling = 0.016f * std::sin(worldX * 0.82f + worldZ * 0.34f)
+        + 0.010f * std::cos(worldZ * 0.71f - worldX * 0.26f);
+    return std::clamp(forestRidge + amberPlateau + frostSpine - riverValley - roadFlatten + rolling,
+                      -0.065f, 0.155f);
 }
 
 void drawTerrainChunks(const Mat4& viewProjection, float daylight) {
-    constexpr int chunkRadius = 2;
     constexpr float chunkSize = 3.6f;
+    const int quality = effectiveGraphicsQuality();
+    const int chunkRadius = quality >= 3 ? 3 : 2;
     for (int chunkZ = -chunkRadius; chunkZ <= chunkRadius; ++chunkZ) {
         for (int chunkX = -chunkRadius; chunkX <= chunkRadius; ++chunkX) {
-            const float worldX = static_cast<float>(chunkX) * chunkSize;
-            const float worldZ = static_cast<float>(chunkZ) * chunkSize;
-            const float terrainY = terrainHeight(chunkX, chunkZ);
-            const bool riverBand = chunkX == 1;
-            const bool roadBand = chunkZ == 0 && chunkX != 1;
-            const float topR = riverBand ? 0.08f : roadBand ? 0.33f : 0.16f;
-            const float topG = riverBand ? 0.36f : roadBand ? 0.19f : 0.29f;
-            const float topB = riverBand ? 0.43f : roadBand ? 0.08f : 0.18f;
-            const float shimmer = 0.018f * std::sin(gTime * 1.6f + static_cast<float>(chunkX * 3 + chunkZ));
-            // Solid terrain body plus a separate thin topsoil surface makes the
-            // playable ground and its upper face explicit in the GLES slice.
-            draw3DBox(viewProjection, worldX, terrainY - 0.10f, worldZ,
-                      chunkSize - 0.06f, 0.20f, chunkSize - 0.06f,
-                      0.06f * daylight, 0.15f * daylight, 0.12f * daylight);
-            draw3DBox(viewProjection, worldX, terrainY + 0.012f + shimmer, worldZ,
-                      chunkSize - 0.10f, 0.028f, chunkSize - 0.10f,
-                      std::min(1.0f, topR * daylight + 0.018f),
-                      std::min(1.0f, topG * daylight + 0.018f),
-                      std::min(1.0f, topB * daylight + 0.018f));
+            const bool nearTraversal = std::abs(chunkX) <= 1 && std::abs(chunkZ) <= 1;
+            const int subdivisions = nearTraversal && quality >= 2 ? 2 : 1;
+            const float tileSize = chunkSize / static_cast<float>(subdivisions);
+            for (int localZ = 0; localZ < subdivisions; ++localZ) {
+                for (int localX = 0; localX < subdivisions; ++localX) {
+                    const float worldX = static_cast<float>(chunkX) * chunkSize
+                        + (static_cast<float>(localX) + 0.5f) * tileSize - chunkSize * 0.5f;
+                    const float worldZ = static_cast<float>(chunkZ) * chunkSize
+                        + (static_cast<float>(localZ) + 0.5f) * tileSize - chunkSize * 0.5f;
+                    const float terrainY = terrainHeightAt(worldX, worldZ);
+                    const bool riverBand = std::abs(worldX - 0.42f) < 0.66f;
+                    const bool roadBand = std::abs(worldZ - 0.85f) < 0.54f && !riverBand;
+                    const bool highland = terrainY > 0.085f && !roadBand;
+                    const float topR = riverBand ? 0.08f : roadBand ? 0.33f : highland ? 0.30f : 0.16f;
+                    const float topG = riverBand ? 0.36f : roadBand ? 0.19f : highland ? 0.34f : 0.29f;
+                    const float topB = riverBand ? 0.43f : roadBand ? 0.08f : highland ? 0.32f : 0.18f;
+                    const float shimmer = riverBand
+                        ? 0.012f * std::sin(gTime * 1.6f + worldZ * 0.55f)
+                        : 0.004f * std::sin(gTime * 0.7f + worldX + worldZ);
+                    // Near terrain receives four low-cost height samples while far
+                    // terrain stays coarse. This is the mobile LOD version of the
+                    // height-map blockout/smoothing workflow from the reference.
+                    draw3DBox(viewProjection, worldX, terrainY - 0.10f, worldZ,
+                              tileSize - 0.045f, 0.20f, tileSize - 0.045f,
+                              0.06f * daylight, 0.15f * daylight, 0.12f * daylight);
+                    draw3DBox(viewProjection, worldX, terrainY + 0.012f + shimmer, worldZ,
+                              tileSize - 0.080f, 0.028f, tileSize - 0.080f,
+                              std::min(1.0f, topR * daylight + 0.018f),
+                              std::min(1.0f, topG * daylight + 0.018f),
+                              std::min(1.0f, topB * daylight + 0.018f));
+                }
+            }
         }
     }
 }
