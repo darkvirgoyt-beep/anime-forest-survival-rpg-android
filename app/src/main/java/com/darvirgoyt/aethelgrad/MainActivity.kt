@@ -2502,7 +2502,7 @@ class MainActivity : Activity(), SensorEventListener {
                         }
                         event.status == AssetPackStatus.CANCELED -> {
                             status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
-                            details.text = "Press retry to download the compiled graphics, shaders, world sectors, and gameplay resources."
+                            details.text = "Press retry to download the compiled graphics, world sectors, shaders, and gameplay resources."
                             retry.visibility = View.VISIBLE
                         }
                         else -> {
