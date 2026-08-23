@@ -903,28 +903,82 @@ void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
         draw3DBox(viewProjection, 0.36f, -0.25f + jumpHeight, -0.36f, 0.16f, 0.06f, 0.10f, 0.92f, 0.62f, 0.22f, 0.96f);
         return;
     }
+
     const float px = gPlayerX * 4.3f;
     const float pz = -gPlayerY * 4.0f;
     const float speed = std::sqrt(gController.body.velocity.x * gController.body.velocity.x +
                                   gController.body.velocity.y * gController.body.velocity.y);
-    const float bob = gController.body.grounded && speed > 0.05f ? std::sin(gTime * 14.0f) * 0.035f : 0.0f;
+    const bool moving = speed > 0.05f;
+    const bool sprinting = gController.state == forest::controller::LocomotionState::Sprint;
+    const bool sliding = gController.state == forest::controller::LocomotionState::Slide;
+    const bool dodging = gController.state == forest::controller::LocomotionState::Dodge;
+    const float rate = sprinting ? 15.0f : 10.5f;
+    const float phase = moving ? gTime * rate : 0.0f;
+    const float stride = moving ? std::sin(phase) : 0.0f;
+    const float counterStride = -stride;
+    const float breathe = std::sin(gTime * 2.2f) * 0.018f;
+    const float bob = gController.body.grounded && moving ? std::abs(std::sin(phase)) * 0.035f : 0.0f;
+    const float dodgeBlend = dodging ? std::clamp(static_cast<float>(gDodgePulse) / 8.0f, 0.0f, 1.0f) : 0.0f;
+    const float dodgeLean = dodgeBlend * 0.14f;
+    const float attackDuration = gCombat.isHeavyAttack() ? 16.0f : 10.0f;
+    const float attackProgress = gAttackPulse > 0
+        ? std::clamp(1.0f - static_cast<float>(gAttackPulse) / attackDuration, 0.0f, 1.0f)
+        : 0.0f;
+    const float attackArc = std::sin(attackProgress * PI);
     const float y = jumpHeight + bob;
+    const float baseY = sliding ? 0.27f : (dodging ? 0.43f : 0.0f);
+    const float bodyScale = sliding ? 0.84f : 1.0f;
 
-    // A soft contact shadow grounds the avatar while the independent vertical
-    // offset makes the jump readable from the third-person camera.
-    draw3DBox(viewProjection, px, 0.026f, pz, 0.58f, 0.025f, 0.38f, 0.02f, 0.03f, 0.04f, 0.52f);
-    if (gPlayerTexture != 0) {
-        drawTextured3DPlayer(viewProjection, px, y, pz);
-        return;
+    // Soft contact shadow plus a readable, fully 3D low-poly hero blockout.
+    draw3DBox(viewProjection, px, 0.026f, pz, 0.62f, 0.025f, 0.42f, 0.02f, 0.03f, 0.04f, 0.52f);
+
+    const float leftLegX = px - 0.105f + stride * 0.055f;
+    const float rightLegX = px + 0.105f + counterStride * 0.055f;
+    const float legLift = moving ? std::max(0.0f, stride) * 0.045f : 0.0f;
+    draw3DCylinder(viewProjection, leftLegX, 0.25f * bodyScale + baseY + y + legLift, pz + stride * 0.045f,
+                   0.072f, 0.50f * bodyScale, 0.08f, 0.04f, 0.14f);
+    draw3DCylinder(viewProjection, rightLegX, 0.25f * bodyScale + baseY + y,
+                   pz + counterStride * 0.045f, 0.072f, 0.50f * bodyScale, 0.10f, 0.05f, 0.17f);
+    draw3DBox(viewProjection, leftLegX, 0.045f + baseY + y + legLift, pz + stride * 0.09f,
+              0.18f, 0.09f, 0.30f, 0.15f, 0.08f, 0.07f);
+    draw3DBox(viewProjection, rightLegX, 0.045f + baseY + y, pz + counterStride * 0.09f,
+              0.18f, 0.09f, 0.30f, 0.15f, 0.08f, 0.07f);
+
+    const float torsoY = 0.72f * bodyScale + baseY + y + breathe;
+    draw3DBox(viewProjection, px, torsoY, pz, 0.46f, 0.70f * bodyScale, 0.30f,
+              0.05f, 0.22f, 0.25f);
+    draw3DBox(viewProjection, px, torsoY + 0.02f, pz - 0.17f, 0.32f, 0.56f * bodyScale, 0.055f,
+              0.86f, 0.82f, 0.70f);
+    draw3DBox(viewProjection, px, torsoY + 0.25f, pz - 0.19f, 0.38f, 0.08f, 0.06f,
+              0.14f, 0.36f, 0.34f);
+
+    const float armSwing = moving ? stride * 0.11f : 0.0f;
+    const float rightAttack = attackArc * (gCombat.isHeavyAttack() ? 0.28f : 0.18f);
+    draw3DBox(viewProjection, px - 0.29f + armSwing, 0.77f + baseY + y, pz + 0.01f,
+              0.105f, 0.56f * bodyScale, 0.12f, 0.48f, 0.12f, 0.30f);
+    draw3DBox(viewProjection, px + 0.29f + rightAttack - armSwing, 0.77f + baseY + y - rightAttack * 0.32f,
+              pz - rightAttack - dodgeLean, 0.105f, 0.56f * bodyScale, 0.12f, 0.48f, 0.12f, 0.30f);
+
+    const float headY = 1.24f * bodyScale + baseY + y + breathe;
+    draw3DSphere(viewProjection, px, headY, pz, 0.23f, 0.73f, 0.37f, 0.26f);
+    draw3DSphere(viewProjection, px, headY + 0.16f, pz - 0.015f, 0.25f, 0.06f, 0.03f, 0.12f);
+    draw3DBox(viewProjection, px - 0.18f, headY + 0.07f, pz - 0.17f, 0.10f, 0.18f, 0.08f,
+              0.05f, 0.18f, 0.18f);
+    draw3DBox(viewProjection, px + 0.18f, headY + 0.07f, pz - 0.17f, 0.10f, 0.18f, 0.08f,
+              0.05f, 0.18f, 0.18f);
+
+    // The weapon follows the same gameplay attack pulse as the combat system.
+    const float swordX = px + 0.40f + rightAttack;
+    const float swordY = 0.72f + baseY + y - rightAttack * 0.42f;
+    const float swordZ = pz - 0.30f - rightAttack - dodgeLean;
+    draw3DBox(viewProjection, swordX, swordY, swordZ, 0.07f, 0.86f, 0.07f,
+              0.84f, 0.88f, 0.92f, 0.96f);
+    draw3DBox(viewProjection, swordX, swordY - 0.42f, swordZ, 0.18f, 0.07f, 0.10f,
+              0.82f, 0.58f, 0.22f, 0.98f);
+    if (gAttackPulse > 0) {
+        draw3DGlowOrb(viewProjection, swordX, swordY + 0.36f, swordZ, 0.035f,
+                      1.0f, 0.58f, 0.18f, 0.28f + attackArc * 0.42f);
     }
-    draw3DCylinder(viewProjection, px - 0.10f, 0.25f + y, pz, 0.07f, 0.50f, 0.08f, 0.04f, 0.14f);
-    draw3DCylinder(viewProjection, px + 0.10f, 0.25f + y, pz, 0.07f, 0.50f, 0.10f, 0.05f, 0.17f);
-    draw3DBox(viewProjection, px, 0.72f + y, pz, 0.42f, 0.70f, 0.28f, 0.45f, 0.10f, 0.28f);
-    draw3DSphere(viewProjection, px, 1.24f + y, pz, 0.23f, 0.73f, 0.37f, 0.26f);
-    draw3DSphere(viewProjection, px, 1.40f + y, pz - 0.015f, 0.25f, 0.10f, 0.04f, 0.18f);
-    draw3DBox(viewProjection, px - 0.28f, 0.78f + y, pz, 0.10f, 0.56f, 0.11f, 0.48f, 0.12f, 0.30f);
-    draw3DBox(viewProjection, px + 0.28f, 0.78f + y, pz, 0.10f, 0.56f, 0.11f, 0.48f, 0.12f, 0.30f);
-    draw3DCylinder(viewProjection, px + 0.38f, 0.80f + y, pz, 0.025f, 0.94f, 0.90f, 0.70f, 0.24f);
 }
 
 void drawTeleportationTower(const Mat4& viewProjection) {

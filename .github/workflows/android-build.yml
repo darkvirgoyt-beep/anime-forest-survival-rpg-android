@@ -79,6 +79,10 @@ jobs:
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
+          grep -q 'void draw3DPlayer' app/src/main/cpp/forest_game.cpp
+          grep -q 'LocomotionState::Sprint' app/src/main/cpp/forest_game.cpp
+          grep -q 'gAttackPulse > 0' app/src/main/cpp/forest_game.cpp
+          test -f docs/3D_ANIMATION_IMPLEMENTATION.md
           test -f app/src/main/cpp/mobs/mob_catalog.h
           test -f assetpack_core/build.gradle.kts
           test -f assetpack_forest/build.gradle.kts
