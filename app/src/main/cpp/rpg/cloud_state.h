@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 namespace forest::rpg {
@@ -80,12 +81,15 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
     int capturedCompanionStay = 0;
     int campBuilt = 0;
 
-    // Dispatch by the version prefix first. This avoids making schema-1/2/3/4
-    // payloads repeatedly attempt every newer format before reaching their own.
-    if (std::sscanf(payload, "{\"schemaVersion\":%d", &schemaVersion) != 1 ||
-        schemaVersion < 1 || schemaVersion > 5) {
-        return false;
-    }
+    // Dispatch by the fixed version prefix first. Reading one bounded digit
+    // avoids making legacy payloads repeatedly attempt every newer format and
+    // avoids a second formatted scan before the actual parse.
+    constexpr char kSchemaPrefix[] = "{\"schemaVersion\":";
+    constexpr std::size_t kSchemaPrefixLength = sizeof(kSchemaPrefix) - 1;
+    if (std::strncmp(payload, kSchemaPrefix, kSchemaPrefixLength) != 0) return false;
+    const char versionDigit = payload[kSchemaPrefixLength];
+    if (versionDigit < '1' || versionDigit > '5') return false;
+    schemaVersion = versionDigit - '0';
 
     bool parsedKnownLayout = false;
     switch (schemaVersion) {
