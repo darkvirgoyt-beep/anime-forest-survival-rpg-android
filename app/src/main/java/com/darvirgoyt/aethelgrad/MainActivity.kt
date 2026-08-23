@@ -316,6 +316,9 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
         loadHeroineCharacterTexture()
+        // The bundled renderer and launch world are always playable. Extra
+        // visual content may refine presentation later, but never gates entry.
+        markProductionContentReady()
         updateGyroButton()
         registerGyro()
         networkMonitor = NetworkConnectivityMonitor(this)
@@ -323,7 +326,8 @@ class MainActivity : Activity(), SensorEventListener {
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // Online world entry remains blocked until authentication and production asset packs are ready.
+        // Online services authenticate in the background; bundled gameplay does
+        // not wait for a large production archive or a server-side content gate.
         onboardingOverlay.visibility = View.VISIBLE
         if (networkOnline) beginOnlineStartup()
     }
@@ -349,11 +353,12 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginOnlineStartup() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+                onboardingStatus.text = "CONNECTION RESTORING  •  BUNDLED WORLD READY"
             }
             return
         }
-        beginAutomaticContentPreparation()
+        markProductionContentReady()
+        continuePendingWorldEntry()
         when (accountSession.snapshot.state) {
             SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> {
                 if (::onboardingStatus.isInitialized) {
@@ -369,13 +374,8 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun beginAutomaticContentPreparation() {
         if (resourcePreparationComplete) return
-        val tier = selectedResourceTier
-        if (assetPacks.productionContentReady(tier)) {
-            markProductionContentReady()
-            continuePendingWorldEntry()
-        } else {
-            showAssetPatchOverlay()
-        }
+        markProductionContentReady()
+        continuePendingWorldEntry()
     }
 
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
@@ -389,7 +389,7 @@ class MainActivity : Activity(), SensorEventListener {
                 coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+                onboardingStatus.text = "CONNECTION RESTORING  •  BUNDLED WORLD READY"
             }
             return
         }
@@ -2327,13 +2327,13 @@ class MainActivity : Activity(), SensorEventListener {
             alpha = 0.92f
         }
         val title = TextView(this).apply {
-            text = "PREPARE ${resourceTier.name} GRAPHICS  •  ${resourceTier.storageLabel}"
+            text = "OPTIONAL ${resourceTier.name} VISUAL CONTENT"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "${resourceTier.name.lowercase().replaceFirstChar { it.uppercase() }} resources are required before the game can start…"
+            text = "BUNDLED WORLD READY  •  EXTRA VISUALS DOWNLOAD IN BACKGROUND"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -2353,7 +2353,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "Play installations download compiled graphics, world sectors, shaders, VFX, audio, and gameplay resources through Play Asset Delivery. Free direct APK and bundletool installs use the bundled mobile-safe renderer immediately; no Play Console account is required for local testing."
+            text = "The bundled world starts immediately. Optional high-detail visuals can download later without interrupting play."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2402,24 +2402,17 @@ class MainActivity : Activity(), SensorEventListener {
             retry.visibility = View.GONE
             progress.progress = 0
             var failureShown = false
-            var confirmationInFlight = false
             assetPacks.requestProductionContent(resourceTier) { event ->
                 runOnUiThread {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
-                        details.text = event.failedPack ?: "Private high-end content service could not start for this installation."
-                        note.text = when (event.errorCode) {
-                            -2 -> "The requested pack is not in this installed release. Install the matching AAB or local-testing APK set, then retry."
-                            -10 -> "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.startupMiBFor(resourceTier) + 512)} MB."
-                            -13, -15, -100 -> "Private high-end content is not available for this APK version. Check the HTTPS content service and retry."
-                            -6 -> "The private content service could not be reached. Check Wi-Fi or mobile data, then retry."
-                            else -> "The complete ${resourceTier.storageLabel} high-end archive is required before gameplay. Check the private HTTPS service and retry."
-                        }
-                        note.setTextColor(Color.rgb(255, 188, 142))
-                        progress.progress = 0
-                        retry.visibility = View.VISIBLE
+                        status.text = "OPTIONAL VISUAL CONTENT UNAVAILABLE"
+                        details.text = "The bundled world is ready to play. High-detail visuals can be retried later from settings."
+                        note.text = "Online play and world entry continue without this optional download."
+                        note.setTextColor(Color.rgb(167, 214, 232))
+                        progress.progress = 100
+                        finishPreparation()
                     }
                 } else {
                     val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2432,29 +2425,17 @@ class MainActivity : Activity(), SensorEventListener {
                         }
                         event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
                             status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
-                                "WAITING FOR WI-FI  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
+                                "WAITING FOR WI-FI  •  BUNDLED WORLD READY"
                             } else {
-                                "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
+                                "OPTIONAL DOWNLOAD PAUSED  •  BUNDLED WORLD READY"
                             }
-                            details.text = "Allow the ${resourceTier.storageLabel} Play download to continue over mobile data, or connect to Wi-Fi. Gameplay remains locked until every required pack is ready."
-                            retry.visibility = View.VISIBLE
-                            if (!confirmationInFlight) {
-                                confirmationInFlight = true
-                                assetPacks.showDownloadConfirmation(this) { accepted ->
-                                    confirmationInFlight = false
-                                    if (accepted) {
-                                        retry.visibility = View.GONE
-                                        startPreparation()
-                                    } else {
-                                        details.text = "Download paused. Press resume when you are ready, or connect to Wi-Fi."
-                                    }
-                                }
-                            }
+                            details.text = "Continue into the bundled world now. Optional visual content can be resumed later."
+                            finishPreparation()
                         }
                         event.status == AssetPackStatus.CANCELED -> {
-                            status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
-                            details.text = "Press retry to download the compiled graphics, world sectors, shaders, and gameplay resources."
-                            retry.visibility = View.VISIBLE
+                            status.text = "OPTIONAL DOWNLOAD CANCELED  •  BUNDLED WORLD READY"
+                            details.text = "The bundled world continues without the optional visual download."
+                            finishPreparation()
                         }
                         else -> {
                             status.text = "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"

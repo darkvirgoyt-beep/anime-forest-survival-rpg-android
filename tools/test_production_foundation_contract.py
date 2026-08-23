@@ -11,7 +11,7 @@ CHECKS = (
     ("app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt", "requestProductionContent", "Play Asset Delivery request"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "finishPreparation", "content preparation completion path"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "requestProductionContent", "content preparation request path"),
-    ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED", "safe fail-closed graphics fallback"),
+    ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "OPTIONAL VISUAL CONTENT UNAVAILABLE", "safe optional visual-content fallback"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "CONTENT READY", "downloaded content ready state"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", "WARMING HIGH-END GRAPHICS", "high-end startup loading"),
     ("app/src/main/java/com/darvirgoyt/aethelgrad/AssetPackCatalog.kt", "PrivateContentDownloader", "private high-end content downloader"),
