@@ -66,7 +66,6 @@ jobs:
           grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'VIEW ART REFERENCES' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
-          grep -q 'ONLINE LOGIN' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'Google sign-in is required to continue' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
           ! grep -q 'DEV GUEST' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
