@@ -1,4 +1,4 @@
-package com.darkvirgoyt.forestslice
+package com.darvirgoyt.aethelgrad
 
 data class ServerRegion(
     val id: String,

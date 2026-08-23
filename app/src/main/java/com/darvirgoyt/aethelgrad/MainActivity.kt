@@ -1,4 +1,4 @@
-package com.darkvirgoyt.forestslice
+package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.app.AlertDialog

@@ -288,7 +288,7 @@ void drawWorld() {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_init(JNIEnv*, jobject, jint width, jint height) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint width, jint height) {
     gPhysicsAccumulator = 0.0;
     gWidth = static_cast<float>(std::max(1, width));
     gHeight = static_cast<float>(std::max(1, height));
@@ -311,14 +311,14 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_init(JNIEnv*, jobject, jint wi
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_resize(JNIEnv*, jobject, jint width, jint height) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_resize(JNIEnv*, jobject, jint width, jint height) {
     gWidth = static_cast<float>(std::max(1, width));
     gHeight = static_cast<float>(std::max(1, height));
     glViewport(0, 0, width, height);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_render(JNIEnv*, jobject, jfloat delta) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_render(JNIEnv*, jobject, jfloat delta) {
     const double dt = std::min(0.10, std::max(0.0, static_cast<double>(delta)));
     gPhysicsAccumulator = std::min(0.25, gPhysicsAccumulator + dt);
     int steps = 0;
@@ -332,23 +332,23 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_render(JNIEnv*, jobject, jfloa
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_setMove(JNIEnv*, jobject, jfloat x, jfloat y) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setMove(JNIEnv*, jobject, jfloat x, jfloat y) {
     gMoveX = std::clamp(static_cast<float>(x), -1.0f, 1.0f);
     gMoveY = std::clamp(static_cast<float>(y), -1.0f, 1.0f);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_setSprintHeld(JNIEnv*, jobject, jboolean held) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setSprintHeld(JNIEnv*, jobject, jboolean held) {
     gSprintHeld = held == JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_orbitCamera(JNIEnv*, jobject, jfloat deltaYaw, jfloat deltaPitch) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_orbitCamera(JNIEnv*, jobject, jfloat deltaYaw, jfloat deltaPitch) {
     gController.camera.orbit(static_cast<float>(deltaYaw), static_cast<float>(deltaPitch));
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_setGyroEnabled(JNIEnv*, jobject, jboolean enabled) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGyroEnabled(JNIEnv*, jobject, jboolean enabled) {
     gGyroEnabled = enabled == JNI_TRUE;
     if (!gGyroEnabled) {
         gGyroX = 0.0f;
@@ -357,33 +357,33 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_setGyroEnabled(JNIEnv*, jobjec
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_setGyro(JNIEnv*, jobject, jfloat rotationX, jfloat rotationY, jfloat sensitivity) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGyro(JNIEnv*, jobject, jfloat rotationX, jfloat rotationY, jfloat sensitivity) {
     gGyroX = static_cast<float>(rotationX) * static_cast<float>(sensitivity);
     gGyroY = static_cast<float>(rotationY) * static_cast<float>(sensitivity);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_attack(JNIEnv*, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_attack(JNIEnv*, jobject) {
     if (gCombat.requestAttack()) gController.state = forest::controller::LocomotionState::Attack;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_jump(JNIEnv*, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_jump(JNIEnv*, jobject) {
     gController.jump();
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_dodge(JNIEnv*, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_dodge(JNIEnv*, jobject) {
     if (gCombat.requestDodge() && gController.dodge()) gDodgePulse = 8;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_slide(JNIEnv*, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_slide(JNIEnv*, jobject) {
     if (gCombat.requestDodge() && gController.slide()) gDodgePulse = 6;
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_gather(JNIEnv*, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_gather(JNIEnv*, jobject) {
     const float nearestResource = std::min(
         std::abs(gPlayerX + 0.05f) + std::abs(gPlayerY + 0.30f),
         std::abs(gPlayerX - 0.60f) + std::abs(gPlayerY + 0.32f)
@@ -400,7 +400,7 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_gather(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_craft(JNIEnv*, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_craft(JNIEnv*, jobject) {
     if (gWood >= 3 && gFiber >= 2) {
         gWood -= 3;
         gFiber -= 2;
@@ -417,7 +417,7 @@ Java_com_darkvirgoyt_forestslice_NativeGameBridge_craft(JNIEnv*, jobject) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_darkvirgoyt_forestslice_NativeGameBridge_getHudState(JNIEnv* env, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject) {
     std::ostringstream state;
     state << gProgression.level << '|'
           << gProgression.experience << '|'
