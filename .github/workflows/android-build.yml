@@ -168,6 +168,15 @@ jobs:
             tests/exploration_progression_test.cpp \
             -o exploration_progression_test
           ./exploration_progression_test
+          g++ -O2 -std=c++17 -Wall -Wextra -Wpedantic \
+            -Iapp/src/main/cpp \
+            tests/cloud_state_benchmark.cpp \
+            -o cloud_state_benchmark
+          if command -v taskset >/dev/null 2>&1; then
+            taskset -c 0 ./cloud_state_benchmark cloud-state-benchmark.json | tee cloud-state-benchmark.csv
+          else
+            ./cloud_state_benchmark cloud-state-benchmark.json | tee cloud-state-benchmark.csv
+          fi
           g++ -std=c++17 -Wall -Wextra -Wpedantic \
             -Iapp/src/main/cpp \
             tests/emberling_companion_test.cpp \
@@ -178,6 +187,14 @@ jobs:
             tests/rpg_systems_test.cpp \
             -o rpg_systems_test
           ./rpg_systems_test
+
+      - name: Upload cloud save benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-save-benchmark
+          path: |
+            cloud-state-benchmark.json
+            cloud-state-benchmark.csv
 
   online-service-tests:
     runs-on: ubuntu-latest
