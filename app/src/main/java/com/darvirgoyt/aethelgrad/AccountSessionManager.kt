@@ -244,7 +244,7 @@ class AccountSessionManager {
     }
 
     /** Creates an account-owned manifest and writes its first immutable cloud snapshot. */
-    fun createInitialCloudWorld(name: String, region: String, avatarId: String, onComplete: (CloudWorldManifest?, String?) -> Unit) {
+    fun createInitialCloudWorld(name: String, region: String, avatarId: String, nativeWorldState: String, onComplete: (CloudWorldManifest?, String?) -> Unit) {
         val token = currentAccessToken()
         if (token.isNullOrBlank()) {
             onComplete(null, "Your game session has expired. Sign in again.")
@@ -259,10 +259,8 @@ class AccountSessionManager {
                 }
                 val world = JSONObject(created.body).getJSONObject("world")
                 val worldId = world.getString("id")
-                val initialState = JSONObject()
-                    .put("schemaVersion", 1)
+                val initialState = JSONObject(nativeWorldState)
                     .put("worldSeed", "aethelgard-${worldId.take(8)}")
-                    .put("day", 1)
                     .put("character", JSONObject().put("name", name).put("avatarId", avatarId))
                 val saved = requestJson("PUT", cloudEndpoint("/worlds/$worldId/save"), token, JSONObject().put("expectedRevision", 0).put("schemaVersion", 1).put("worldState", initialState).toString())
                 if (saved.statusCode !in 200..299) {
@@ -272,6 +270,65 @@ class AccountSessionManager {
                 publishWorldResult(onComplete, CloudWorldManifest(worldId, world.getString("name"), world.getString("region"), 1, 1), null)
             } catch (_: Exception) {
                 publishWorldResult(onComplete, null, "Could not create your cloud world. Check your connection.")
+            }
+        }
+    }
+
+    /** Uploads a new immutable revision; a stale device is rejected instead of silently overwriting cloud state. */
+    fun uploadCloudWorld(world: CloudWorldManifest, nativeWorldState: String, onComplete: (CloudWorldManifest?, String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again to save.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("expectedRevision", world.saveRevision).put("schemaVersion", world.schemaVersion).put("worldState", JSONObject(nativeWorldState)).toString()
+                val response = requestJson("PUT", cloudEndpoint("/worlds/${world.id}/save"), token, payload)
+                if (response.statusCode == 409) {
+                    publishWorldResult(onComplete, null, "A newer cloud revision exists. Re-open the world to recover it safely.")
+                    return@execute
+                }
+                if (response.statusCode !in 200..299) {
+                    publishWorldResult(onComplete, null, "Could not upload cloud save (${response.statusCode}).")
+                    return@execute
+                }
+                val result = JSONObject(response.body)
+                publishWorldResult(onComplete, world.copy(saveRevision = result.optInt("saveRevision", world.saveRevision + 1), schemaVersion = result.optInt("schemaVersion", world.schemaVersion)), null)
+            } catch (_: Exception) {
+                publishWorldResult(onComplete, null, "Could not upload cloud save. Check your connection.")
+            }
+        }
+    }
+
+    /** Downloads the latest owned world snapshot after the backend has validated world ownership. */
+    fun downloadCloudWorld(world: CloudWorldManifest, onComplete: (String?, String?) -> Unit) {
+        val token = currentAccessToken()
+        if (token.isNullOrBlank()) {
+            onComplete(null, "Your game session has expired. Sign in again to recover this world.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val manifest = getJson(cloudEndpoint("/worlds/${world.id}/save"), token)
+                if (manifest.statusCode !in 200..299) {
+                    publishSnapshotResult(onComplete, null, "Could not recover cloud world (${manifest.statusCode}).")
+                    return@execute
+                }
+                val relativeUrl = JSONObject(manifest.body).optString("downloadUrl")
+                if (relativeUrl.isBlank()) {
+                    publishSnapshotResult(onComplete, null, "Cloud world did not return a snapshot location.")
+                    return@execute
+                }
+                val absoluteUrl = if (relativeUrl.startsWith("https://")) relativeUrl else authExchangeUrl.substringBefore("/api/game-auth") + relativeUrl
+                val snapshot = getJson(absoluteUrl, token)
+                if (snapshot.statusCode !in 200..299) {
+                    publishSnapshotResult(onComplete, null, "Could not download cloud world (${snapshot.statusCode}).")
+                    return@execute
+                }
+                publishSnapshotResult(onComplete, snapshot.body, null)
+            } catch (_: Exception) {
+                publishSnapshotResult(onComplete, null, "Could not download cloud world. Check your connection.")
             }
         }
     }
@@ -347,6 +404,7 @@ class AccountSessionManager {
     private fun publishCloudResult(callback: (List<CloudWorldManifest>?, String?) -> Unit, worlds: List<CloudWorldManifest>?, error: String?) = mainHandler.post { callback(worlds, error) }
     private fun publishProfileResult(callback: (String?) -> Unit, error: String?) = mainHandler.post { callback(error) }
     private fun publishWorldResult(callback: (CloudWorldManifest?, String?) -> Unit, world: CloudWorldManifest?, error: String?) = mainHandler.post { callback(world, error) }
+    private fun publishSnapshotResult(callback: (String?, String?) -> Unit, snapshot: String?, error: String?) = mainHandler.post { callback(snapshot, error) }
 
     private fun clearSession() {
         accessSessionToken = null

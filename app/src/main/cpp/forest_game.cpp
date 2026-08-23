@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -967,4 +968,60 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << weatherName();
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getCloudState(JNIEnv* env, jobject) {
+    std::ostringstream state;
+    state << "{\"schemaVersion\":1"
+          << ",\"playerX\":" << gPlayerX
+          << ",\"playerY\":" << gPlayerY
+          << ",\"health\":" << gController.health
+          << ",\"stamina\":" << gController.stamina
+          << ",\"hunger\":" << gHunger
+          << ",\"wood\":" << gWood
+          << ",\"fiber\":" << gFiber
+          << ",\"stone\":" << gStone
+          << ",\"experience\":" << gProgression.experience
+          << ",\"day\":" << gDaysPlayed
+          << ",\"worldTime\":" << gTime
+          << "}";
+    const std::string value = state.str();
+    return env->NewStringUTF(value.c_str());
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_loadCloudState(JNIEnv* env, jobject, jstring payload) {
+    if (payload == nullptr) return JNI_FALSE;
+    const char* chars = env->GetStringUTFChars(payload, nullptr);
+    if (chars == nullptr) return JNI_FALSE;
+    float playerX = 0.0f;
+    float playerY = 0.0f;
+    float health = 1.0f;
+    float stamina = 1.0f;
+    float hunger = 0.82f;
+    float worldTime = 0.0f;
+    int wood = 12;
+    int fiber = 8;
+    int stone = 4;
+    int experience = 0;
+    int day = 1;
+    const int parsed = std::sscanf(chars,
+        "{\"schemaVersion\":1,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"day\":%d,\"worldTime\":%f}",
+        &playerX, &playerY, &health, &stamina, &hunger, &wood, &fiber, &stone, &experience, &day, &worldTime);
+    env->ReleaseStringUTFChars(payload, chars);
+    if (parsed != 12) return JNI_FALSE;
+    gPlayerX = std::clamp(playerX, kSimulationMinX, kSimulationMaxX);
+    gPlayerY = std::clamp(playerY, kSimulationMinY, kSimulationMaxY);
+    gController.body.position = {gPlayerX, gPlayerY};
+    gController.health = std::clamp(health, 0.0f, 1.0f);
+    gController.stamina = std::clamp(stamina, 0.0f, 1.0f);
+    gHunger = std::clamp(hunger, 0.0f, 1.0f);
+    gWood = std::max(0, wood);
+    gFiber = std::max(0, fiber);
+    gStone = std::max(0, stone);
+    gProgression.experience = std::max(0, experience);
+    gDaysPlayed = std::max(1, day);
+    gTime = std::max(0.0f, worldTime);
+    return JNI_TRUE;
 }

@@ -55,6 +55,8 @@ object NativeGameBridge {
     external fun gather()
     external fun craft()
     external fun getHudState(): String
+    external fun getCloudState(): String
+    external fun loadCloudState(state: String): Boolean
 }
 
 class MainActivity : Activity(), SensorEventListener {
@@ -75,6 +77,8 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var characterNameInput: EditText
     private val accountSession = AccountSessionManager()
     private val characterCreation = CharacterCreationState()
+    private var activeCloudWorld: CloudWorldManifest? = null
+    private var cloudSaveInFlight = false
     private var selectedServer = ServerDirectory.regions.first()
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
@@ -86,6 +90,24 @@ class MainActivity : Activity(), SensorEventListener {
                 }
             }
             hudHandler.postDelayed(this, 200L)
+        }
+    }
+    private val cloudSaveUpdater = object : Runnable {
+        override fun run() {
+            val world = activeCloudWorld
+            if (world != null && !cloudSaveInFlight && ::gameView.isInitialized) {
+                cloudSaveInFlight = true
+                gameView.queueEvent {
+                    val nativeState = NativeGameBridge.getCloudState()
+                    runOnUiThread {
+                        accountSession.uploadCloudWorld(world, nativeState) { updated, _ ->
+                            if (updated != null) activeCloudWorld = updated
+                            cloudSaveInFlight = false
+                        }
+                    }
+                }
+            }
+            hudHandler.postDelayed(this, 45_000L)
         }
     }
 
@@ -163,6 +185,20 @@ class MainActivity : Activity(), SensorEventListener {
         audio.stopMusic()
         gyroEnabled = false
         hudHandler.removeCallbacks(hudUpdater)
+        hudHandler.removeCallbacks(cloudSaveUpdater)
+        val world = activeCloudWorld
+        if (world != null && !cloudSaveInFlight) {
+            cloudSaveInFlight = true
+            gameView.queueEvent {
+                val nativeState = NativeGameBridge.getCloudState()
+                runOnUiThread {
+                    accountSession.uploadCloudWorld(world, nativeState) { updated, _ ->
+                        if (updated != null) activeCloudWorld = updated
+                        cloudSaveInFlight = false
+                    }
+                }
+            }
+        }
         sensorManager?.unregisterListener(this)
         gameView.queueEvent { NativeGameBridge.setGyroEnabled(false) }
         gameView.onPause()
@@ -176,10 +212,12 @@ class MainActivity : Activity(), SensorEventListener {
         registerGyro()
         updateGyroButton()
         hudHandler.postDelayed(hudUpdater, 350L)
+        hudHandler.postDelayed(cloudSaveUpdater, 45_000L)
     }
 
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
+        hudHandler.removeCallbacks(cloudSaveUpdater)
         accountSession.shutdown()
         audio.release()
         super.onDestroy()
@@ -513,10 +551,26 @@ class MainActivity : Activity(), SensorEventListener {
                 if (recoveredWorld != null) {
                     validation.setTextColor(Color.rgb(164, 231, 190))
                     validation.text = "Recovering ${recoveredWorld.name} from revision ${recoveredWorld.saveRevision}…"
-                    rootContainer.postDelayed({
-                        rootContainer.removeView(overlay)
-                        characterSetupOverlay = null
-                    }, 420L)
+                    accountSession.downloadCloudWorld(recoveredWorld) { snapshot, recoveryError ->
+                        if (snapshot == null) {
+                            validation.setTextColor(Color.rgb(255, 180, 150))
+                            validation.text = recoveryError ?: "Cloud world recovery failed."
+                            return@downloadCloudWorld
+                        }
+                        gameView.queueEvent {
+                            val restored = NativeGameBridge.loadCloudState(snapshot)
+                            runOnUiThread {
+                                if (!restored) {
+                                    validation.setTextColor(Color.rgb(255, 180, 150))
+                                    validation.text = "Cloud snapshot is incompatible with this game build."
+                                    return@runOnUiThread
+                                }
+                                activeCloudWorld = recoveredWorld
+                                rootContainer.removeView(overlay)
+                                characterSetupOverlay = null
+                            }
+                        }
+                    }
                     return@cinematicButton
                 }
                 characterCreation.name = characterNameInput.text.toString()
@@ -534,18 +588,24 @@ class MainActivity : Activity(), SensorEventListener {
                         validation.text = profileError
                         return@updateProfile
                     }
-                    accountSession.createInitialCloudWorld("${characterCreation.name}'s Horizon", selectedServer.id, avatarId) { _, worldError ->
-                        if (worldError != null) {
-                            validation.setTextColor(Color.rgb(255, 180, 150))
-                            validation.text = worldError
-                            return@createInitialCloudWorld
+                    gameView.queueEvent {
+                        val nativeState = NativeGameBridge.getCloudState()
+                        runOnUiThread {
+                            accountSession.createInitialCloudWorld("${characterCreation.name}'s Horizon", selectedServer.id, avatarId, nativeState) { world, worldError ->
+                                if (worldError != null || world == null) {
+                                    validation.setTextColor(Color.rgb(255, 180, 150))
+                                    validation.text = worldError ?: "Cloud world creation failed."
+                                    return@createInitialCloudWorld
+                                }
+                                activeCloudWorld = world
+                                validation.setTextColor(Color.rgb(164, 231, 190))
+                                validation.text = "Cloud world protected. Entering Aethelgard…"
+                                rootContainer.postDelayed({
+                                    rootContainer.removeView(overlay)
+                                    characterSetupOverlay = null
+                                }, 420L)
+                            }
                         }
-                        validation.setTextColor(Color.rgb(164, 231, 190))
-                        validation.text = "Cloud world protected. Entering Aethelgard…"
-                        rootContainer.postDelayed({
-                            rootContainer.removeView(overlay)
-                            characterSetupOverlay = null
-                        }, 420L)
                     }
                 }
             }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(4) })
