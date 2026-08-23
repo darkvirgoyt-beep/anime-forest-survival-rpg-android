@@ -5,6 +5,12 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manually rerunning the validation workflow"
+        required: false
+        default: "Manual verification after workflow repair"
 
 jobs:
   production-foundation-check:
