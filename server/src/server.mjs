@@ -255,6 +255,138 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
     res.status(204).end();
   });
 
+  app.post("/v1/coop/rooms/:code/combat", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const requestId = normalizeRequestId(req.body?.requestId);
+    const action = typeof req.body?.action === "string" ? req.body.action : "";
+    const targetId = typeof req.body?.targetId === "string" ? req.body.targetId : "forest_warden";
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (!requestId || !["attack", "heavy_attack"].includes(action)) return res.status(400).json({ error: "invalid_combat_request" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const roomResult = await client.query("SELECT id, boss_health, combat_revision FROM coop_rooms WHERE code = $1 FOR UPDATE", [code]);
+      if (roomResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "room_not_found" });
+      }
+      const room = roomResult.rows[0];
+      const memberResult = await client.query("SELECT player_x, player_y, last_action_at FROM coop_members WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [room.id, req.accountId]);
+      if (memberResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "room_membership_required" });
+      }
+      const duplicate = await client.query("SELECT result FROM coop_action_receipts WHERE room_id = $1 AND account_id = $2 AND request_id = $3", [room.id, req.accountId, requestId]);
+      if (duplicate.rowCount === 1) {
+        await client.query("COMMIT");
+        return res.json(duplicate.rows[0].result);
+      }
+      if (targetId !== "forest_warden") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "unknown_combat_target" });
+      }
+      const member = memberResult.rows[0];
+      const distance = Math.abs(Number(member.player_x) - (-0.18)) + Math.abs(Number(member.player_y) - (-0.08));
+      if (distance > 0.52) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ error: "combat_target_out_of_range" });
+      }
+      const cooldownMs = action === "heavy_attack" ? 900 : 350;
+      const lastActionMs = member.last_action_at ? new Date(member.last_action_at).getTime() : 0;
+      if (lastActionMs > 0 && Date.now() - lastActionMs < cooldownMs) {
+        await client.query("ROLLBACK");
+        return res.status(429).json({ error: "combat_cooldown" });
+      }
+      const damage = action === "heavy_attack" ? 24 : 12;
+      const bossHealth = Math.max(0, Number(room.boss_health) - damage);
+      const combatRevision = Number(room.combat_revision || 0) + 1;
+      const result = { accepted: true, action, targetId, damage, bossHealth, combatRevision };
+      await client.query("UPDATE coop_rooms SET boss_health = $2, combat_revision = $3, updated_at = now() WHERE id = $1", [room.id, bossHealth, combatRevision]);
+      await client.query("UPDATE coop_members SET last_action_at = now(), last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [room.id, req.accountId]);
+      await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, result) VALUES ($1, $2, $3, 'combat', $4)", [room.id, req.accountId, requestId, result]);
+      await client.query("COMMIT");
+      res.json(result);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  app.post("/v1/coop/rooms/:code/inventory", requireSession, async (req, res) => {
+    const code = normalizeRoomCode(req.params.code);
+    const requestId = normalizeRequestId(req.body?.requestId);
+    const operation = typeof req.body?.operation === "string" ? req.body.operation : "";
+    const resourceId = typeof req.body?.resourceId === "string" ? req.body.resourceId : "";
+    if (!code) return res.status(400).json({ error: "invalid_room_code" });
+    if (!requestId || !["gather", "craft"].includes(operation)) return res.status(400).json({ error: "invalid_inventory_request" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const roomResult = await client.query("SELECT id FROM coop_rooms WHERE code = $1 FOR UPDATE", [code]);
+      if (roomResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "room_not_found" });
+      }
+      const roomId = roomResult.rows[0].id;
+      const memberResult = await client.query("SELECT player_x, player_y, wood, fiber, stone, inventory_revision, ember_kit FROM coop_members WHERE room_id = $1 AND account_id = $2 FOR UPDATE", [roomId, req.accountId]);
+      if (memberResult.rowCount !== 1) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "room_membership_required" });
+      }
+      const duplicate = await client.query("SELECT result FROM coop_action_receipts WHERE room_id = $1 AND account_id = $2 AND request_id = $3", [roomId, req.accountId, requestId]);
+      if (duplicate.rowCount === 1) {
+        await client.query("COMMIT");
+        return res.json(duplicate.rows[0].result);
+      }
+      const member = memberResult.rows[0];
+      let wood = Number(member.wood);
+      let fiber = Number(member.fiber);
+      let stone = Number(member.stone);
+      let emberKit = Boolean(member.ember_kit);
+      if (operation === "gather") {
+        const resources = {
+          forest_cache: { x: -0.56, y: -0.28, wood: 1, fiber: 2, stone: 0 },
+          root_cache: { x: -0.40, y: -0.18, wood: 1, fiber: 1, stone: 0 },
+          warden_stone: { x: -0.24, y: -0.28, wood: 0, fiber: 0, stone: 2 }
+        };
+        const resource = resources[resourceId];
+        if (!resource) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({ error: "unknown_resource" });
+        }
+        const distance = Math.abs(Number(member.player_x) - resource.x) + Math.abs(Number(member.player_y) - resource.y);
+        if (distance > 0.32) {
+          await client.query("ROLLBACK");
+          return res.status(409).json({ error: "resource_out_of_range" });
+        }
+        wood = Math.min(999, wood + resource.wood);
+        fiber = Math.min(999, fiber + resource.fiber);
+        stone = Math.min(999, stone + resource.stone);
+      } else {
+        if (wood < 3 || fiber < 2) {
+          await client.query("ROLLBACK");
+          return res.status(409).json({ error: "insufficient_crafting_materials" });
+        }
+        wood -= 3;
+        fiber -= 2;
+        emberKit = true;
+      }
+      const inventoryRevision = Number(member.inventory_revision || 0) + 1;
+      const result = { accepted: true, operation, inventory: { wood, fiber, stone, emberKit }, inventoryRevision };
+      await client.query("UPDATE coop_members SET wood = $3, fiber = $4, stone = $5, ember_kit = $6, inventory_revision = $7, last_seen_at = now() WHERE room_id = $1 AND account_id = $2", [roomId, req.accountId, wood, fiber, stone, emberKit, inventoryRevision]);
+      await client.query("INSERT INTO coop_action_receipts (room_id, account_id, request_id, action_type, result) VALUES ($1, $2, $3, 'inventory', $4)", [roomId, req.accountId, requestId, result]);
+      await client.query("COMMIT");
+      res.json(result);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   app.use((_req, res) => res.status(404).json({ error: "not_found" }));
   app.use((error, _req, res, _next) => {
     console.error("unhandled_request_error", safeErrorCode(error));
@@ -268,6 +400,11 @@ const COOP_ROOM_CODE = /^[A-Z0-9]{6}$/;
 function normalizeRoomCode(value) {
   const code = typeof value === "string" ? value.trim().toUpperCase() : "";
   return COOP_ROOM_CODE.test(code) ? code : null;
+}
+
+function normalizeRequestId(value) {
+  const requestId = typeof value === "string" ? value.trim() : "";
+  return /^[A-Za-z0-9_-]{8,80}$/.test(requestId) ? requestId : null;
 }
 
 function boundedNumber(value, min, max, fallback) {
@@ -296,7 +433,7 @@ async function createCoOpRoom(pool, accountId, region) {
 
 async function getCoOpRoom(pool, code, accountId) {
   const roomResult = await pool.query(
-    `SELECT id, code, region, max_players, world_time, tower_revision
+    `SELECT id, code, region, max_players, world_time, tower_revision, boss_health, combat_revision
      FROM coop_rooms WHERE code = $1`,
     [code]
   );
@@ -316,14 +453,16 @@ async function getCoOpRoom(pool, code, accountId) {
      ORDER BY last_seen_at DESC`,
     [room.id]
   );
-  const refreshed = await pool.query("SELECT world_time, tower_revision FROM coop_rooms WHERE id = $1", [room.id]);
+  const refreshed = await pool.query("SELECT world_time, tower_revision, boss_health, combat_revision FROM coop_rooms WHERE id = $1", [room.id]);
   return {
     room: {
       code: room.code,
       region: room.region,
       maxPlayers: room.max_players,
       worldTime: Number(refreshed.rows[0]?.world_time || room.world_time || 0),
-      towerRevision: Number(refreshed.rows[0]?.tower_revision || room.tower_revision || 0)
+      towerRevision: Number(refreshed.rows[0]?.tower_revision || room.tower_revision || 0),
+      bossHealth: Number(refreshed.rows[0]?.boss_health ?? room.boss_health ?? 100),
+      combatRevision: Number(refreshed.rows[0]?.combat_revision ?? room.combat_revision ?? 0)
     },
     participants: current.rows.map(member => ({
       accountId: member.account_id,

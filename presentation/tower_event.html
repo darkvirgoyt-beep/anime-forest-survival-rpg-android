@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tower Event</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:64px 72px 0}
+.rule{position:absolute;left:44px;top:64px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:54px;line-height:.96;letter-spacing:-2px;font-weight:800;max-width:900px}
+.lede{font-size:21px;color:#4A5568;max-width:820px;line-height:1.25;margin-top:18px}
+.content-grid{display:grid;grid-template-columns:600px 440px;gap:60px;margin-top:50px}
+.sequence{display:flex;flex-direction:column;gap:24px}
+.step{border-left:4px solid #D69E2E;padding-left:20px}
+.step h3{font-size:22px;letter-spacing:-0.5px;margin-bottom:8px;color:#1A202C}
+.step p{font-size:18px;line-height:1.3;color:#4A5568}
+.hud-box{background:#CBD5E1;border:2px solid rgba(26,32,44,.2);padding:30px;position:relative;height:320px}
+.hud-box:before{content:"";position:absolute;top:0;left:0;width:100%;height:6px;background:#D53F8C}
+.hud-title{font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#D53F8C;font-weight:800;margin-bottom:24px}
+.hud-state{background:#1A202C;color:#E2E8F0;padding:16px;font-family:monospace;font-size:14px;line-height:1.6;margin-bottom:20px}
+.hud-state span{color:#D69E2E}
+.hud-desc{font-size:16px;line-height:1.4;color:#4A5568}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">07 / Co-op Mechanics</div>
+  <h1>Tower teleport is a readable shared event</h1>
+  <div class="lede">A simple revision-based mechanic ensures all friends converge on the landmark simultaneously.</div>
+  
+  <div class="content-grid">
+    <div class="sequence">
+      <div class="step">
+        <h3>1. Local Activation</h3>
+        <p>A player activates the tower, moving locally to the arrival point and incrementing their room revision.</p>
+      </div>
+      <div class="step">
+        <h3>2. Server Authority</h3>
+        <p>The server records the highest accepted revision and exposes it to all current room members via heartbeats.</p>
+      </div>
+      <div class="step">
+        <h3>3. Remote Synchronization</h3>
+        <p>Friends observe a newer remote revision and perform a synchronized arrival teleport to match the state.</p>
+      </div>
+    </div>
+    
+    <div class="hud-box">
+      <div class="hud-title">Visual & HUD Feedback</div>
+      <div class="hud-state">
+        CO-OP F7D51F &nbsp;•&nbsp; 4/4<br/>
+        <span>TOWER 12</span> &nbsp;•&nbsp; WEATHER SYNCED
+      </div>
+      <p class="hud-desc">An amber glow in the 3D world and a clear revision number in the HUD make the rendezvous visible and testable without a debug console.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

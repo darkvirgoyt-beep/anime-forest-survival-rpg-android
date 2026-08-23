@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weather and Time</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:64px 72px 0}
+.rule{position:absolute;left:44px;top:64px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:54px;line-height:.96;letter-spacing:-2px;font-weight:800;max-width:900px}
+.lede{font-size:21px;color:#4A5568;max-width:820px;line-height:1.25;margin-top:18px}
+.cycles{display:grid;grid-template-columns:460px 460px;gap:40px;margin-top:60px;margin-left:28px}
+.cycle-block{border-left:12px solid #D69E2E;background:#CBD5E1;padding:28px 32px;min-height:220px}
+.cycle-block.alt{border-left-color:#D53F8C}
+.cycle-title{font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:12px}
+.cycle-phases{font-size:14px;font-weight:700;letter-spacing:2px;color:#D53F8C;text-transform:uppercase;margin-bottom:16px}
+.cycle-block.alt .cycle-phases{color:#D69E2E}
+.cycle-desc{font-size:17px;line-height:1.35;color:#4A5568}
+.callout{position:absolute;left:72px;bottom:57px;width:1040px;border-top:2px solid rgba(26,32,44,.3);padding-top:18px;font-size:18px;color:#1A202C;font-weight:700}
+.callout span{color:#D53F8C;letter-spacing:1px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">05 / Atmosphere</div>
+  <h1>Weather and time turn the map into a living system</h1>
+  <div class="lede">Ambient light, sky color, and procedural particles are driven by deterministic clocks rather than large texture libraries.</div>
+  
+  <div class="cycles">
+    <div class="cycle-block">
+      <div class="cycle-title">15-Minute World Clock</div>
+      <div class="cycle-phases">Day &rarr; Afternoon &rarr; Evening &rarr; Night</div>
+      <div class="cycle-desc">Drives the calendar, ambient brightness, and sky color. Evening shifts to warmer tones; night reduces light substantially and emphasizes the dark sky.</div>
+    </div>
+    <div class="cycle-block alt">
+      <div class="cycle-title">Independent Weather</div>
+      <div class="cycle-phases">Clear &rarr; Rain &rarr; Thunderstorm</div>
+      <div class="cycle-desc">Runs on its own repeating loop. Storms can cross day-night boundaries, adding procedural rain streaks and lightning flashes to the 3D scene.</div>
+    </div>
+  </div>
+
+  <div class="callout"><span>Reproducibility</span>&nbsp;&nbsp;Deterministic effects ensure the same room state is reproducible across all Android clients without heavy network sync.</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Frame Pipeline</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:64px 72px 0}
+.rule{position:absolute;left:44px;top:64px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:54px;line-height:.96;letter-spacing:-2px;font-weight:800}
+.lede{font-size:21px;color:#4A5568;max-width:820px;line-height:1.25;margin-top:18px}
+.pipeline{display:grid;grid-template-columns:205px 44px 205px 44px 205px 44px 205px;align-items:center;margin-top:82px}
+.stage{height:194px;border-top:12px solid #D69E2E;background:#CBD5E1;padding:24px 20px 0}
+.stage .num{font-size:14px;letter-spacing:2px;color:#D53F8C;font-weight:800}
+.stage h2{font-size:25px;line-height:1.02;margin-top:16px;letter-spacing:-.8px}
+.stage p{font-size:15px;line-height:1.28;color:#4A5568;margin-top:14px}
+.arrow{height:20px;border-top:4px solid #D53F8C;border-right:4px solid #D53F8C;transform:rotate(45deg);margin-left:3px}
+.callout{position:absolute;left:72px;bottom:57px;width:1040px;border-top:2px solid rgba(26,32,44,.3);padding-top:18px;font-size:18px;color:#1A202C;font-weight:700}
+.callout span{color:#D53F8C;letter-spacing:1px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">02 / Runtime</div>
+  <h1>The frame pipeline keeps simulation stable</h1>
+  <div class="lede">Rendering speed can vary by device; the gameplay clock does not need to.</div>
+  <div class="pipeline">
+    <div class="stage"><div class="num">01</div><h2>Android input</h2><p>Touch, gyro, HUD actions, and a bounded frame delta enter through the native bridge.</p></div>
+    <div class="arrow"></div>
+    <div class="stage"><div class="num">02</div><h2>Fixed step</h2><p>An accumulator advances physics and gameplay in stable 60 Hz increments.</p></div>
+    <div class="arrow"></div>
+    <div class="stage"><div class="num">03</div><h2>World update</h2><p>Calendar, weather, combat, locomotion, tower cooldowns, and camera state update.</p></div>
+    <div class="arrow"></div>
+    <div class="stage"><div class="num">04</div><h2>GLES3 frame</h2><p>3D geometry renders first; the Android HUD remains a readable overlay above it.</p></div>
+  </div>
+  <div class="callout"><span>Invariant</span>&nbsp;&nbsp;movement, weather motion, combat timing, and tower cooldowns are not tied to display refresh rate.</div>
+</div>
+</body>
+</html>

@@ -37,6 +37,7 @@ bool gSprintHeld = false;
 float gGyroX = 0.0f;
 float gGyroY = 0.0f;
 bool gGyroEnabled = false;
+bool gAuthoritativeOnline = false;
 int gWood = 12;
 int gFiber = 8;
 int gStone = 4;
@@ -966,7 +967,7 @@ void simulatePhysicsStep() {
         gAttackPulse = combatEvent.heavyAttack ? 16 : 6 + combatEvent.comboIndex * 2;
         gHitRegistered = false;
     }
-    if (gCombat.isHitActive() && !gHitRegistered) {
+    if (gCombat.isHitActive() && !gHitRegistered && !gAuthoritativeOnline) {
         const forest::physics::Vec2 facing{
             std::cos(gController.facingRadians),
             std::sin(gController.facingRadians)
@@ -1222,6 +1223,24 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleViewMode(JNIEnv*, jobject)
 extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setWorldMapVisible(JNIEnv*, jobject, jboolean visible) {
     gWorldMapVisible = visible == JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setAuthoritativeOnline(JNIEnv*, jobject, jboolean enabled) {
+    gAuthoritativeOnline = enabled == JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setAuthoritativeBossHealth(JNIEnv*, jobject, jint health) {
+    gEnemyHealth = std::clamp(static_cast<float>(health), 0.0f, kForestWardenMaxHealth);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_applyAuthoritativeInventory(JNIEnv*, jobject, jint wood, jint fiber, jint stone, jboolean emberKit) {
+    gWood = std::max(0, static_cast<int>(wood));
+    gFiber = std::max(0, static_cast<int>(fiber));
+    gStone = std::max(0, static_cast<int>(stone));
+    gProgression.emberKitCrafted = emberKit == JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL

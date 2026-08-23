@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Engine Layers</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:66px 72px 0}
+.rule{position:absolute;left:44px;top:68px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:52px;line-height:.98;letter-spacing:-2px;font-weight:800;max-width:850px}
+.lede{font-size:22px;line-height:1.25;color:#4A5568;max-width:900px;margin-top:18px}
+.lanes{margin-top:52px;width:930px}
+.lane{min-height:82px;border-top:2px solid rgba(26,32,44,.24);display:grid;grid-template-columns:190px 1fr 150px;align-items:center;column-gap:24px}
+.lane:last-child{border-bottom:2px solid rgba(26,32,44,.24)}
+.lane-title{font-size:20px;letter-spacing:1px;font-weight:800;text-transform:uppercase}
+.lane-copy{font-size:18px;line-height:1.2;color:#4A5568}
+.signal{font-size:13px;font-weight:700;letter-spacing:1px;text-align:right;color:#D69E2E;text-transform:uppercase}
+.reference{position:absolute;right:58px;top:138px;width:210px;height:258px;border:2px solid rgba(26,32,44,.2);background:#CBD5E1;padding:12px 12px 0}
+.reference img{width:184px;height:176px;object-fit:contain;display:block;filter:grayscale(.35);opacity:.72}
+.reference p{font-size:11px;line-height:1.2;color:#4A5568;margin-top:10px;text-transform:uppercase;letter-spacing:1px}
+.bottom{position:absolute;left:72px;bottom:56px;font-size:17px;letter-spacing:.4px;color:#1A202C;font-weight:700}
+.bottom span{color:#D53F8C}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">01 / Architecture</div>
+  <h1>A small engine with clear responsibility boundaries</h1>
+  <div class="lede">The player loop stays responsive because rendering, Android interaction, and authenticated room state have distinct jobs.</div>
+  <div class="lanes">
+    <div class="lane"><div class="lane-title">Native core</div><div class="lane-copy">Fixed-step physics, camera math, combat, weather, day-night progression, and GLES3 world rendering.</div><div class="signal">60 Hz logic</div></div>
+    <div class="lane"><div class="lane-title">Android shell</div><div class="lane-copy">Touch surface, HUD, profile identity, account session, graphics settings, and co-op room controls.</div><div class="signal">human input</div></div>
+    <div class="lane"><div class="lane-title">Online service</div><div class="lane-copy">Authenticated room membership, shared world clock, tower rendezvous, and transactional room actions.</div><div class="signal">server truth</div></div>
+  </div>
+  <div class="reference"><img src="/home/ubuntu/aethelgard_refs/aethelgard_crafting_1.png" alt="Drive reference snapshot"/><p>Drive visual reference only — composition cue, not copied artwork or code.</p></div>
+  <div class="bottom"><span>Principle:</span> keep the device loop fast; keep shared outcomes authoritative.</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Co-op Synchronization</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:64px 72px 0}
+.rule{position:absolute;left:44px;top:64px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:54px;line-height:.96;letter-spacing:-2px;font-weight:800;max-width:900px}
+.lede{font-size:21px;color:#4A5568;max-width:820px;line-height:1.25;margin-top:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:40px 60px;margin-top:64px;width:1040px}
+.item{border-top:8px solid #D69E2E;background:#CBD5E1;padding:18px 24px 18px;min-height:160px}
+.item h3{font-size:24px;letter-spacing:-0.5px;font-weight:800;text-transform:uppercase;margin-bottom:12px;color:#1A202C}
+.item p{font-size:18px;line-height:1.35;color:#4A5568}
+.callout{position:absolute;left:72px;bottom:57px;width:1040px;border-top:2px solid rgba(26,32,44,.3);padding-top:18px;font-size:18px;color:#1A202C;font-weight:700}
+.callout span{color:#D53F8C;letter-spacing:1px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">06 / Multiplayer</div>
+  <h1>The co-op tower room synchronizes the experience</h1>
+  <div class="lede">A lightweight HTTPS rendezvous layer keeps friends aligned without a full authoritative simulation server.</div>
+  <div class="grid">
+    <div class="item">
+      <h3>Room Codes & Auth</h3>
+      <p>A player creates a six-character room code; friends join through authenticated requests tied to their Google session.</p>
+    </div>
+    <div class="item">
+      <h3>Presence Heartbeats</h3>
+      <p>Two-second heartbeats publish bounded position, active presence, and the latest tower-arrival revision.</p>
+    </div>
+    <div class="item">
+      <h3>Shared World Clock</h3>
+      <p>The room service advances one shared clock and returns it, ensuring weather and day-night phases match for everyone.</p>
+    </div>
+    <div class="item">
+      <h3>Peer Rendering</h3>
+      <p>Clients render remote friends as original low-poly companions and apply the shared world time to the local GLES3 scene.</p>
+    </div>
+  </div>
+  <div class="callout"><span>Result</span>&nbsp;&nbsp;Players experience the same environment and see each other, setting the stage for shared events.</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Production Scale</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:64px 72px 0}
+.rule{position:absolute;left:44px;top:64px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:54px;line-height:.96;letter-spacing:-2px;font-weight:800;max-width:900px}
+.lede{font-size:21px;color:#4A5568;max-width:820px;line-height:1.25;margin-top:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:54px;width:1060px}
+.col-block{background:#CBD5E1;padding:36px 40px 0;min-height:380px;border-top:12px solid #D69E2E}
+.col-block.future{border-top-color:#D53F8C}
+.col-title{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:#1A202C;font-weight:800;margin-bottom:32px}
+.section{margin-top:32px}
+.section:first-of-type{margin-top:0}
+.section h3{font-size:24px;letter-spacing:-0.5px;font-weight:800;color:#1A202C;text-transform:uppercase;margin-bottom:12px}
+.section p{font-size:18px;line-height:1.4;color:#4A5568}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">10 / Roadmap</div>
+  <h1>Today’s prototype is a seam for production scale</h1>
+  <div class="lede">The current architecture establishes a verified foundation ready for dedicated simulation and high-fidelity rendering.</div>
+  
+  <div class="grid">
+    <div class="col-block">
+      <div class="col-title">Current Baseline</div>
+      <div class="section">
+        <h3>Verified Build Path</h3>
+        <p>Fully automated CI pipeline covering native tests, online-service tests, co-op simulation, and APK/AAB artifact packaging.</p>
+      </div>
+      <div class="section">
+        <h3>Authority Boundary</h3>
+        <p>Lightweight HTTPS rendezvous layer handling shared room state, transactional combat, and inventory actions.</p>
+      </div>
+    </div>
+    
+    <div class="col-block future">
+      <div class="col-title">Production Next Steps</div>
+      <div class="section">
+        <h3>Dedicated Simulation Server</h3>
+        <p>Transition to a full authoritative server for movement validation, hit detection, reconnects, and low-latency replication.</p>
+      </div>
+      <div class="section">
+        <h3>Rendering Upgrades</h3>
+        <p>Seamlessly swap procedural primitives for authored meshes, shadows, and GPU-instanced effects while preserving the existing camera contract.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

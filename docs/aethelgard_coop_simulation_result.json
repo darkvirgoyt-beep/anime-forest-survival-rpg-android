@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "command": "cd server && npm test",
+  "generatedRoomCode": "94E19F",
+  "testCount": 9,
+  "passed": 9,
+  "failed": 0,
+  "checks": [
+    "room_created",
+    "friend_joined",
+    "tower_revision_seen",
+    "co_op_clock_read",
+    "combat_validated",
+    "combat_retry_idempotent",
+    "combat_range_rejected",
+    "inventory_reward_validated",
+    "inventory_retry_idempotent",
+    "craft_validated"
+  ]
+}

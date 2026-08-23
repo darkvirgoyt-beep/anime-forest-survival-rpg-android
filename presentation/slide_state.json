@@ -1,0 +1,134 @@
+{
+  "project_info": {
+    "title": "AETHELGRAD",
+    "created": 1787489939.713,
+    "last_updated": 1787490077.816,
+    "total_slides": 12
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "engine_layers",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "frame_pipeline",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "procedural_world",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "camera_modes",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "weather_time",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "coop_sync",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "tower_event",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "authority",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "hud_testing",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "production_scale",
+      "state": "edited",
+      "pageNum": 11
+    },
+    {
+      "id": "closing",
+      "state": "edited",
+      "pageNum": 12
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "AETHELGRAD",
+      "summary": "3D engine architecture, camera modes, and authoritative co-op overview.",
+      "image_plan": "/home/ubuntu/anime-forest-survival-rpg-android/app/src/main/res/drawable/aethelgard_icon.png - Cover slide featuring Aethelgard title, character art, and mood"
+    },
+    {
+      "id": "engine_layers",
+      "title": "A small engine with clear responsibility boundaries",
+      "summary": "Native gameplay core, Android shell, and authenticated online service responsibilities.",
+      "image_plan": "/home/ubuntu/aethelgard_refs/aethelgard_crafting_1.png - Slide 1 showing the native gameplay core, procedural biomes, and Android shell UI layout"
+    },
+    {
+      "id": "frame_pipeline",
+      "title": "The frame pipeline keeps simulation stable",
+      "summary": "Bounded Android frame delta, fixed-step native simulation, and GLES3 rendering flow."
+    },
+    {
+      "id": "procedural_world",
+      "title": "Procedural 3D composition prioritizes spatial clarity",
+      "summary": "Original terrain regions, landmarks, procedural forms, and teleportation tower composition."
+    },
+    {
+      "id": "camera_modes",
+      "title": "One camera contract supports two play styles",
+      "summary": "Third-person follow camera, first-person eye view, shared yaw/pitch state, and 360-degree touch orbit."
+    },
+    {
+      "id": "weather_time",
+      "title": "Weather and time turn the map into a living system",
+      "summary": "Deterministic day-night clock, independent weather states, lighting, rain, and lightning."
+    },
+    {
+      "id": "coop_sync",
+      "title": "The co-op tower room synchronizes the experience",
+      "summary": "Room codes, authenticated heartbeats, shared clock, peer markers, and synchronized weather."
+    },
+    {
+      "id": "tower_event",
+      "title": "Tower teleport is a readable shared event",
+      "summary": "Revision-based tower activation, remote arrival synchronization, glow feedback, and HUD state."
+    },
+    {
+      "id": "authority",
+      "title": "Server authority protects combat and inventory",
+      "summary": "Transactional combat validation, range and cooldown checks, resource proximity, crafting costs, and idempotency."
+    },
+    {
+      "id": "hud_testing",
+      "title": "The Android HUD makes system state testable",
+      "summary": "Readable status instrumentation, co-op state, map orientation, and AETHELGRAD profile identity."
+    },
+    {
+      "id": "production_scale",
+      "title": "Today’s prototype is a seam for production scale",
+      "summary": "Verified build path, current authority boundary, dedicated-server next step, and rendering roadmap."
+    },
+    {
+      "id": "closing",
+      "title": "AETHELGRAD answers the player’s key questions",
+      "summary": "Closing synthesis of the fixed-step core, camera modes, atmosphere, room state, and server-validated actions."
+    }
+  ]
+}

@@ -70,7 +70,25 @@ data class CoOpRoomSnapshot(
     val maxPlayers: Int,
     val worldTime: Float,
     val towerRevision: Int,
+    val bossHealth: Int,
+    val combatRevision: Int,
     val participants: List<CoOpParticipant>
+)
+
+data class AuthoritativeCombatResult(
+    val action: String,
+    val damage: Int,
+    val bossHealth: Int,
+    val combatRevision: Int
+)
+
+data class AuthoritativeInventoryResult(
+    val operation: String,
+    val wood: Int,
+    val fiber: Int,
+    val stone: Int,
+    val emberKit: Boolean,
+    val inventoryRevision: Int
 )
 
 /**
@@ -471,6 +489,54 @@ class AccountSessionManager {
         }
     }
 
+    fun authoritativeCombat(roomCode: String, requestId: String, action: String, targetId: String = "forest_warden", onComplete: (AuthoritativeCombatResult?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your co-op session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("requestId", requestId).put("action", action).put("targetId", targetId).toString()
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/combat"), token, payload)
+                if (response.statusCode !in 200..299) {
+                    publishCombatResult(onComplete, null, if (response.statusCode == 429) "Combat cooldown active." else if (response.statusCode == 409) "Move closer to the target." else "Combat request rejected (${response.statusCode}).")
+                    return@execute
+                }
+                val result = JSONObject(response.body)
+                publishCombatResult(onComplete, AuthoritativeCombatResult(result.optString("action"), result.optInt("damage"), result.optInt("bossHealth"), result.optInt("combatRevision")), null)
+            } catch (_: Exception) {
+                publishCombatResult(onComplete, null, "Authoritative combat service unavailable.")
+            }
+        }
+    }
+
+    fun authoritativeInventory(roomCode: String, requestId: String, operation: String, resourceId: String? = null, onComplete: (AuthoritativeInventoryResult?, String?) -> Unit) {
+        val token = currentAccessToken()
+        val normalized = roomCode.trim().uppercase()
+        if (token.isNullOrBlank() || !Regex("[A-Z0-9]{6}").matches(normalized)) {
+            onComplete(null, "Your co-op session is not active.")
+            return
+        }
+        networkExecutor.execute {
+            try {
+                val payload = JSONObject().put("requestId", requestId).put("operation", operation)
+                if (!resourceId.isNullOrBlank()) payload.put("resourceId", resourceId)
+                val response = requestJson("POST", cloudEndpoint("/coop/rooms/$normalized/inventory"), token, payload.toString())
+                if (response.statusCode !in 200..299) {
+                    publishInventoryResult(onComplete, null, if (response.statusCode == 409) "Move closer or gather more materials." else "Inventory request rejected (${response.statusCode}).")
+                    return@execute
+                }
+                val result = JSONObject(response.body)
+                val inventory = result.getJSONObject("inventory")
+                publishInventoryResult(onComplete, AuthoritativeInventoryResult(result.optString("operation"), inventory.optInt("wood"), inventory.optInt("fiber"), inventory.optInt("stone"), inventory.optBoolean("emberKit"), result.optInt("inventoryRevision")), null)
+            } catch (_: Exception) {
+                publishInventoryResult(onComplete, null, "Authoritative inventory service unavailable.")
+            }
+        }
+    }
+
     fun leaveCoOpRoom(roomCode: String) {
         val token = currentAccessToken()
         val normalized = roomCode.trim().uppercase()
@@ -501,6 +567,8 @@ class AccountSessionManager {
             maxPlayers = room.optInt("maxPlayers", 4),
             worldTime = room.optDouble("worldTime", 0.0).toFloat(),
             towerRevision = room.optLong("towerRevision", 0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            bossHealth = room.optInt("bossHealth", 100).coerceIn(0, 100),
+            combatRevision = room.optLong("combatRevision", 0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             participants = participants
         )
     }
@@ -579,6 +647,8 @@ class AccountSessionManager {
     private fun publishWorldResult(callback: (CloudWorldManifest?, String?) -> Unit, world: CloudWorldManifest?, error: String?) = mainHandler.post { callback(world, error) }
     private fun publishSnapshotResult(callback: (String?, String?) -> Unit, snapshot: String?, error: String?) = mainHandler.post { callback(snapshot, error) }
     private fun publishCoOpResult(callback: (CoOpRoomSnapshot?, String?) -> Unit, room: CoOpRoomSnapshot?, error: String?) = mainHandler.post { callback(room, error) }
+    private fun publishCombatResult(callback: (AuthoritativeCombatResult?, String?) -> Unit, result: AuthoritativeCombatResult?, error: String?) = mainHandler.post { callback(result, error) }
+    private fun publishInventoryResult(callback: (AuthoritativeInventoryResult?, String?) -> Unit, result: AuthoritativeInventoryResult?, error: String?) = mainHandler.post { callback(result, error) }
 
     private fun clearSession() {
         accessSessionToken = null

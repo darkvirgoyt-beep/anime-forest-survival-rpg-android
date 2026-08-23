@@ -60,6 +60,9 @@ object NativeGameBridge {
     external fun teleportToTower()
     external fun syncTeleportToTower(revision: Int)
     external fun getCoOpLocalState(): String
+    external fun setAuthoritativeOnline(enabled: Boolean)
+    external fun setAuthoritativeBossHealth(health: Int)
+    external fun applyAuthoritativeInventory(wood: Int, fiber: Int, stone: Int, emberKit: Boolean)
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
     external fun attack()
@@ -106,6 +109,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var activeCoOpRoom: CoOpRoomSnapshot? = null
     private var coOpHeartbeatInFlight = false
     private var lastCoOpTowerRevision = 0
+    private var coOpRequestCounter = 0L
     private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
     private val hudHandler = Handler(Looper.getMainLooper())
@@ -814,6 +818,61 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    private fun nextCoOpRequestId(prefix: String): String {
+        coOpRequestCounter += 1L
+        return "$prefix-${System.currentTimeMillis()}-$coOpRequestCounter"
+    }
+
+    private fun submitAuthoritativeCombat(action: String) {
+        val room = activeCoOpRoom
+        if (room == null) {
+            gameView.queueEvent { if (action == "heavy_attack") NativeGameBridge.heavyAttack() else NativeGameBridge.attack() }
+            return
+        }
+        audio.playEffect("attack")
+        gameView.queueEvent { if (action == "heavy_attack") NativeGameBridge.heavyAttack() else NativeGameBridge.attack() }
+        accountSession.authoritativeCombat(room.code, nextCoOpRequestId("combat"), action) { result, error ->
+            if (result != null) {
+                gameView.queueEvent { NativeGameBridge.setAuthoritativeBossHealth(result.bossHealth) }
+                coOpStatusLabel.text = "CO-OP ${room.code}  •  ${result.action.uppercase()} ACCEPTED  •  WARDEN HP ${result.bossHealth}/100"
+            } else if (error != null) {
+                coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+            }
+        }
+    }
+
+    private fun submitAuthoritativeInventory(operation: String) {
+        val room = activeCoOpRoom
+        if (room == null) {
+            gameView.queueEvent { if (operation == "craft") NativeGameBridge.craft() else NativeGameBridge.gather() }
+            return
+        }
+        audio.playEffect(if (operation == "craft") "craft" else "gather")
+        gameView.queueEvent {
+            val local = NativeGameBridge.getCoOpLocalState().split('|')
+            val x = local.getOrNull(0)?.toFloatOrNull() ?: -0.55f
+            val y = local.getOrNull(1)?.toFloatOrNull() ?: -0.08f
+            val resourceId = if (operation == "gather") {
+                val distances = listOf(
+                    "forest_cache" to kotlin.math.abs(x + 0.56f) + kotlin.math.abs(y + 0.28f),
+                    "root_cache" to kotlin.math.abs(x + 0.40f) + kotlin.math.abs(y + 0.18f),
+                    "warden_stone" to kotlin.math.abs(x + 0.24f) + kotlin.math.abs(y + 0.28f)
+                )
+                distances.minByOrNull { it.second }?.first
+            } else null
+            runOnUiThread {
+                accountSession.authoritativeInventory(room.code, nextCoOpRequestId(operation), operation, resourceId) { result, error ->
+                    if (result != null) {
+                        gameView.queueEvent { NativeGameBridge.applyAuthoritativeInventory(result.wood, result.fiber, result.stone, result.emberKit) }
+                        coOpStatusLabel.text = "CO-OP ${room.code}  •  ${result.operation.uppercase()} ACCEPTED  •  W ${result.wood} F ${result.fiber} S ${result.stone}"
+                    } else if (error != null) {
+                        coOpStatusLabel.text = "CO-OP ${room.code}  •  $error"
+                    }
+                }
+            }
+        }
+    }
+
     private fun applyCoOpSnapshot(snapshot: CoOpRoomSnapshot) {
         activeCoOpRoom = snapshot
         if (!::coOpStatusLabel.isInitialized) return
@@ -825,6 +884,7 @@ class MainActivity : Activity(), SensorEventListener {
             gameView.queueEvent { NativeGameBridge.syncTeleportToTower(incomingTowerRevision) }
         }
         gameView.queueEvent {
+            NativeGameBridge.setAuthoritativeBossHealth(snapshot.bossHealth)
             NativeGameBridge.setWorldTime(snapshot.worldTime)
             NativeGameBridge.clearCoOpPeers()
             remoteParticipants.take(3).forEachIndexed { index, participant ->
@@ -832,12 +892,13 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val tower = if (snapshot.towerRevision > 0) "TOWER ${snapshot.towerRevision}" else "TOWER READY"
-        coOpStatusLabel.text = "CO-OP ${snapshot.code}  •  ${snapshot.participants.size}/${snapshot.maxPlayers}  •  $tower  •  WEATHER SYNCED"
+        coOpStatusLabel.text = "CO-OP ${snapshot.code}  •  ${snapshot.participants.size}/${snapshot.maxPlayers}  •  $tower  •  WARDEN ${snapshot.bossHealth}/100  •  WEATHER SYNCED"
     }
 
     private fun startCoOpRoom(snapshot: CoOpRoomSnapshot) {
         activeCoOpRoom = snapshot
         lastCoOpTowerRevision = 0
+        gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
         applyCoOpSnapshot(snapshot)
         hudHandler.removeCallbacks(coOpUpdater)
         hudHandler.postDelayed(coOpUpdater, 250L)
@@ -1066,12 +1127,12 @@ class MainActivity : Activity(), SensorEventListener {
             }
             true
         }
-        val attack = actionButton("ATTACK") { audio.playEffect("attack"); gameView.queueEvent { NativeGameBridge.attack() } }
-        val heavy = actionButton("HEAVY") { audio.playEffect("attack"); gameView.queueEvent { NativeGameBridge.heavyAttack() } }
+        val attack = actionButton("ATTACK") { submitAuthoritativeCombat("attack") }
+        val heavy = actionButton("HEAVY") { submitAuthoritativeCombat("heavy_attack") }
         val jump = actionButton("JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
         val dodge = actionButton("DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
-        val gather = actionButton("GATHER") { audio.playEffect("gather"); gameView.queueEvent { NativeGameBridge.gather() } }
-        val craft = actionButton("CRAFT") { audio.playEffect("craft"); gameView.queueEvent { NativeGameBridge.craft() } }
+        val gather = actionButton("GATHER") { submitAuthoritativeInventory("gather") }
+        val craft = actionButton("CRAFT") { submitAuthoritativeInventory("craft") }
         val settings = actionButton("GRAPHICS / FPS") { showGraphicsSettings() }
         actions.addView(sprintSlide, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })
         actions.addView(attack, LinearLayout.LayoutParams(dp(150), dp(50)).apply { bottomMargin = dp(6) })

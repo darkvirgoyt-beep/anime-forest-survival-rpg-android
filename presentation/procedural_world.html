@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Procedural World</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#E2E8F0;color:#1A202C;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;padding:64px 72px 0}
+.rule{position:absolute;left:44px;top:64px;width:12px;height:574px;background:#D53F8C}
+.kicker{font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#D53F8C;font-weight:700;margin-bottom:16px}
+h1{font-size:54px;line-height:.96;letter-spacing:-2px;font-weight:800;max-width:700px}
+.lede{font-size:21px;color:#4A5568;max-width:650px;line-height:1.25;margin-top:18px}
+.content-grid{display:grid;grid-template-columns:650px 420px;column-gap:60px;margin-top:48px}
+.text-blocks{display:flex;flex-direction:column;gap:20px}
+.block{border-left:8px solid #D69E2E;padding-left:20px}
+.block h3{font-size:22px;letter-spacing:-0.5px;font-weight:800;text-transform:uppercase;color:#1A202C;margin-bottom:8px}
+.block p{font-size:17px;line-height:1.35;color:#4A5568}
+.visual-diagram{width:420px;height:400px;background:#CBD5E1;border:2px solid rgba(26,32,44,.2);position:relative;overflow:hidden}
+.biome-snow{position:absolute;top:0;left:0;width:100%;height:120px;background:rgba(255,255,255,0.4);border-bottom:2px solid rgba(26,32,44,.1)}
+.biome-forest{position:absolute;top:120px;left:0;width:100%;height:160px;background:rgba(74,85,104,0.1);border-bottom:2px solid rgba(26,32,44,.1)}
+.biome-sand{position:absolute;top:280px;left:0;width:100%;height:120px;background:rgba(214,158,46,0.15)}
+.tower-base{position:absolute;bottom:140px;left:180px;width:60px;height:180px;background:#1A202C}
+.tower-crown{position:absolute;bottom:320px;left:170px;width:80px;height:30px;background:#D69E2E}
+.tree-1{position:absolute;bottom:200px;left:60px;width:24px;height:60px;background:#4A5568}
+.tree-2{position:absolute;bottom:160px;left:100px;width:20px;height:50px;background:#4A5568}
+.tree-3{position:absolute;bottom:240px;right:80px;width:28px;height:70px;background:#4A5568}
+.diagram-label{position:absolute;bottom:12px;right:16px;font-size:12px;font-weight:700;letter-spacing:2px;color:#1A202C;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rule"></div>
+  <div class="kicker">03 / World Design</div>
+  <h1>Procedural 3D composition prioritizes spatial clarity</h1>
+  <div class="lede">Original terrain regions, landmarks, and procedural forms establish a readable environment without relying on external assets.</div>
+  
+  <div class="content-grid">
+    <div class="text-blocks">
+      <div class="block">
+        <h3>Environmental Bands</h3>
+        <p>Large color fields divide the world into forest, sand, and snow regions, creating immediate navigation cues and distinct biomes.</p>
+      </div>
+      <div class="block">
+        <h3>Readable Silhouettes</h3>
+        <p>Procedural terrain, trees, paths, and structures provide original, highly readable forms. The focus is on spatial understanding rather than photorealism.</p>
+      </div>
+      <div class="block">
+        <h3>The Teleportation Tower</h3>
+        <p>An amber and dark-slate tower acts as the central anchor. It serves simultaneously as a fast-travel mechanic and a world-scale visual landmark.</p>
+      </div>
+      <div class="block">
+        <h3>Future-Proof Foundation</h3>
+        <p>Authored meshes and high-fidelity materials can seamlessly replace these procedural primitives later without altering the underlying gameplay contracts.</p>
+      </div>
+    </div>
+    
+    <div class="visual-diagram">
+      <div class="biome-snow"></div>
+      <div class="biome-forest"></div>
+      <div class="biome-sand"></div>
+      <div class="tree-1"></div>
+      <div class="tree-2"></div>
+      <div class="tree-3"></div>
+      <div class="tower-base"></div>
+      <div class="tower-crown"></div>
+      <div class="diagram-label">Procedural Geometry</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
