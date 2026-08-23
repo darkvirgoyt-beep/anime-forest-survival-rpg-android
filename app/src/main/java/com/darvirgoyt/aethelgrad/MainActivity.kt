@@ -1542,7 +1542,8 @@ class MainActivity : Activity(), SensorEventListener {
         var chosenTier = selectedResourceTier ?: ContentDownloadPlan.ResourceTier.HIGH
         val labels = tiers.map { tier ->
             val title = if (tier == ContentDownloadPlan.ResourceTier.HIGH) "HIGH RESOURCES  •  ${tier.storageLabel}" else "LOW RESOURCES  •  ${tier.storageLabel}"
-            "$title\n${tier.description}"
+            val downloadSize = ContentDownloadPlan.totalGiBLabelFor(tier)
+            "$title\n${tier.description}\nCOMPLETE DOWNLOAD: $downloadSize"
         }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("CHOOSE WORLD RESOURCE DOWNLOAD")
