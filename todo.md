@@ -9,3 +9,8 @@
 - [x] Create an original, legally clean Aethelgard cinematic login background asset without using the supplied reference image
 - [x] Integrate the original background asset into the Android login experience with a procedural fallback and dark UI-safe vignette
 - [x] Validate the packaged background asset in the Android release build and public CI
+- [x] Add a standard Google Sign-In backend contract for testing without Play Console, while preserving the future Play Games path
+- [x] Implement backend ID-token verification, game-account upsert, and secure rotating Aethelgard sessions
+- [x] Replace the Android Play Games-only login attempt with a standard Google Sign-In token exchange flow
+- [x] Document the required Android and Web OAuth clients, backend secrets, deployment, and Play Games upgrade path
+- [ ] Validate the standard Google Sign-In backend and Android release build through automated tests and CI

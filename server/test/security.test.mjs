@@ -7,6 +7,7 @@ import {
   hashSecret,
   issueAccessToken,
   loadRuntimeConfig,
+  validateGoogleIdToken,
   validateServerAuthCode,
   verifyAccessToken
 } from "../src/security.mjs";
@@ -14,8 +15,7 @@ import { createOnlineService } from "../src/server.mjs";
 
 const validConfig = {
   DATABASE_URL: "postgres://example",
-  GOOGLE_GAME_SERVER_CLIENT_ID: "client.apps.googleusercontent.com",
-  GOOGLE_GAME_SERVER_CLIENT_SECRET: "server-secret",
+  GOOGLE_ID_TOKEN_AUDIENCE: "web-client.apps.googleusercontent.com",
   GAME_SESSION_JWT_SECRET: "a-very-long-session-signing-secret-for-tests",
   ALLOWED_ORIGIN: "https://control.aethelgard.example",
   GAME_ACCESS_TOKEN_TTL_SECONDS: "900",
@@ -24,7 +24,7 @@ const validConfig = {
 
 test("runtime configuration rejects placeholders, missing values, and insecure production origins", () => {
   assert.throws(() => loadRuntimeConfig({ ...validConfig, DATABASE_URL: "" }), /missing_required_configuration/);
-  assert.throws(() => loadRuntimeConfig({ ...validConfig, GOOGLE_GAME_SERVER_CLIENT_ID: "REPLACE_ME" }), /missing_required_configuration/);
+  assert.throws(() => loadRuntimeConfig({ ...validConfig, GOOGLE_ID_TOKEN_AUDIENCE: "REPLACE_ME" }), /missing_required_configuration/);
   assert.throws(() => loadRuntimeConfig({ ...validConfig, NODE_ENV: "production", ALLOWED_ORIGIN: "http://localhost" }), /ALLOWED_ORIGIN must use HTTPS/);
   assert.equal(loadRuntimeConfig(validConfig).accessTtlSeconds, 900);
 });
@@ -37,6 +37,12 @@ test("server auth code validator rejects invalid code and replay guard rejects a
   assert.equal(replayGuard("x".repeat(16)), false);
 });
 
+test("Google ID token validator rejects malformed values before verification", () => {
+  assert.equal(validateGoogleIdToken("short"), false);
+  assert.equal(validateGoogleIdToken(`${"a".repeat(34)}.${"b".repeat(34)}.${"c".repeat(34)}`), true);
+  assert.equal(validateGoogleIdToken(`${"a".repeat(34)}.${"b".repeat(34)}.not valid`), false);
+});
+
 test("access tokens expire and tampered tokens are rejected", () => {
   const secret = validConfig.GAME_SESSION_JWT_SECRET;
   const issued = issueAccessToken({ accountId: "account-1", sessionId: 7, secret, now: 1_000_000, ttlSeconds: 60 });
@@ -46,7 +52,7 @@ test("access tokens expire and tampered tokens are rejected", () => {
   assert.ok(createOpaqueToken().length >= 64);
 });
 
-test("exchange endpoint rejects an invalid code and a replayed code", async () => {
+test("Play Games exchange rejects an invalid code and a replayed code", async () => {
   const codeReceipts = new Set();
   let nextSessionId = 1;
   const pool = {
@@ -65,7 +71,11 @@ test("exchange endpoint rejects an invalid code and a replayed code", async () =
     if (url.includes("oauth2.googleapis.com")) return { ok: true, json: async () => ({ access_token: "google-access" }) };
     return { ok: true, json: async () => ({ playerId: "gpg-player-1", displayName: "Aethel" }) };
   };
-  const app = createOnlineService({ pool, config: loadRuntimeConfig(validConfig), fetchImpl });
+  const app = createOnlineService({
+    pool,
+    config: loadRuntimeConfig({ ...validConfig, GOOGLE_GAME_SERVER_CLIENT_ID: "client.apps.googleusercontent.com", GOOGLE_GAME_SERVER_CLIENT_SECRET: "server-secret" }),
+    fetchImpl
+  });
   const server = http.createServer(app);
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${server.address().port}/v1/auth/play-games/exchange`;
@@ -84,6 +94,44 @@ test("exchange endpoint rejects an invalid code and a replayed code", async () =
     const replay = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
     assert.equal(replay.status, 409);
     assert.equal((await replay.json()).error, "replayed_server_auth_code");
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("Google ID-token exchange verifies identity server-side and issues a game session", async () => {
+  let nextSessionId = 1;
+  const pool = {
+    async query(sql) {
+      if (sql.includes("INSERT INTO accounts")) return { rowCount: 1, rows: [{ id: "google-account-1" }] };
+      if (sql.includes("INSERT INTO sessions")) return { rowCount: 1, rows: [{ id: nextSessionId++ }] };
+      return { rowCount: 1, rows: [] };
+    }
+  };
+  let receivedToken = null;
+  const app = createOnlineService({
+    pool,
+    config: loadRuntimeConfig(validConfig),
+    verifyGoogleIdTokenImpl: async idToken => {
+      receivedToken = idToken;
+      return { subject: "google-subject-1", displayName: "Aethel" };
+    }
+  });
+  const server = http.createServer(app);
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const url = `http://127.0.0.1:${server.address().port}/v1/auth/google-id-token/exchange`;
+  try {
+    const invalid = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: "invalid" }) });
+    assert.equal(invalid.status, 400);
+
+    const idToken = `${"a".repeat(34)}.${"b".repeat(34)}.${"c".repeat(34)}`;
+    const accepted = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken }) });
+    const payload = await accepted.json();
+    assert.equal(accepted.status, 200);
+    assert.equal(receivedToken, idToken);
+    assert.equal(payload.accountId, "google-account-1");
+    assert.ok(payload.accessToken);
+    assert.ok(payload.refreshToken);
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

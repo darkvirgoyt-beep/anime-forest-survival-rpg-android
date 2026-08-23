@@ -1,18 +1,21 @@
 import express from "express";
 import pg from "pg";
+import { OAuth2Client } from "google-auth-library";
 import { pathToFileURL } from "node:url";
 import {
   createOpaqueToken,
   hashSecret,
   issueAccessToken,
   loadRuntimeConfig,
+  validateGoogleIdToken,
   validateServerAuthCode,
   verifyAccessToken
 } from "./security.mjs";
 
 const { Pool } = pg;
+const googleIdTokenVerifier = new OAuth2Client();
 
-export function createOnlineService({ pool, config, fetchImpl = fetch }) {
+export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoogleIdTokenImpl = verifyGoogleIdToken }) {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "16kb", strict: true }));
@@ -41,6 +44,9 @@ export function createOnlineService({ pool, config, fetchImpl = fetch }) {
   });
 
   app.post("/v1/auth/play-games/exchange", async (req, res) => {
+    if (!config.googlePlayGamesClientId || !config.googlePlayGamesClientSecret) {
+      return res.status(503).json({ error: "play_games_not_configured" });
+    }
     const serverAuthCode = req.body?.serverAuthCode;
     if (!validateServerAuthCode(serverAuthCode)) return res.status(400).json({ error: "invalid_server_auth_code" });
 
@@ -72,6 +78,28 @@ export function createOnlineService({ pool, config, fetchImpl = fetch }) {
       );
       console.error("play_games_exchange_failed", safeErrorCode(error));
       res.status(401).json({ error: "play_games_authentication_failed" });
+    }
+  });
+
+  app.post("/v1/auth/google-id-token/exchange", async (req, res) => {
+    const idToken = req.body?.idToken;
+    if (!validateGoogleIdToken(idToken)) return res.status(400).json({ error: "invalid_google_id_token" });
+
+    try {
+      const identity = await verifyGoogleIdTokenImpl(idToken, config);
+      const account = await upsertGoogleAccount(pool, identity);
+      const bundle = await createSessionBundle(pool, account.id, config);
+      res.status(200).json({
+        accessToken: bundle.accessToken,
+        refreshToken: bundle.refreshToken,
+        tokenType: "Bearer",
+        accountId: account.id,
+        expiresAt: new Date(bundle.accessExpiresAt * 1000).toISOString(),
+        refreshExpiresAt: new Date(bundle.refreshExpiresAt * 1000).toISOString()
+      });
+    } catch (error) {
+      console.error("google_id_token_exchange_failed", safeErrorCode(error));
+      res.status(401).json({ error: "google_id_token_authentication_failed" });
     }
   });
 
@@ -173,8 +201,8 @@ export function createOnlineService({ pool, config, fetchImpl = fetch }) {
 
 export async function exchangePlayGamesCode(serverAuthCode, config, fetchImpl = fetch) {
   const body = new URLSearchParams({
-    client_id: config.googleClientId,
-    client_secret: config.googleClientSecret,
+    client_id: config.googlePlayGamesClientId,
+    client_secret: config.googlePlayGamesClientSecret,
     code: serverAuthCode,
     grant_type: "authorization_code",
     redirect_uri: ""
@@ -200,6 +228,18 @@ export async function verifyPlayGamesPlayer(accessToken, fetchImpl = fetch) {
   return player;
 }
 
+export async function verifyGoogleIdToken(idToken, config, client = googleIdTokenVerifier) {
+  const ticket = await client.verifyIdToken({ idToken, audience: config.googleIdTokenAudience });
+  const payload = ticket.getPayload();
+  if (!payload || typeof payload.sub !== "string" || payload.sub.length === 0 || payload.sub.length > 255) {
+    throw new Error("google_subject_missing");
+  }
+  return {
+    subject: payload.sub,
+    displayName: typeof payload.name === "string" ? payload.name : "Wayfarer"
+  };
+}
+
 async function upsertAccount(db, player) {
   const result = await db.query(
     `INSERT INTO accounts (provider, provider_player_id, display_name)
@@ -208,6 +248,18 @@ async function upsertAccount(db, player) {
      DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()
      RETURNING id`,
     [player.playerId, String(player.displayName || "Player").slice(0, 80)]
+  );
+  return result.rows[0];
+}
+
+async function upsertGoogleAccount(db, identity) {
+  const result = await db.query(
+    `INSERT INTO accounts (provider, provider_player_id, display_name)
+     VALUES ('google_openid', $1, $2)
+     ON CONFLICT (provider, provider_player_id)
+     DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()
+     RETURNING id`,
+    [identity.subject, String(identity.displayName || "Wayfarer").slice(0, 80)]
   );
   return result.rows[0];
 }

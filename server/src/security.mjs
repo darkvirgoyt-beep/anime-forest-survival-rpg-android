@@ -6,8 +6,7 @@ export const SESSION_AUDIENCE = "aethelgard-android";
 export function loadRuntimeConfig(env = process.env) {
   const required = [
     "DATABASE_URL",
-    "GOOGLE_GAME_SERVER_CLIENT_ID",
-    "GOOGLE_GAME_SERVER_CLIENT_SECRET",
+    "GOOGLE_ID_TOKEN_AUDIENCE",
     "GAME_SESSION_JWT_SECRET",
     "ALLOWED_ORIGIN"
   ];
@@ -21,8 +20,9 @@ export function loadRuntimeConfig(env = process.env) {
   return {
     databaseUrl: env.DATABASE_URL,
     databaseSsl: env.DATABASE_SSL === "true",
-    googleClientId: env.GOOGLE_GAME_SERVER_CLIENT_ID,
-    googleClientSecret: env.GOOGLE_GAME_SERVER_CLIENT_SECRET,
+    googleIdTokenAudience: env.GOOGLE_ID_TOKEN_AUDIENCE,
+    googlePlayGamesClientId: optionalConfigValue(env.GOOGLE_GAME_SERVER_CLIENT_ID),
+    googlePlayGamesClientSecret: optionalConfigValue(env.GOOGLE_GAME_SERVER_CLIENT_SECRET),
     sessionSecret: env.GAME_SESSION_JWT_SECRET,
     allowedOrigin: env.ALLOWED_ORIGIN,
     accessTtlSeconds: boundedPositiveInt(env.GAME_ACCESS_TOKEN_TTL_SECONDS, 900, 60, 3600),
@@ -32,6 +32,10 @@ export function loadRuntimeConfig(env = process.env) {
 
 export function validateServerAuthCode(value) {
   return typeof value === "string" && value.length >= 16 && value.length <= 4096 && !/[\u0000-\u001f]/.test(value);
+}
+
+export function validateGoogleIdToken(value) {
+  return typeof value === "string" && value.length >= 100 && value.length <= 16_384 && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
 }
 
 export function hashSecret(value) {
@@ -104,6 +108,10 @@ function boundedPositiveInt(raw, fallback, min, max) {
     throw new Error("invalid_session_ttl_configuration");
   }
   return parsed;
+}
+
+function optionalConfigValue(value) {
+  return !value || value.startsWith("REPLACE_") ? null : value;
 }
 
 function encodeJson(value) {

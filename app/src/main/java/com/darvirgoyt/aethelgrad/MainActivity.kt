@@ -288,8 +288,8 @@ class MainActivity : Activity(), SensorEventListener {
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.rgb(220, 182, 101))
             isChecked = false
         }
-        val google = cinematicButton("✦  CONTINUE WITH GOOGLE PLAY", true) {
-            accountSession.requestGooglePlaySignIn()
+        val google = cinematicButton("✦  CONTINUE WITH GOOGLE", true) {
+            accountSession.requestGoogleSignIn()
         }.apply {
             isEnabled = false
             alpha = 0.5f

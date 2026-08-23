@@ -3,13 +3,19 @@ package com.darvirgoyt.aethelgrad
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
-import com.google.android.gms.games.GamesSignInClient
-import com.google.android.gms.games.PlayGames
+import androidx.core.content.ContextCompat
+import androidx.credentials.CredentialManager
+import androidx.credentials.CredentialManagerCallback
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.util.concurrent.Executors
-
 
 enum class SessionState {
     SIGNED_OUT,
@@ -30,8 +36,9 @@ data class SessionSnapshot(
 )
 
 /**
- * Client boundary for Play Games platform authentication and backend session exchange.
- * The client never treats a Play Games player ID as proof of in-game ownership.
+ * Standard Google account sign-in boundary for pre-Play-Console testing.
+ * The Android client sends only a Google-issued ID token to the configured HTTPS backend.
+ * The backend verifies the token audience, issuer, expiry, and signature before it creates an Aethelgard session.
  */
 class AccountSessionManager {
     var snapshot: SessionSnapshot = SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out")
@@ -39,9 +46,10 @@ class AccountSessionManager {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val networkExecutor = Executors.newSingleThreadExecutor()
-    private var gamesSignInClient: GamesSignInClient? = null
+    private var activity: Activity? = null
+    private var credentialManager: CredentialManager? = null
     private var stateListener: ((SessionSnapshot) -> Unit)? = null
-    private var serverClientId: String = ""
+    private var googleWebClientId: String = ""
     private var authExchangeUrl: String = ""
     private var authRefreshUrl: String = ""
     private var accessSessionToken: String? = null
@@ -49,118 +57,78 @@ class AccountSessionManager {
     private var accessExpiresAtEpochMs: Long? = null
 
     fun initialize(activity: Activity, onStateChanged: (SessionSnapshot) -> Unit) {
+        this.activity = activity
         stateListener = onStateChanged
-        serverClientId = activity.getString(R.string.play_games_server_client_id)
+        googleWebClientId = activity.getString(R.string.google_web_client_id)
         authExchangeUrl = activity.getString(R.string.auth_exchange_url)
         authRefreshUrl = activity.getString(R.string.auth_refresh_url)
-        gamesSignInClient = PlayGames.getGamesSignInClient(activity)
-        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Checking Google Play sign-in…"))
+        credentialManager = CredentialManager.create(activity)
 
-        gamesSignInClient?.isAuthenticated()?.addOnCompleteListener { task ->
-            if (task.isSuccessful && task.result.isAuthenticated) {
-                requestServerSession()
-            } else {
-                publish(
-                    SessionSnapshot(
-                        SessionState.SIGNED_OUT,
-                        message = "Google Play sign-in is required to continue."
-                    )
-                )
-            }
-        }
-    }
-
-    fun requestGooglePlaySignIn(): SessionSnapshot {
-        val client = gamesSignInClient
-        if (client == null) {
-            return publish(
+        if (!hasCompleteConfiguration()) {
+            publish(
                 SessionSnapshot(
-                    SessionState.ERROR,
-                    message = "Google Play Games Services is not initialized. Restart the game and try again."
+                    SessionState.CONFIGURATION_ERROR,
+                    message = "Google sign-in is prepared, but the Web OAuth client ID and HTTPS backend URL are not configured."
                 )
             )
+            return
+        }
+        publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Google sign-in is required to continue."))
+    }
+
+    fun requestGoogleSignIn(): SessionSnapshot {
+        val owner = activity
+        val manager = credentialManager
+        if (owner == null || manager == null) {
+            return publish(SessionSnapshot(SessionState.ERROR, message = "Google sign-in is not initialized. Restart the game and try again."))
+        }
+        if (!hasCompleteConfiguration()) {
+            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Configure the Web OAuth client ID and HTTPS game backend before signing in."))
         }
 
-        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Opening Google Play sign-in…"))
-        client.signIn().addOnCompleteListener { signInTask ->
-            if (!signInTask.isSuccessful) {
-                publish(
-                    SessionSnapshot(
-                        SessionState.ERROR,
-                        message = "Google Play sign-in failed or was cancelled. Check your Google account and try again."
-                    )
-                )
-                return@addOnCompleteListener
+        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Choose a Google account to connect…"))
+        val option = GetSignInWithGoogleOption.Builder(googleWebClientId).build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+        manager.getCredentialAsync(
+            owner,
+            request,
+            null,
+            ContextCompat.getMainExecutor(owner),
+            object : CredentialManagerCallback<GetCredentialResponse, GetCredentialException> {
+                override fun onResult(result: GetCredentialResponse) {
+                    val credential = result.credential
+                    if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                        publish(SessionSnapshot(SessionState.DENIED, message = "Google did not return a usable sign-in credential. Try again."))
+                        return
+                    }
+                    try {
+                        exchangeGoogleIdToken(GoogleIdTokenCredential.createFrom(credential.data).idToken)
+                    } catch (_: Exception) {
+                        publish(SessionSnapshot(SessionState.DENIED, message = "Google returned an invalid sign-in credential. Try again."))
+                    }
+                }
+
+                override fun onError(error: GetCredentialException) {
+                    publish(SessionSnapshot(SessionState.DENIED, message = "Google sign-in was cancelled or unavailable. Check your Google account and try again."))
+                }
             }
-            requestServerSession()
-        }
+        )
         return snapshot
     }
 
-    private fun requestServerSession() {
-        if (serverClientId.startsWith("REPLACE_") || authExchangeUrl.startsWith("REPLACE_")) {
-            publish(
-                    SessionSnapshot(
-                        SessionState.CONFIGURATION_ERROR,
-                        message = "Play Games is ready, but the server OAuth ID and HTTPS backend URL are not configured."
-                )
-            )
-            return
-        }
-        if (!authExchangeUrl.startsWith("https://")) {
-            publish(
-                    SessionSnapshot(
-                        SessionState.CONFIGURATION_ERROR,
-                        message = "The authentication backend must use HTTPS."
-                )
-            )
-            return
-        }
-
-        val client = gamesSignInClient ?: return
-        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Connecting to the game server…"))
-        client.requestServerSideAccess(serverClientId, false).addOnCompleteListener { task ->
-            if (!task.isSuccessful || task.result.isNullOrBlank()) {
-                publish(
-                    SessionSnapshot(
-                        SessionState.DENIED,
-                        message = "Could not obtain a secure Play Games server code. Check Play Console configuration."
-                    )
-                )
-                return@addOnCompleteListener
-            }
-            exchangeCode(task.result)
-        }
-    }
-
-    private fun exchangeCode(serverAuthCode: String) {
+    private fun exchangeGoogleIdToken(idToken: String) {
+        publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Verifying your Google account with the game server…"))
         networkExecutor.execute {
             try {
-                val connection = (URL(authExchangeUrl).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 10_000
-                    readTimeout = 10_000
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "application/json")
-                }
-                val payload = "{\"serverAuthCode\":\"${escapeJson(serverAuthCode)}\"}"
-                connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
-                val responseCode = connection.responseCode
-                val response = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
-                    ?.bufferedReader()
-                    ?.use { it.readText() }
-                    .orEmpty()
-                connection.disconnect()
-
-                if (responseCode !in 200..299) {
-                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server rejected the Play Games login ($responseCode)."))
+                val response = postJson(authExchangeUrl, "{\"idToken\":\"${escapeJson(idToken)}\"}")
+                if (response.statusCode !in 200..299) {
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server rejected the Google login (${response.statusCode})."))
                     return@execute
                 }
-                val sessionToken = jsonString(response, "accessToken")
-                val accountId = jsonString(response, "accountId")
-                val refreshToken = jsonString(response, "refreshToken")
-                val expiresAt = parseIsoEpochMs(jsonString(response, "expiresAt"))
+                val sessionToken = jsonString(response.body, "accessToken")
+                val accountId = jsonString(response.body, "accountId")
+                val refreshToken = jsonString(response.body, "refreshToken")
+                val expiresAt = parseIsoEpochMs(jsonString(response.body, "expiresAt"))
                 if (sessionToken.isNullOrBlank() || accountId.isNullOrBlank() || refreshToken.isNullOrBlank() || expiresAt == null) {
                     publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Game server returned an invalid session response."))
                     return@execute
@@ -172,7 +140,7 @@ class AccountSessionManager {
                     SessionSnapshot(
                         SessionState.AUTHENTICATED,
                         accountId = accountId,
-                        message = "Game server connected. Select a region to continue.",
+                        message = "Google account verified. Select a region to continue.",
                         expiresAtEpochMs = expiresAt
                     )
                 )
@@ -227,13 +195,18 @@ class AccountSessionManager {
 
     fun signOut(): SessionSnapshot {
         clearSession()
-        val next = SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out")
-        return publish(next)
+        return publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out"))
     }
 
     fun shutdown() {
+        activity = null
         networkExecutor.shutdownNow()
     }
+
+    private fun hasCompleteConfiguration(): Boolean =
+        !googleWebClientId.startsWith("REPLACE_") &&
+            !authExchangeUrl.startsWith("REPLACE_") &&
+            authExchangeUrl.startsWith("https://")
 
     private fun publish(next: SessionSnapshot): SessionSnapshot {
         snapshot = next

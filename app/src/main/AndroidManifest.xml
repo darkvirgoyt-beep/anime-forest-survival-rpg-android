@@ -11,9 +11,6 @@
         android:supportsRtl="true"
         android:name=".ForestSliceApplication"
         android:theme="@style/Theme.ForestSlice">
-        <meta-data
-            android:name="com.google.android.gms.games.APP_ID"
-            android:value="@string/game_services_project_id" />
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
