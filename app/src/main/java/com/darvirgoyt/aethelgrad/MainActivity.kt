@@ -326,7 +326,8 @@ class MainActivity : Activity(), SensorEventListener {
             when (snapshot.state) {
                 SessionState.AUTHENTICATED, SessionState.GUEST -> Color.rgb(164, 231, 190)
                 SessionState.SIGNING_IN -> Color.rgb(255, 205, 145)
-                SessionState.ERROR -> Color.rgb(255, 180, 150)
+                SessionState.CONFIGURATION_ERROR, SessionState.NETWORK_ERROR -> Color.rgb(255, 205, 145)
+                SessionState.DENIED, SessionState.EXPIRED, SessionState.ERROR -> Color.rgb(255, 180, 150)
                 SessionState.SIGNED_OUT -> Color.WHITE
             }
         )
