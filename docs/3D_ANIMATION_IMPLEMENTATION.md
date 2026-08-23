@@ -28,3 +28,21 @@ The concept-art boards in `concept_art/` are the visual target for that handoff.
 ## Validation target
 
 A successful implementation pass means the Android build compiles, the native tests remain green, the game renders the procedural 3D Aurora in third person, movement changes the walk/sprint pose, attack input changes the sword pose, dodge and slide visibly lower the body, and the same gameplay state remains authoritative for damage and stamina. An Unreal skeletal replacement is a later content milestone and requires the real Unreal editor or an equivalent asset-authoring pipeline to import and validate `.uasset` and `.umap` content.
+
+## Mobile fidelity tiers
+
+The existing procedural animation slice is intentionally kept small in the bootstrap APK. Low Resources uses compact locomotion and combat clips, GLES-safe materials, reduced secondary motion, and the required world/animation-set pack. High Resources uses the complete locomotion, combat, traversal, emote, montage, cloth/hair secondary-motion, and cinematic camera sets from `assetpack_animation_sets` and `assetpack_cinematics`.
+
+The selected Play Asset Delivery tier must finish mounting before production world entry. The APK contains the control surface, loading scene, native renderer, and minimal state machine; it does not claim to contain the final high-resolution skeletal meshes or animation libraries.
+
+## Physics and animation synchronization
+
+Movement remains deterministic at the simulation layer. The native test suite covers acceleration, sprint behavior, water transitions, combat/controller integration, and collision response. Unreal movement exposes configurable ground acceleration, braking, air control, walkable slope, water acceleration, and camera lag. Animation notifies should trigger presentation cues only; authoritative combat, inventory, stamina, and health mutations remain on the gameplay/server path.
+
+## Unreal integration checklist
+
+Assign the production skeletal mesh and animation blueprint to the player character, map locomotion speed and grounded state to the blend space, bind sprint/jump/dodge/slide/swim montages, assign weapon and trail sockets, and verify root-motion policy for mobile networking. Cook the resulting runtime assets into the appropriate downloadable pack. Do not stage editor-only `.uasset` or `.umap` files as if they were runtime-ready payloads.
+
+## CI contract
+
+The production-foundation job checks this documentation file, the Unreal character and presentation source seams, native controller tests, Android resource-center tests, the graphics-tier contract, and the final APK/AAB build. A passing contract confirms integration points and packaging structure; it does not replace a device test with the final cooked Unreal content.
