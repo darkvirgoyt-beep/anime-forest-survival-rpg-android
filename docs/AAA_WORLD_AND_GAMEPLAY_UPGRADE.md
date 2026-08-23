@@ -38,4 +38,4 @@ The art pipeline should replace debug meshes in this order: hero and creature si
 
 ## Implementation order
 
-The practical vertical slice is: seven-biome and river metadata; mob health/base presentation data; material/tool/building recipe contracts; authoritative placement validation; readable HUD binding points; then authored asset import and visual verification in Unreal. A genuine 100 km AAA world, dense Blender asset library, multiplayer persistence, navmesh, animation, and mobile optimization remain production phases rather than one-file changes.
+The practical current implementation milestone is: seven-biome and river metadata; mob health/base presentation data; material/tool/building recipe contracts; authoritative placement validation; readable HUD binding points; then authored asset import and visual verification in Unreal. The full 100 km AAA world, dense Blender asset library, multiplayer persistence, navmesh, animation, and mobile optimization are coordinated production workstreams rather than one-file changes.
