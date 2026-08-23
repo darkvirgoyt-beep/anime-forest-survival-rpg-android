@@ -845,6 +845,7 @@ class MainActivity : Activity(), SensorEventListener {
     /** Plays the released First Ember story film before any world entry; players may always skip it. */
     private fun enterWorldThroughCinematic(onWorldReady: () -> Unit) {
         if (cinematicEntryOverlay != null || worldLoadingOverlay != null) return
+        audio.stopMusic()
 
         val overlay = FrameLayout(this).apply {
             alpha = 0f
@@ -955,6 +956,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun showWorldLoading(onWorldReady: () -> Unit) {
         beginWorldLoading(onWorldReady)
+        audio.playLoadingMusic()
         val overlay = FrameLayout(this).apply {
             alpha = 0f
             setBackgroundColor(Color.rgb(4, 18, 20))
@@ -1061,6 +1063,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun skipLoadingPresentation() {
         if (worldEntryRevealed) return
         playerSkippedLoadingPresentation = true
+        audio.playEffect("ui", rate = 0.88f)
         worldLoadingSkip?.isEnabled = false
         worldLoadingSkip?.text = "PREPARING IN BACKGROUND"
         worldLoadingCard?.animate()?.alpha(0.34f)?.scaleX(0.94f)?.scaleY(0.94f)?.setDuration(180L)?.start()
@@ -1076,6 +1079,9 @@ class MainActivity : Activity(), SensorEventListener {
             worldEntryRevealed = true
             val onWorldReady = pendingWorldReadyAction ?: return@postDelayed
             pendingWorldReadyAction = null
+            audio.stopLoadingMusic()
+            audio.playEffect("craft", rate = 1.08f)
+            audio.playMusic()
             onWorldReady()
             val overlay = worldLoadingOverlay
             if (overlay != null) {

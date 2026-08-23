@@ -39,9 +39,12 @@ class GameAudio(context: Context) {
 
     private val sounds = mutableMapOf<String, Int>()
     private var musicStream = 0
+    private var loadingMusicStream = 0
+    private var loadingMusicRequested = false
 
     init {
         load("music_forest", R.raw.aethelgard_forest_exploration)
+        load("music_loading", R.raw.aethelgard_wisteria_loading_ambience)
         load("footsteps", R.raw.sfx_footsteps_forest)
         load("sprint", R.raw.sfx_sprint_loop)
         load("slide", R.raw.sfx_slide)
@@ -67,6 +70,8 @@ class GameAudio(context: Context) {
 
     fun playMusic() {
         val id = sounds["music_forest"] ?: return
+        loadingMusicRequested = false
+        stopLoadingMusic()
         stopMusic()
         val volume = effective(settings.music)
         if (volume > 0f) musicStream = soundPool.play(id, volume, volume, 1, -1, 1f)
@@ -77,8 +82,27 @@ class GameAudio(context: Context) {
         musicStream = 0
     }
 
+    /** Low-intensity ambient loop used while the real world-readiness tasks are still running. */
+    fun playLoadingMusic() {
+        val id = sounds["music_loading"] ?: return
+        loadingMusicRequested = true
+        stopMusic()
+        stopLoadingMusic()
+        val volume = effective(settings.music) * 0.58f
+        if (volume > 0f) loadingMusicStream = soundPool.play(id, volume, volume, 1, -1, 1f)
+    }
+
+    fun stopLoadingMusic() {
+        if (loadingMusicStream != 0) soundPool.stop(loadingMusicStream)
+        loadingMusicStream = 0
+    }
+
     fun setMaster(value: Float) { settings.master = clamp(value); persist() }
-    fun setMusic(value: Float) { settings.music = clamp(value); playMusic(); persist() }
+    fun setMusic(value: Float) {
+        settings.music = clamp(value)
+        if (loadingMusicRequested) playLoadingMusic() else playMusic()
+        persist()
+    }
     fun setEffects(value: Float) { settings.effects = clamp(value); persist() }
     fun setAmbience(value: Float) { settings.ambience = clamp(value); persist() }
     fun setVoice(value: Float) { settings.voice = clamp(value); persist() }
@@ -88,11 +112,23 @@ class GameAudio(context: Context) {
         if (volume <= 0f) return
         soundPool.play(id, volume, volume, 1, loop, rate)
     }
-    fun setMuted(value: Boolean) { settings.muted = value; if (value) stopMusic() else playMusic(); persist() }
+    fun setMuted(value: Boolean) {
+        settings.muted = value
+        if (value) {
+            stopMusic()
+            stopLoadingMusic()
+        } else if (loadingMusicRequested) {
+            playLoadingMusic()
+        } else {
+            playMusic()
+        }
+        persist()
+    }
     fun getSettings(): Settings = settings.copy()
 
     fun release() {
         stopMusic()
+        stopLoadingMusic()
         soundPool.release()
     }
 
