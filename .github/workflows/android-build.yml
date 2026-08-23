@@ -81,6 +81,10 @@ jobs:
           grep -q 'SELECT GRAPHICS QUALITY' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
+          grep -q 'void draw3DEmberling' app/src/main/cpp/forest_game.cpp
+          grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
+          grep -q 'draw3DForestWarden(viewProjection)' app/src/main/cpp/forest_game.cpp
+          grep -q 'draw3DEmberling(viewProjection)' app/src/main/cpp/forest_game.cpp
           grep -q 'void draw3DPlayer' app/src/main/cpp/forest_game.cpp
           grep -q 'LocomotionState::Sprint' app/src/main/cpp/forest_game.cpp
           grep -q 'gAttackPulse > 0' app/src/main/cpp/forest_game.cpp

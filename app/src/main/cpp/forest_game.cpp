@@ -1028,15 +1028,91 @@ void draw3DPeer(const Mat4& viewProjection, const CoOpPeer& peer, int index) {
 void draw3DEmberling(const Mat4& viewProjection) {
     const float px = gEmberling.x * 4.3f;
     const float pz = -gEmberling.y * 4.0f;
-    const float bob = 0.05f + 0.028f * std::sin(gTime * 5.1f);
+    const float followDistance = std::sqrt((gEmberling.x - gPlayerX) * (gEmberling.x - gPlayerX) +
+                                           (gEmberling.y - gPlayerY) * (gEmberling.y - gPlayerY));
+    const bool trotting = followDistance > 0.035f;
+    const float step = trotting ? std::sin(gTime * 13.0f) : 0.0f;
+    const float wag = std::sin(gTime * (trotting ? 10.0f : 4.0f)) * (trotting ? 0.10f : 0.055f);
+    const float bob = 0.05f + 0.028f * std::sin(gTime * (trotting ? 7.5f : 5.1f)) + (trotting ? std::abs(step) * 0.018f : 0.0f);
     const float glow = 0.34f + 0.20f * gEmberling.pulse + (gEmberling.bonded ? 0.16f : 0.0f);
     draw3DBox(viewProjection, px, 0.08f, pz, 0.58f, 0.035f, 0.58f, 1.0f, 0.46f, 0.12f, glow * 0.34f);
     draw3DBox(viewProjection, px, 0.30f + bob, pz, 0.42f, 0.32f, 0.56f, 0.18f, 0.30f, 0.34f);
     draw3DBox(viewProjection, px, 0.54f + bob, pz + 0.06f, 0.30f, 0.25f, 0.30f, 0.58f, 0.84f, 0.90f);
-    draw3DBox(viewProjection, px - 0.16f, 0.52f + bob, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
-    draw3DBox(viewProjection, px + 0.16f, 0.52f + bob, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
-    draw3DBox(viewProjection, px, 0.73f + bob, pz + 0.07f, 0.06f, 0.18f, 0.06f, 1.0f, 0.68f, 0.20f, glow);
+    draw3DBox(viewProjection, px - 0.16f, 0.52f + bob + step * 0.018f, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
+    draw3DBox(viewProjection, px + 0.16f, 0.52f + bob - step * 0.018f, pz + 0.04f, 0.13f, 0.24f, 0.13f, 0.26f, 0.60f, 0.66f);
+    draw3DBox(viewProjection, px - 0.085f, 0.73f + bob, pz + 0.07f, 0.06f, 0.18f + wag * 0.14f, 0.06f, 1.0f, 0.68f, 0.20f, glow);
+    draw3DBox(viewProjection, px + 0.085f, 0.73f + bob, pz + 0.07f, 0.06f, 0.18f - wag * 0.14f, 0.06f, 1.0f, 0.68f, 0.20f, glow);
     draw3DGlowOrb(viewProjection, px, 0.78f + bob, pz + 0.07f, 0.075f, 1.0f, 0.38f, 0.08f, glow);
+    draw3DSphere(viewProjection, px - 0.26f, 0.34f + bob, pz + 0.10f + wag, 0.14f, 0.12f, 0.22f, 0.24f, 0.96f);
+    draw3DSphere(viewProjection, px - 0.37f, 0.43f + bob, pz + 0.14f + wag * 1.4f, 0.10f, 0.72f, 0.28f, 0.08f, glow);
+}
+
+void draw3DForestWarden(const Mat4& viewProjection) {
+    if (gProgression.wardenDefeated && gEnemyDefeatTimer <= 0.0f) return;
+    if (gProgression.questStage != forest::rpg::QuestStage::DefeatWarden && gEnemyDefeatTimer <= 0.0f) return;
+
+    const float px = gEnemyX * 4.3f;
+    const float pz = -gEnemyY * 4.0f;
+    const float healthRatio = std::clamp(gEnemyHealth / kForestWardenMaxHealth, 0.0f, 1.0f);
+    const float hitFlash = gEnemyHitFlash > 0.0f ? 0.30f : 0.0f;
+    const float defeatedBlend = gEnemyHealth <= 0.0f ? std::clamp(gEnemyDefeatTimer / 1.5f, 0.0f, 1.0f) : 1.0f;
+    const float phasePulse = std::sin(gTime * 2.6f);
+    const float stomp = std::abs(std::sin(gTime * 2.1f)) * (healthRatio > 0.0f ? 0.035f : 0.0f);
+    const bool stormbark = healthRatio <= 0.66f;
+    const bool heartwood = healthRatio <= 0.33f;
+    const float coreR = heartwood ? 1.0f : stormbark ? 0.28f : 0.52f;
+    const float coreG = heartwood ? 0.78f : stormbark ? 0.76f : 0.90f;
+    const float coreB = heartwood ? 0.20f : stormbark ? 0.92f : 0.34f;
+    const float rootSway = phasePulse * (stormbark ? 0.15f : 0.08f);
+    const float bodyY = 1.22f + stomp;
+    const float bodyR = std::min(1.0f, 0.13f + hitFlash + (stormbark ? 0.04f : 0.0f));
+    const float bodyG = std::min(1.0f, 0.24f + hitFlash * 0.55f);
+    const float bodyB = std::min(1.0f, 0.16f + hitFlash * 0.35f);
+
+    draw3DBox(viewProjection, px, 0.06f, pz, 1.62f, 0.10f, 1.42f, 0.03f, 0.06f, 0.04f, 0.62f * defeatedBlend);
+    draw3DBox(viewProjection, px, bodyY, pz, 1.06f, 1.72f, 0.72f, bodyR, bodyG, bodyB, defeatedBlend);
+    draw3DBox(viewProjection, px, 1.05f + stomp, pz - 0.38f, 0.72f, 1.16f, 0.10f,
+              std::min(1.0f, bodyR * 1.35f), std::min(1.0f, bodyG * 1.15f), bodyB, defeatedBlend);
+    draw3DBox(viewProjection, px - 0.44f, 0.92f + stomp, pz, 0.30f, 1.28f, 0.48f,
+              bodyR * 0.78f, bodyG * 0.88f, bodyB * 0.72f, defeatedBlend);
+    draw3DBox(viewProjection, px + 0.44f, 0.92f + stomp, pz, 0.30f, 1.28f, 0.48f,
+              bodyR * 0.78f, bodyG * 0.88f, bodyB * 0.72f, defeatedBlend);
+    draw3DBox(viewProjection, px - 0.39f, 0.34f + stomp, pz + rootSway, 0.34f, 0.62f, 0.42f,
+              bodyR * 0.86f, bodyG * 0.84f, bodyB * 0.72f, defeatedBlend);
+    draw3DBox(viewProjection, px + 0.39f, 0.34f + stomp, pz - rootSway, 0.34f, 0.62f, 0.42f,
+              bodyR * 0.86f, bodyG * 0.84f, bodyB * 0.72f, defeatedBlend);
+
+    // Branch-antler silhouette and animated root fingers make the enemy readable at distance.
+    draw3DCylinder(viewProjection, px - 0.34f, 2.20f + stomp, pz, 0.085f, 0.92f, 0.12f, 0.22f, 0.10f, defeatedBlend);
+    draw3DCylinder(viewProjection, px + 0.34f, 2.20f + stomp, pz, 0.085f, 0.92f, 0.12f, 0.22f, 0.10f, defeatedBlend);
+    draw3DBox(viewProjection, px - 0.55f, 2.60f + stomp, pz + rootSway, 0.10f, 0.72f, 0.10f,
+              0.16f, 0.30f, 0.12f, defeatedBlend);
+    draw3DBox(viewProjection, px + 0.55f, 2.60f + stomp, pz - rootSway, 0.10f, 0.72f, 0.10f,
+              0.16f, 0.30f, 0.12f, defeatedBlend);
+    draw3DBox(viewProjection, px - 0.77f, 2.72f + stomp, pz + rootSway, 0.48f, 0.09f, 0.10f,
+              0.16f, 0.30f, 0.12f, defeatedBlend);
+    draw3DBox(viewProjection, px + 0.77f, 2.72f + stomp, pz - rootSway, 0.48f, 0.09f, 0.10f,
+              0.16f, 0.30f, 0.12f, defeatedBlend);
+
+    const float corePulse = 0.70f + 0.22f * std::sin(gTime * 4.8f);
+    draw3DGlowOrb(viewProjection, px, 1.38f + stomp, pz - 0.44f, 0.22f,
+                  coreR, coreG, coreB, corePulse * defeatedBlend);
+    draw3DGlowOrb(viewProjection, px - 0.44f, 1.18f + stomp, pz - 0.26f, 0.075f,
+                  coreR, coreG, coreB, corePulse * 0.82f * defeatedBlend);
+    draw3DGlowOrb(viewProjection, px + 0.44f, 1.18f + stomp, pz - 0.26f, 0.075f,
+                  coreR, coreG, coreB, corePulse * 0.82f * defeatedBlend);
+    if (stormbark) {
+        draw3DGlowOrb(viewProjection, px - 0.76f, 1.88f + stomp, pz - 0.16f, 0.055f,
+                      0.30f, 0.84f, 1.0f, 0.58f * defeatedBlend);
+        draw3DGlowOrb(viewProjection, px + 0.76f, 1.88f + stomp, pz - 0.16f, 0.055f,
+                      0.30f, 0.84f, 1.0f, 0.58f * defeatedBlend);
+    }
+
+    const float barWidth = 1.72f;
+    draw3DBox(viewProjection, px, 3.26f, pz, barWidth, 0.045f, 0.045f, 0.015f, 0.025f, 0.035f, 0.94f);
+    draw3DBox(viewProjection, px - barWidth * 0.5f + barWidth * healthRatio * 0.5f,
+              3.26f, pz, barWidth * healthRatio, 0.026f, 0.026f,
+              heartwood ? 1.0f : 0.34f, heartwood ? 0.48f : 0.86f, 0.22f, 0.98f * defeatedBlend);
 }
 
 void draw3DSkyOrb(const Mat4& viewProjection, float px, float pz, float yaw, float daylight) {
@@ -1320,6 +1396,7 @@ void draw3DWorld() {
         draw3DBox(viewProjection, -1.4f, 0.48f, 1.6f, 0.72f, 0.96f, 0.72f, 0.20f, 0.12f, 0.32f);
         draw3DBox(viewProjection, -1.4f, 1.18f, 1.6f, 0.88f, 0.18f, 0.88f, 0.58f, 0.28f, 0.77f);
     }
+    draw3DForestWarden(viewProjection);
     draw3DMobs(viewProjection);
     for (const CoOpPeer& peer : gCoOpPeers) draw3DPeer(viewProjection, peer, static_cast<int>(&peer - gCoOpPeers));
     draw3DEmberling(viewProjection);
