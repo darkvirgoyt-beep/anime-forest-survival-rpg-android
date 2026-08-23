@@ -4,6 +4,10 @@
 
 > This repository is a vertical slice, not a claim to reproduce the production scale or visual fidelity of a large commercial title.
 
+## Pre-production package
+
+The complete end-to-end production brief is in [`PREPRODUCTION_BIBLE.md`](PREPRODUCTION_BIBLE.md), with the visual generation brief in [`CONCEPT_ART_BRIEF.md`](CONCEPT_ART_BRIEF.md) and the generated concept-art index in [`CONCEPT_ART_README.md`](CONCEPT_ART_README.md). The concept-art set covers the Aethelgard vision key art, Aurora, Emberling, Wisteria Forest, Forest Warden, crafting props, mobile HUD/login direction, and lighting/weather targets.
+
 ## Current milestone
 
 The current slice renders a stylized Wisteria Forest launch region through OpenGL ES 3, begins Aurora at the frontier camp beside a visible Heartfire and three resource caches, and includes an original cel-shaded anime-fantasy hero with ink-like contours, hard shadow planes, expressive hair, outfit accents, and a short sword. The First Ember quest now flows through Aurora’s arrival, camp gathering, ember-kit crafting, and a Forest Warden encounter in the forest. The scene also includes animals, a repeating four-phase time cycle—day, afternoon, evening, and night—with a visible in-game day counter, mobile joystick movement, light-combo and heavy-finisher combat, gathering, crafting, Heartfire feedback, and a Forest Warden health bar. The native core is C++17. Kotlin owns Android lifecycle, immersive full-screen landscape presentation, touch UI, haptics-ready integration points, and future online session wiring. The physics foundation includes acceleration, friction, gravity, grounded state, jump impulses, stamina-gated dodge movement, fixed-step simulation, world bounds, and axis-separated AABB collision resolution.
