@@ -58,6 +58,7 @@ object NativeGameBridge {
 }
 
 class MainActivity : Activity(), SensorEventListener {
+    private lateinit var rootContainer: FrameLayout
     private lateinit var gameView: GameSurfaceView
     private lateinit var gyroButton: Button
     private var sensorManager: SensorManager? = null
@@ -68,6 +69,8 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
     private lateinit var onboardingOverlay: View
+    private var characterSetupOverlay: View? = null
+    private var authenticationTransitionStarted = false
     private lateinit var onboardingStatus: TextView
     private lateinit var characterNameInput: EditText
     private val accountSession = AccountSessionManager()
@@ -98,16 +101,16 @@ class MainActivity : Activity(), SensorEventListener {
         audio = GameAudio(this)
         audio.playMusic()
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
+        rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
-        root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
-        root.addView(buildHud())
-        root.addView(JoystickView(this) { x, y ->
+        rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
+        rootContainer.addView(buildHud())
+        rootContainer.addView(JoystickView(this) { x, y ->
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
         })
         onboardingOverlay = buildOnboardingOverlay()
-        root.addView(onboardingOverlay)
-        setContentView(root)
+        rootContainer.addView(onboardingOverlay)
+        setContentView(rootContainer)
         updateGyroButton()
         registerGyro()
         accountSession.initialize(this, ::applyAccountSnapshot)
@@ -256,7 +259,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(188, 143, 76))
         }
         val welcome = TextView(this).apply {
-            text = "WELCOME, WAYFARER"
+            text = "BEGIN YOUR JOURNEY"
             textSize = 20f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(236, 193, 108))
@@ -264,7 +267,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "Securely sign in to access your cloud worlds and co-op expeditions."
+            text = "Sign in securely to continue to character setup and your cloud world."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
@@ -298,16 +301,6 @@ class MainActivity : Activity(), SensorEventListener {
             google.isEnabled = checked
             google.alpha = if (checked) 1f else 0.5f
         }
-        val characterStage = cinematicButton("PREPARE CHARACTER  ›", false) {
-            val authenticated = accountSession.snapshot.state == SessionState.AUTHENTICATED
-            if (!authenticated) {
-                onboardingStatus.text = "Google Play sign-in is required before character creation."
-                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
-            } else {
-                onboardingStatus.text = "Account verified. Character customization is the next online world stage."
-                onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
-            }
-        }
         val trustRow = LinearLayout(this).apply {
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
@@ -338,9 +331,6 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(42)))
         panel.addView(consent, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
         panel.addView(google, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(2) })
-        panel.addView(characterStage, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
-        val artReference = cinematicButton("VIEW ART REFERENCES", false) { showArtReferenceDialog() }
-        panel.addView(artReference, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
         panel.addView(trustRow, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(12) })
 
         val scroll = ScrollView(this).apply {
@@ -397,6 +387,11 @@ class MainActivity : Activity(), SensorEventListener {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
+        if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
+            authenticationTransitionStarted = true
+            showCharacterSetup(snapshot.accountId)
+            return
+        }
         if (!::onboardingStatus.isInitialized) return
         onboardingStatus.text = snapshot.message
         onboardingStatus.setTextColor(
@@ -408,6 +403,116 @@ class MainActivity : Activity(), SensorEventListener {
                 SessionState.SIGNED_OUT -> Color.WHITE
             }
         )
+    }
+
+    /** The login panel is intentionally sign-in only. A verified backend session advances here automatically. */
+    private fun showCharacterSetup(accountId: String?) {
+        runOnUiThread {
+            if (characterSetupOverlay != null) return@runOnUiThread
+            onboardingOverlay.visibility = View.GONE
+            val overlay = FrameLayout(this).apply {
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.aethelgard_login_cinematic_background)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    alpha = 0.66f
+                }, FrameLayout.LayoutParams(-1, -1))
+                addView(View(this@MainActivity).apply {
+                    background = GradientDrawable(
+                        GradientDrawable.Orientation.TOP_BOTTOM,
+                        intArrayOf(Color.argb(182, 3, 8, 13), Color.argb(238, 3, 7, 12))
+                    )
+                }, FrameLayout.LayoutParams(-1, -1))
+            }
+            val panel = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(dp(28), dp(22), dp(28), dp(18))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.argb(232, 10, 17, 24), Color.argb(242, 6, 11, 16))
+                ).apply {
+                    cornerRadius = dp(18).toFloat()
+                    setStroke(dp(1), Color.rgb(150, 116, 62))
+                }
+            }
+            panel.addView(TextView(this).apply {
+                text = "✦  AETHELGARD  ✦"
+                textSize = 15f
+                gravity = Gravity.CENTER
+                letterSpacing = 0.16f
+                setTextColor(Color.rgb(226, 184, 101))
+            }, LinearLayout.LayoutParams(-1, dp(30)))
+            panel.addView(TextView(this).apply {
+                text = "CREATE YOUR WAYFARER"
+                textSize = 24f
+                gravity = Gravity.CENTER
+                typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(239, 234, 219))
+            }, LinearLayout.LayoutParams(-1, dp(42)))
+            panel.addView(TextView(this).apply {
+                text = "Account verified${accountId?.let { "  •  ${it.take(8)}" } ?: ""}"
+                textSize = 11f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(164, 231, 190))
+            }, LinearLayout.LayoutParams(-1, dp(28)))
+            characterNameInput = EditText(this).apply {
+                hint = "WAYFARER NAME"
+                textSize = 15f
+                isSingleLine = true
+                setTextColor(Color.WHITE)
+                setHintTextColor(Color.rgb(164, 170, 177))
+                setPadding(dp(16), 0, dp(16), 0)
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(10).toFloat()
+                    setColor(Color.argb(180, 7, 12, 18))
+                    setStroke(dp(1), Color.rgb(127, 99, 56))
+                }
+            }
+            panel.addView(characterNameInput, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(12) })
+            val appearance = LinearLayout(this).apply { gravity = Gravity.CENTER }
+            val eyebrow = cinematicButton("BROW 01", false) { }
+            val outfit = cinematicButton("OUTFIT 01", false) { }
+            val hair = cinematicButton("HAIR 01", false) { }
+            eyebrow.setOnClickListener {
+                characterCreation.eyebrowStyle = (characterCreation.eyebrowStyle + 1) % 4
+                eyebrow.text = "BROW ${String.format("%02d", characterCreation.eyebrowStyle + 1)}"
+            }
+            outfit.setOnClickListener {
+                characterCreation.outfitStyle = (characterCreation.outfitStyle + 1) % 4
+                outfit.text = "OUTFIT ${String.format("%02d", characterCreation.outfitStyle + 1)}"
+            }
+            hair.setOnClickListener {
+                characterCreation.hairStyle = (characterCreation.hairStyle + 1) % 4
+                hair.text = "HAIR ${String.format("%02d", characterCreation.hairStyle + 1)}"
+            }
+            listOf(eyebrow, outfit, hair).forEach { control ->
+                appearance.addView(control, LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
+            }
+            panel.addView(appearance, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(10) })
+            val validation = TextView(this).apply {
+                textSize = 11f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(255, 180, 150))
+            }
+            panel.addView(validation, LinearLayout.LayoutParams(-1, dp(26)))
+            panel.addView(cinematicButton("ENTER AETHELGARD  ›", true) {
+                characterCreation.name = characterNameInput.text.toString()
+                val issue = characterCreation.validate()
+                if (issue != null) {
+                    validation.text = issue
+                    return@cinematicButton
+                }
+                validation.setTextColor(Color.rgb(164, 231, 190))
+                validation.text = "Wayfarer ready. Entering your first cloud world…"
+                rootContainer.postDelayed({
+                    rootContainer.removeView(overlay)
+                    characterSetupOverlay = null
+                }, 420L)
+            }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(4) })
+            overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
+            characterSetupOverlay = overlay
+            rootContainer.addView(overlay)
+        }
     }
 
     private fun buildHud(): View {

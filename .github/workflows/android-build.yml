@@ -56,6 +56,9 @@ jobs:
           test -f app/src/main/java/com/darvirgoyt/aethelgrad/CharacterCreationModel.kt
           grep -q 'CONTINUE WITH GOOGLE' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'GetSignInWithGoogleOption' app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt
+          grep -q 'showCharacterSetup' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          ! grep -q 'PREPARE CHARACTER' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
+          ! grep -q 'VIEW ART REFERENCES' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'ONLINE ONLY' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           ! grep -q 'DEV GUEST' app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt
           grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h

@@ -16,4 +16,7 @@
 - [x] Validate the standard Google Sign-In backend and Android release build through automated tests and CI
 - [x] Provision a managed HTTPS standard-Google-sign-in development backend with database-backed Aethelgard sessions
 - [ ] Publish the managed backend on a stable production HTTPS domain before public release
+- [x] Inspect the Drive error evidence for the authenticated login flow that fails to advance
+- [x] Repair the post-authentication transition so the login page is sign-in only and authenticated players reach the next setup page
+- [x] Redesign the sign-in-only page with original Aethelgard artwork and layout informed only by the supplied reference’s high-level mood
 - [x] Connect the Android login configuration to the managed backend after the Web OAuth client ID is created
