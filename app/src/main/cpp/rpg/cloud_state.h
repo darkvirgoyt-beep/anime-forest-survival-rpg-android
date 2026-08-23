@@ -80,73 +80,90 @@ inline bool parseCloudState(const char* payload, CloudState& result) {
     int capturedCompanionStay = 0;
     int campBuilt = 0;
 
-    const int v5Fields = std::sscanf(payload,
-        "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d,\"discoveredSectors\":%d,\"capturedMobIndex\":%d,\"capturedCompanionStay\":%d,\"campBuilt\":%d,\"campX\":%f,\"campY\":%f,\"campZ\":%f,\"campYaw\":%f,\"campScale\":%f,\"companionRevision\":%d,\"campRevision\":%d}",
-        &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
-        &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
-        &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay,
-        &discoveredSectors, &parsed.capturedMobIndex, &capturedCompanionStay, &campBuilt, &parsed.campX, &parsed.campY, &parsed.campZ,
-        &parsed.campYaw, &parsed.campScale, &parsed.companionRevision, &parsed.campRevision);
-    if (v5Fields == 33 && schemaVersion == 5) {
-        parsed.schemaVersion = 5;
-    } else {
-        // Accept the authority draft’s schema-5 order before this field was combined with map discovery.
-        const int v5AuthorityFields = std::sscanf(payload,
-            "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d,\"capturedMobIndex\":%d,\"capturedCompanionStay\":%d,\"campBuilt\":%d,\"campX\":%f,\"campY\":%f,\"campZ\":%f,\"campYaw\":%f,\"campScale\":%f,\"companionRevision\":%d,\"campRevision\":%d}",
-            &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
-            &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
-            &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay,
-            &parsed.capturedMobIndex, &capturedCompanionStay, &campBuilt, &parsed.campX, &parsed.campY, &parsed.campZ, &parsed.campYaw,
-            &parsed.campScale, &parsed.companionRevision, &parsed.campRevision);
-        if (v5AuthorityFields == 32 && schemaVersion == 5) {
-            parsed.schemaVersion = 5;
-        } else {
+    // Dispatch by the version prefix first. This avoids making schema-1/2/3/4
+    // payloads repeatedly attempt every newer format before reaching their own.
+    if (std::sscanf(payload, "{\"schemaVersion\":%d", &schemaVersion) != 1 ||
+        schemaVersion < 1 || schemaVersion > 5) {
+        return false;
+    }
+
+    bool parsedKnownLayout = false;
+    switch (schemaVersion) {
+        case 5: {
+            const int v5Fields = std::sscanf(payload,
+                "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d,\"discoveredSectors\":%d,\"capturedMobIndex\":%d,\"capturedCompanionStay\":%d,\"campBuilt\":%d,\"campX\":%f,\"campY\":%f,\"campZ\":%f,\"campYaw\":%f,\"campScale\":%f,\"companionRevision\":%d,\"campRevision\":%d}",
+                &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
+                &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
+                &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay,
+                &discoveredSectors, &parsed.capturedMobIndex, &capturedCompanionStay, &campBuilt, &parsed.campX, &parsed.campY, &parsed.campZ,
+                &parsed.campYaw, &parsed.campScale, &parsed.companionRevision, &parsed.campRevision);
+            if (v5Fields == 33) {
+                parsedKnownLayout = true;
+                break;
+            }
+
+            // Accept the authority draft’s schema-5 order before this field was
+            // combined with map discovery.
+            const int v5AuthorityFields = std::sscanf(payload,
+                "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d,\"capturedMobIndex\":%d,\"capturedCompanionStay\":%d,\"campBuilt\":%d,\"campX\":%f,\"campY\":%f,\"campZ\":%f,\"campYaw\":%f,\"campScale\":%f,\"companionRevision\":%d,\"campRevision\":%d}",
+                &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
+                &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
+                &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay,
+                &parsed.capturedMobIndex, &capturedCompanionStay, &campBuilt, &parsed.campX, &parsed.campY, &parsed.campZ, &parsed.campYaw,
+                &parsed.campScale, &parsed.companionRevision, &parsed.campRevision);
+            if (v5AuthorityFields == 32) {
+                parsedKnownLayout = true;
+                break;
+            }
+
             const int v5MapFields = std::sscanf(payload,
                 "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d,\"discoveredSectors\":%d}",
                 &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
                 &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
                 &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay,
                 &discoveredSectors);
-            if (v5MapFields == 23 && schemaVersion == 5) {
-                parsed.schemaVersion = 5;
-            } else {
-                const int v4Fields = std::sscanf(payload,
-                    "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d}",
-                    &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
-                    &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
-                    &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay);
-                if (v4Fields == 22 && schemaVersion == 4) {
-                    parsed.schemaVersion = 4;
-                    parsed.discoveredSectors = 1;
-                } else {
-                    const int v3Fields = std::sscanf(payload,
-                        "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d}",
-                        &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
-                        &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
-                        &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated);
-                    if (v3Fields == 19 && schemaVersion == 3) {
-                        parsed.schemaVersion = 3;
-                    } else {
-                        const int v2Fields = std::sscanf(payload,
-                            "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d}",
-                            &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
-                            &parsed.experience, &parsed.day, &parsed.worldTime, &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated);
-                        if (v2Fields == 16 && schemaVersion == 2) {
-                            parsed.schemaVersion = 2;
-                        } else {
-                            const int v1Fields = std::sscanf(payload,
-                                "{\"schemaVersion\":1,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"day\":%d,\"worldTime\":%f}",
-                                &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone, &parsed.experience, &parsed.day, &parsed.worldTime);
-                            if (v1Fields != 11) return false;
-                            parsed.schemaVersion = 1;
-                        }
-                    }
-                }
-            }
+            parsedKnownLayout = v5MapFields == 23;
+            break;
         }
+        case 4: {
+            const int v4Fields = std::sscanf(payload,
+                "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d,\"emberlingTrust\":%d,\"emberlingBonded\":%d,\"emberlingStay\":%d}",
+                &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
+                &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
+                &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated, &parsed.emberlingTrust, &emberlingBonded, &emberlingStay);
+            parsedKnownLayout = v4Fields == 22;
+            break;
+        }
+        case 3: {
+            const int v3Fields = std::sscanf(payload,
+                "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"level\":%d,\"experienceToNext\":%d,\"totalExperience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d}",
+                &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
+                &parsed.experience, &parsed.level, &parsed.experienceToNext, &parsed.totalExperience, &parsed.day, &parsed.worldTime,
+                &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated);
+            parsedKnownLayout = v3Fields == 19;
+            break;
+        }
+        case 2: {
+            const int v2Fields = std::sscanf(payload,
+                "{\"schemaVersion\":%d,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"day\":%d,\"worldTime\":%f,\"gatheringActions\":%d,\"questStage\":%d,\"emberKitCrafted\":%d,\"wardenDefeated\":%d}",
+                &schemaVersion, &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone,
+                &parsed.experience, &parsed.day, &parsed.worldTime, &parsed.gatheringActions, &parsed.questStage, &emberKitCrafted, &wardenDefeated);
+            parsedKnownLayout = v2Fields == 16;
+            break;
+        }
+        case 1: {
+            const int v1Fields = std::sscanf(payload,
+                "{\"schemaVersion\":1,\"playerX\":%f,\"playerY\":%f,\"health\":%f,\"stamina\":%f,\"hunger\":%f,\"wood\":%d,\"fiber\":%d,\"stone\":%d,\"experience\":%d,\"day\":%d,\"worldTime\":%f}",
+                &parsed.playerX, &parsed.playerY, &parsed.health, &parsed.stamina, &parsed.hunger, &parsed.wood, &parsed.fiber, &parsed.stone, &parsed.experience, &parsed.day, &parsed.worldTime);
+            parsedKnownLayout = v1Fields == 11;
+            break;
+        }
+        default:
+            return false;
     }
 
-    const int sourceSchemaVersion = std::clamp(parsed.schemaVersion, 1, 5);
+    if (!parsedKnownLayout) return false;
+    const int sourceSchemaVersion = schemaVersion;
     parsed.schemaVersion = 5;
     parsed.sourceSchemaVersion = sourceSchemaVersion;
     parsed.emberKitCrafted = emberKitCrafted != 0;
