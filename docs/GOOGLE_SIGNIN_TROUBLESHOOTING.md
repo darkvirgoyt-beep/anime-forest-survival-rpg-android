@@ -23,6 +23,10 @@ The current build workflow falls back to an Android debug certificate when prote
 
 `aethelgard-prototype-apk` is an offline development harness with the separate package `com.darvirgoyt.aethelgrad.prototype`. It is intentionally not an online-login test build and now launches directly into the local prototype world. To test the real Google sign-in and cloud-world backend, install only `forest-slice-release-apk` from the same successful GitHub Actions run as the `aethelgard-android-signing-certificate` artifact. Register the SHA-1 from that artifact against the release package `com.darvirgoyt.aethelgrad` in the Android OAuth client.
 
+## Mobile Control Direction
+
+The native input bridge mirrors the horizontal thumb axis once before applying camera-relative movement. A rightward joystick drag now moves the visible hero rightward and a leftward drag moves the hero leftward. The correction is intentionally native-side so every mobile control surface uses the same coordinate convention.
+
 ## Official References
 
 1. [Android Credential Manager troubleshooting guide](https://developer.android.com/identity/sign-in/credential-manager-troubleshooting-guide)

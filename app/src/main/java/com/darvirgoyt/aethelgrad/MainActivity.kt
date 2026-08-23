@@ -1082,13 +1082,14 @@ class MainActivity : Activity(), SensorEventListener {
         val profileBadge = ImageView(this).apply {
             setImageResource(R.drawable.aethelgard_profile_gold)
             scaleType = ImageView.ScaleType.CENTER_CROP
-            contentDescription = "AETHELGRAD gold profile photo"
+            contentDescription = "Open character and inventory"
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.rgb(226, 184, 101))
                 setStroke(dp(2), Color.rgb(255, 235, 156))
             }
             clipToOutline = true
+            setOnClickListener { showCharacterInventoryPanel() }
         }
         overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(10)
@@ -1150,6 +1151,11 @@ class MainActivity : Activity(), SensorEventListener {
         val coOpButton = actionButton("CO-OP ROOM") { showCoOpDialog() }
         overlay.addView(coOpButton, FrameLayout.LayoutParams(dp(160), dp(42), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(146)
+            rightMargin = dp(28)
+        })
+        val logoutButton = actionButton("LOG OUT") { confirmLogout() }
+        overlay.addView(logoutButton, FrameLayout.LayoutParams(dp(112), dp(38), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(96)
             rightMargin = dp(28)
         })
 
@@ -1244,6 +1250,91 @@ class MainActivity : Activity(), SensorEventListener {
         val recoveryNotice = cloudRecoveryNotice
         questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  $phase  •  $weather  •  FOREST WARDEN HP $warden/100  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
+    }
+
+    private fun showCharacterInventoryPanel() {
+        if (!::gameView.isInitialized) return
+        gameView.queueEvent {
+            val values = NativeGameBridge.getHudState().split('|')
+            runOnUiThread {
+                fun number(index: Int): Int = values.getOrNull(index)?.toIntOrNull() ?: 0
+                val companion = values.getOrNull(22)?.replace('_', ' ') ?: "EMBERLING WILD"
+                val account = accountSession.snapshot.accountId?.take(10)?.let { "Account $it…" } ?: "Local prototype"
+                val world = activeCloudWorld?.let { "${it.name}  •  Revision ${it.saveRevision}" } ?: "No cloud world active"
+                val panel = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(22), dp(14), dp(22), dp(8))
+                }
+                panel.addView(TextView(this).apply {
+                    text = "${characterCreation.name.ifBlank { "WAYFARER" }}  •  $account"
+                    textSize = 17f
+                    setTextColor(Color.rgb(244, 218, 155))
+                })
+                panel.addView(TextView(this).apply {
+                    text = "WORLD\n$world"
+                    textSize = 12f
+                    setTextColor(Color.rgb(194, 218, 214))
+                    setPadding(0, dp(12), 0, dp(6))
+                })
+                panel.addView(TextView(this).apply {
+                    text = "VITALS  •  HP ${number(3)}/100  •  STAMINA ${number(4)}  •  HUNGER ${number(5)}"
+                    textSize = 13f
+                    setTextColor(Color.WHITE)
+                })
+                panel.addView(TextView(this).apply {
+                    text = "PACK  •  WOOD ${number(6)}  •  FIBER ${number(7)}  •  STONE ${number(8)}"
+                    textSize = 13f
+                    setTextColor(Color.WHITE)
+                    setPadding(0, dp(8), 0, 0)
+                })
+                panel.addView(TextView(this).apply {
+                    text = "PROGRESSION  •  LEVEL ${number(0)}  •  XP ${number(1)}/${number(2)}"
+                    textSize = 13f
+                    setTextColor(Color.WHITE)
+                    setPadding(0, dp(8), 0, 0)
+                })
+                panel.addView(TextView(this).apply {
+                    text = "COMPANION  •  $companion"
+                    textSize = 13f
+                    setTextColor(Color.rgb(164, 231, 190))
+                    setPadding(0, dp(8), 0, 0)
+                })
+                AlertDialog.Builder(this)
+                    .setTitle("CHARACTER / INVENTORY")
+                    .setView(panel)
+                    .setNegativeButton("CLOSE", null)
+                    .setPositiveButton("LOG OUT") { _, _ -> confirmLogout() }
+                    .show()
+            }
+        }
+    }
+
+    private fun confirmLogout() {
+        if (BuildConfig.PROTOTYPE_MODE) {
+            android.widget.Toast.makeText(this, "Offline prototype has no account session", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("LOG OUT OF AETHELGARD?")
+            .setMessage("This removes the local session from this device. Your cloud world remains protected in your account.")
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("LOG OUT") { _, _ ->
+                activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+                activeCoOpRoom = null
+                activeCloudWorld = null
+                authenticationTransitionStarted = false
+                cloudRecoveryNotice = null
+                hudHandler.removeCallbacks(cloudSaveUpdater)
+                hudHandler.removeCallbacks(coOpUpdater)
+                gameView.queueEvent {
+                    NativeGameBridge.clearCoOpPeers()
+                    NativeGameBridge.setAuthoritativeOnline(false)
+                    NativeGameBridge.setMove(0f, 0f)
+                }
+                accountSession.signOut()
+                onboardingOverlay.visibility = View.VISIBLE
+            }
+            .show()
     }
 
     private fun showAssetPatchOverlay(onReady: () -> Unit = {}) {

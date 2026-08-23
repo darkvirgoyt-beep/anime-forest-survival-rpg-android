@@ -1023,7 +1023,10 @@ void simulatePhysicsStep() {
     gTime += kPhysicsStep;
     updateCalendar();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
-    const forest::controller::InputFrame input{gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
+    // Android screen and world handedness are opposite on the horizontal axis in
+    // this camera setup. Mirror X exactly once here so rightward thumb movement
+    // produces rightward visible traversal regardless of joystick placement.
+    const forest::controller::InputFrame input{-gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
     gCombat.tick(kPhysicsStep);
