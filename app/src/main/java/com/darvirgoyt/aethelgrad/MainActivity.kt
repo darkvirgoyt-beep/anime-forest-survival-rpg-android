@@ -2507,7 +2507,7 @@ class MainActivity : Activity(), SensorEventListener {
                         }
                         else -> {
                             status.text = "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
-                            details.text = if (total > 0) "$downloaded MB / $total MB downloaded  •  world sectors, shaders, and gameplay resources" else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, shaders, world sectors, and gameplay resources…"
+                            details.text = if (total > 0) "$downloaded MB / $total MB downloaded  •  compiled graphics, world sectors, shaders, and gameplay resources" else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, world sectors, shaders, and gameplay resources…"
                         }
                     }
                     progress.progress = event.percent
