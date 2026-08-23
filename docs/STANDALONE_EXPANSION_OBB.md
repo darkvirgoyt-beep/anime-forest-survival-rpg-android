@@ -61,3 +61,38 @@ For Google Play, use the signed Android App Bundle and Play Asset Delivery. Play
 [1]: https://developer.android.com/guide/playcore/asset-delivery "Android Developers: Play Asset Delivery"
 
 [2]: https://developer.android.com/google/play/expansion-files "Android Developers: APK Expansion Files"
+
+## Automated staging from Unreal cooked output
+
+The repository now includes `tools/stage_cooked_unreal_assets.py`. Run it only after `RunUAT BuildCookRun` has produced shipping Android runtime files. The default mapping expects `pakchunk0` through `pakchunk17` and maps them to the 18 repository pack names in `tools/unreal_pack_mapping.json`. If Primary Asset Labels produce a different chunk layout, edit that mapping to match the cook log before staging; do not silently place a chunk in the wrong tier.
+
+```bash
+COOK_ROOT=Build/Android/Archive/Saved/StagedBuilds/Android/ForestSlice/Content/Paks
+rm -rf Build/Android/expansion-staging Build/Android/obb
+python3 tools/stage_cooked_unreal_assets.py \
+  --cook-root "$COOK_ROOT" \
+  --output-dir Build/Android/expansion-staging \
+  --mapping-file tools/unreal_pack_mapping.json
+
+AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
+APK_PATH=app/build/outputs/apk/release/app-release.apk
+APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
+APK_VERSION_CODE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package:.*versionCode='\\([^']*\\)'.*/\\1/p")"
+python3 tools/build_expansion_obb.py \
+  --input-dir Build/Android/expansion-staging \
+  --output-dir Build/Android/obb \
+  --package-name "$APK_PACKAGE" \
+  --version-code "$APK_VERSION_CODE" \
+  --content-version "unreal-cook-${GITHUB_SHA:-local}"
+
+python3 tools/verify_expansion_obb.py \
+  "Build/Android/obb/main.${APK_VERSION_CODE}.${APK_PACKAGE}.obb" \
+  --expected-package "$APK_PACKAGE" \
+  --expected-version "$APK_VERSION_CODE"
+```
+
+The staging output has the shape `asset_packs/<pack-name>/<relative-cooked-file>`. The OBB builder then records every file under `content/`, including its byte count and SHA-256. The script rejects symlinks, editor-only `.uasset`/`.umap`/`.uexp`/`.ubulk` files, duplicate pack assignments, missing chunk matches, and empty input. It does not manufacture bytes to reach 6–7 GB; the final OBB size is the compressed result of the real cooked payload.
+
+The same cooked chunks must also be copied into the corresponding Gradle asset-pack modules for the production AAB. The OBB is only the private APK/device-lab compatibility path. For Google Play, the authoritative artifact remains the signed AAB with the 18 Play Asset Delivery modules, and the runtime must request and mount the selected Low or High tier through Play Asset Delivery.
+
+A normal CI checkout does not contain the real Unreal cooked output, so the current workflow intentionally continues to build a small prototype OBB from checked-in reference files. To switch a release job to real content, provide a trusted cook artifact or run the Unreal cook in a separate build job, verify its SHA-256 manifest, run the staging script, and then invoke the existing APK-derived OBB build step. Never commit the 6–7 GB cooked files to the source repository.

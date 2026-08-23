@@ -69,6 +69,9 @@ jobs:
           test -f assets/asset_budget.json
           test -f tools/validate_asset_budget.py
           test -f tools/test_graphics_tier_contract.py
+          test -f tools/test_startup_warmup.py
+          test -f tools/stage_cooked_unreal_assets.py
+          test -f tools/unreal_pack_mapping.json
           test -f tools/test_production_foundation_contract.py
           test -f tools/test_online_only_contract.py
           test -f tools/test_persistent_multiplayer_contract.py
@@ -116,6 +119,9 @@ jobs:
           python3 tools/validate_asset_budget.py
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           python3 tools/test_graphics_tier_contract.py
+          python3 tools/test_startup_warmup.py --repo .
+          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py
+          python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null
           python3 tools/test_production_foundation_contract.py
           python3 tools/test_online_only_contract.py
           python3 tools/test_persistent_multiplayer_contract.py
@@ -252,7 +258,18 @@ jobs:
           rm -rf build/obb-staging build/expansion-obb
           mkdir -p build/obb-staging
           cp app/src/main/assets/asset_manifest.json build/obb-staging/asset_manifest.json
-          cp -R app/src/main/assets/asset_packs build/obb-staging/asset_packs
+          COOK_ROOT="${AETHELGARD_COOKED_ROOT:-Build/Android/Archive/Saved/StagedBuilds/Android/ForestSlice/Content/Paks}"
+          COOKED_PAK="$(find "$COOK_ROOT" -type f -name 'pakchunk*.pak' -print -quit 2>/dev/null || true)"
+          if [ -n "$COOKED_PAK" ]; then
+            echo "Staging real cooked Unreal runtime content from $COOK_ROOT"
+            python3 tools/stage_cooked_unreal_assets.py \
+              --cook-root "$COOK_ROOT" \
+              --output-dir build/obb-staging \
+              --mapping-file tools/unreal_pack_mapping.json
+          else
+            echo "No trusted cooked Unreal output found; using checked-in prototype reference content"
+            cp -R app/src/main/assets/asset_packs build/obb-staging/asset_packs
+          fi
           AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"

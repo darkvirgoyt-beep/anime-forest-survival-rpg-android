@@ -1,0 +1,20 @@
+{
+  "assetpack_core": ["**/pakchunk0", "**/pakchunk0[!0-9]*"],
+  "assetpack_forest": ["**/pakchunk1", "**/pakchunk1[!0-9]*"],
+  "assetpack_sand": ["**/pakchunk2", "**/pakchunk2[!0-9]*"],
+  "assetpack_snow": ["**/pakchunk3", "**/pakchunk3[!0-9]*"],
+  "assetpack_characters": ["**/pakchunk4", "**/pakchunk4[!0-9]*"],
+  "assetpack_audio_hd": ["**/pakchunk5", "**/pakchunk5[!0-9]*"],
+  "assetpack_cinematics": ["**/pakchunk6", "**/pakchunk6[!0-9]*"],
+  "assetpack_hd_textures": ["**/pakchunk7", "**/pakchunk7[!0-9]*"],
+  "assetpack_dungeons": ["**/pakchunk8", "**/pakchunk8[!0-9]*"],
+  "assetpack_vfx": ["**/pakchunk9", "**/pakchunk9[!0-9]*"],
+  "assetpack_voice": ["**/pakchunk10", "**/pakchunk10[!0-9]*"],
+  "assetpack_shaders_vulkan": ["**/pakchunk11", "**/pakchunk11[!0-9]*"],
+  "assetpack_shaders_gles": ["**/pakchunk12", "**/pakchunk12[!0-9]*"],
+  "assetpack_pipeline_cache": ["**/pakchunk13", "**/pakchunk13[!0-9]*"],
+  "assetpack_world_streaming": ["**/pakchunk14", "**/pakchunk14[!0-9]*"],
+  "assetpack_foliage_lods": ["**/pakchunk15", "**/pakchunk15[!0-9]*"],
+  "assetpack_terrain_lod": ["**/pakchunk16", "**/pakchunk16[!0-9]*"],
+  "assetpack_animation_sets": ["**/pakchunk17", "**/pakchunk17[!0-9]*"]
+}
