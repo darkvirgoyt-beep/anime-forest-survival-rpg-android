@@ -80,6 +80,7 @@ object NativeGameBridge {
     external fun slide()
     external fun gather()
     external fun craft()
+    // Legacy Emberling interaction remains available for compatibility with older saves and tests.
     external fun interactEmberling()
     external fun captureNearestCreature()
     external fun toggleCompanionCommand()
