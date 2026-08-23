@@ -42,6 +42,15 @@ jobs:
           test -f Unreal/Source/ForestSlice/Private/ForestSliceHealthComponent.cpp
           test -f Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
           test -f Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceServerDirectorySubsystem.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceServerDirectorySubsystem.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceCharacterProfileComponent.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceCharacterProfileComponent.cpp
+          test -f Unreal/Source/ForestSlice/Public/ForestSliceWorldSessionSubsystem.h
+          test -f Unreal/Source/ForestSlice/Private/ForestSliceWorldSessionSubsystem.cpp
+          grep -q 'SetMeasuredPing' Unreal/Source/ForestSlice/Private/ForestSliceServerDirectorySubsystem.cpp
+          grep -q 'SetProfile' Unreal/Source/ForestSlice/Private/ForestSliceCharacterProfileComponent.cpp
+          grep -q 'SetCloudRevision' Unreal/Source/ForestSlice/Private/ForestSliceWorldSessionSubsystem.cpp
           grep -q 'bCanMount' Unreal/Source/ForestSlice/Public/ForestSliceCreatureComponent.h
           grep -q 'AddBondProgress' Unreal/Source/ForestSlice/Private/ForestSliceCreatureComponent.cpp
           grep -q 'SweepMultiByChannel' Unreal/Source/ForestSlice/Private/ForestSliceCombatComponent.cpp

@@ -6,6 +6,7 @@
 
 class UCameraComponent;
 class UForestSliceCombatComponent;
+class UForestSliceCharacterProfileComponent;
 class UForestSliceHealthComponent;
 class UForestSliceInteractionComponent;
 class UForestSliceQuickSlotComponent;
@@ -69,6 +70,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "Systems")
     UForestSliceHealthComponent* GetHealthComponent() const { return HealthComponent; }
 
+    UFUNCTION(BlueprintPure, Category = "Systems")
+    UForestSliceCharacterProfileComponent* GetCharacterProfileComponent() const { return CharacterProfileComponent; }
+
     UFUNCTION(BlueprintPure, Category = "Survival")
     bool HasGyroscopeSupport() const { return bDeviceHasGyroscope; }
 
@@ -90,6 +94,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
     TObjectPtr<UForestSliceHealthComponent> HealthComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Systems")
+    TObjectPtr<UForestSliceCharacterProfileComponent> CharacterProfileComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TObjectPtr<USpringArmComponent> CameraBoom;

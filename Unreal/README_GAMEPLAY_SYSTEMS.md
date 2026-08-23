@@ -24,6 +24,12 @@
 
 `UForestSliceCreatureComponent` defines original species metadata, wildlife/predator/companion/mount/boss roles, server-authoritative bond progress, bonded state, mount eligibility, and companion commands (`Follow`, `Stay`, `Defend`, `ReturnToCamp`). It is a gameplay contract for future AI, taming interactions, mount movement, equipment, and creature animation. It does not claim that final creature models, behavior trees, saddle systems, or mount locomotion are complete.
 
+## Account, server, world, and save boundary
+
+`UForestSliceServerDirectorySubsystem` holds server-region metadata, status, capacity, selected region, and measured ping updates. It intentionally does not invent live server health or latency; those values must come from a signed directory/health service in production. `UForestSliceCharacterProfileComponent` validates and replicates the player’s original name and style indices.
+
+`UForestSliceWorldSessionSubsystem` defines the first world-session contract: world ID/seed/privacy, invite-code join boundary, versioned cloud-save header, marker discovery, mission progress, and party readiness. It is a local/server-ready state boundary, not a claim that cloud saves or online co-op are already live. The production service must add authenticated ownership, dedicated-server authority, revision conflict resolution, reconnect handling, rate limits, and atomic persistence before public multiplayer.
+
 ## Day/night and beds
 
 `AForestSliceWorldClock` replicates a 24-hour server clock, exposes day alpha and night detection, and validates bed sleep by checking nighttime, proximity, movement, and authority. `AForestSliceBed` adds occupancy protection, asks the clock to advance to morning, and restores survival state. The next co-op pass should require party policy approval before advancing a shared clock and should cancel sleep on damage, combat, disconnect, or boss activity.

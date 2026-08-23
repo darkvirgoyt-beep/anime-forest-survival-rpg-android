@@ -20,6 +20,7 @@ import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.content.Context
 import android.widget.Button
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
@@ -57,6 +58,12 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var audio: GameAudio
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
+    private lateinit var onboardingOverlay: View
+    private lateinit var onboardingStatus: TextView
+    private lateinit var characterNameInput: EditText
+    private val accountSession = AccountSessionManager()
+    private val characterCreation = CharacterCreationState()
+    private var selectedServer = ServerDirectory.regions.first()
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
         override fun run() {
@@ -89,6 +96,8 @@ class MainActivity : Activity(), SensorEventListener {
         root.addView(JoystickView(this) { x, y ->
             gameView.queueEvent { NativeGameBridge.setMove(x, y) }
         })
+        onboardingOverlay = buildOnboardingOverlay()
+        root.addView(onboardingOverlay)
         setContentView(root)
         updateGyroButton()
         registerGyro()
@@ -160,6 +169,126 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         audio.release()
         super.onDestroy()
+    }
+
+    private fun buildOnboardingOverlay(): View {
+        val overlay = FrameLayout(this).apply { setBackgroundColor(Color.argb(238, 7, 16, 20)) }
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(32, 24, 32, 24)
+            background = GradientDrawable().apply {
+                cornerRadius = 24f
+                setColor(Color.rgb(18, 35, 39))
+                setStroke(2, Color.rgb(111, 180, 158))
+            }
+        }
+        val title = TextView(this).apply {
+            text = "AETHELGARD: WILD HORIZONS – CRAFTING"
+            textSize = 22f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(244, 218, 155))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        val subtitle = TextView(this).apply {
+            text = "FOUNDATION BUILD 01  •  ACCOUNT  →  SERVER  →  CHARACTER  →  WORLD"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.LTGRAY)
+            setPadding(0, 6, 0, 12)
+        }
+        onboardingStatus = TextView(this).apply {
+            text = "Choose guest mode for offline development or connect the production Google Play bridge."
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setPadding(0, 4, 0, 10)
+        }
+        val accountRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        val guest = actionButton("GUEST / OFFLINE") {
+            val snapshot = accountSession.startGuest()
+            onboardingStatus.text = snapshot.message
+            onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
+        }
+        val google = actionButton("GOOGLE PLAY") {
+            val snapshot = accountSession.requestGooglePlaySignIn()
+            onboardingStatus.text = snapshot.message
+            onboardingStatus.setTextColor(Color.rgb(255, 205, 145))
+        }
+        accountRow.addView(guest, LinearLayout.LayoutParams(190, 46).apply { rightMargin = 10 })
+        accountRow.addView(google, LinearLayout.LayoutParams(190, 46))
+
+        val serverTitle = TextView(this).apply {
+            text = "SERVER / REGION"
+            textSize = 12f
+            setTextColor(Color.rgb(244, 218, 155))
+            setPadding(0, 14, 0, 4)
+        }
+        val serverRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        ServerDirectory.regions.forEach { region ->
+            val button = actionButton(region.name.removePrefix("Aethelgard ").uppercase()) {
+                selectedServer = region
+                onboardingStatus.text = "${region.name} selected  •  PING: ${region.pingMs?.let { "$it ms" } ?: "—"}  •  ${region.status}"
+            }
+            serverRow.addView(button, LinearLayout.LayoutParams(190, 42).apply { rightMargin = 8 })
+        }
+
+        val characterTitle = TextView(this).apply {
+            text = "CHARACTER CREATION"
+            textSize = 12f
+            setTextColor(Color.rgb(244, 218, 155))
+            setPadding(0, 12, 0, 4)
+        }
+        characterNameInput = EditText(this).apply {
+            hint = "Character name (3–16 letters/numbers)"
+            textSize = 14f
+            setSingleLine(true)
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.GRAY)
+            setPadding(16, 0, 16, 0)
+        }
+        val styleRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        fun styleButton(label: String, value: () -> Int, update: (Int) -> Unit): Button {
+            val button = actionButton("$label: ${value() + 1}") { }
+            button.setOnClickListener {
+                val next = (value() + 1) % 4
+                update(next)
+                button.text = "$label: ${next + 1}"
+            }
+            return button
+        }
+        styleRow.addView(styleButton("EYEBROW", { characterCreation.eyebrowStyle }, { characterCreation.eyebrowStyle = it }), LinearLayout.LayoutParams(155, 42).apply { rightMargin = 8 })
+        styleRow.addView(styleButton("CLOTHES", { characterCreation.outfitStyle }, { characterCreation.outfitStyle = it }), LinearLayout.LayoutParams(155, 42).apply { rightMargin = 8 })
+        styleRow.addView(styleButton("HAIR", { characterCreation.hairStyle }, { characterCreation.hairStyle = it }), LinearLayout.LayoutParams(155, 42))
+
+        val enter = actionButton("CREATE PROFILE / ENTER WORLD") {
+            characterCreation.name = characterNameInput.text.toString()
+            val error = characterCreation.validate()
+            if (accountSession.snapshot.state != SessionState.GUEST && accountSession.snapshot.state != SessionState.AUTHENTICATED) {
+                onboardingStatus.text = "Select GUEST / OFFLINE or configure the Google Play bridge first."
+                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            } else if (error != null) {
+                onboardingStatus.text = error
+                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            } else {
+                onboardingStatus.text = "${characterCreation.name} ready on ${selectedServer.name}. World bootstrap begins next."
+                onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
+                overlay.postDelayed({ overlay.visibility = View.GONE }, 650L)
+            }
+        }
+
+        panel.addView(title, LinearLayout.LayoutParams(-1, 38))
+        panel.addView(subtitle, LinearLayout.LayoutParams(-1, 34))
+        panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, 42))
+        panel.addView(accountRow, LinearLayout.LayoutParams(-1, 48))
+        panel.addView(serverTitle, LinearLayout.LayoutParams(-1, 30))
+        panel.addView(serverRow, LinearLayout.LayoutParams(-1, 44))
+        panel.addView(characterTitle, LinearLayout.LayoutParams(-1, 28))
+        panel.addView(characterNameInput, LinearLayout.LayoutParams(-1, 48).apply { bottomMargin = 8 })
+        panel.addView(styleRow, LinearLayout.LayoutParams(-1, 44))
+        panel.addView(enter, LinearLayout.LayoutParams(-1, 50).apply { topMargin = 14 })
+        overlay.addView(panel, FrameLayout.LayoutParams(820, -2, Gravity.CENTER))
+        return overlay
     }
 
     private fun buildHud(): View {
