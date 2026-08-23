@@ -300,7 +300,6 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
         loadHeroineCharacterTexture()
-        markProductionContentReady()
         updateGyroButton()
         registerGyro()
         networkMonitor = NetworkConnectivityMonitor(this)
@@ -308,7 +307,7 @@ class MainActivity : Activity(), SensorEventListener {
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // The bundled world launches immediately; account, cloud, and co-op services continue online in parallel.
+        // Online world entry remains blocked until authentication and production asset packs are ready.
         onboardingOverlay.visibility = View.VISIBLE
         if (networkOnline) beginOnlineStartup()
     }
@@ -341,12 +340,27 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginOnlineStartup() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "CONNECTION RESTORING  •  THE BUNDLED WORLD IS READY"
+                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
             }
             return
         }
-        markProductionContentReady()
-        continuePendingWorldEntry()
+        if (selectedResourceTier == null) {
+            if (!resourceTierChooserVisible) {
+                resourceTierChooserVisible = true
+                showResourceTierChooser { chosenTier ->
+                    resourceTierChooserVisible = false
+                    applyResourceTier(chosenTier)
+                    showAssetPatchOverlay()
+                }
+            }
+        } else if (!resourcePreparationComplete) {
+            if (assetPacks.productionContentReady(selectedResourceTier!!)) {
+                markProductionContentReady()
+                continuePendingWorldEntry()
+            } else {
+                showAssetPatchOverlay()
+            }
+        }
         when (accountSession.snapshot.state) {
             SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> requestOnlineGuestSession()
             SessionState.AUTHENTICATED -> {
@@ -367,7 +381,7 @@ class MainActivity : Activity(), SensorEventListener {
                 coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "CONNECTION RESTORING  •  THE BUNDLED WORLD IS READY"
+                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
             }
             return
         }
@@ -402,7 +416,7 @@ class MainActivity : Activity(), SensorEventListener {
             coOpStatusLabel.text = "$action  •  CONNECTION RESTORING"
         }
         if (::onboardingStatus.isInitialized) {
-            onboardingStatus.text = "CONNECTION RESTORING"
+            onboardingStatus.text = "ONLINE BLOCKED"
         }
         return false
     }
@@ -2439,9 +2453,14 @@ class MainActivity : Activity(), SensorEventListener {
                     if (!failureShown) {
                         failureShown = true
                         status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
-                        details.text = "The selected ${resourceTier.storageLabel} resources were not mounted. Check Wi-Fi and free storage, then press retry."
-                        note.text = "The game will not enter the world until compiled graphics, shaders, and required world packs are ready."
+                        details.text = event.failedPack ?: "Play Asset Delivery could not start for this installation."
+                        note.text = if (event.errorCode == -2) {
+                            "Free storage, then press retry. Required headroom: ${(ContentDownloadPlan.totalMiBFor(resourceTier) + 512)} MB."
+                        } else {
+                            "Install the Play Store/internal-test AAB to download the selected ${resourceTier.storageLabel} resource packs. Production world entry requires Play Asset Delivery."
+                        }
                         note.setTextColor(Color.rgb(255, 188, 142))
+                        progress.progress = 0
                         retry.visibility = View.VISIBLE
                     }
                 } else {
