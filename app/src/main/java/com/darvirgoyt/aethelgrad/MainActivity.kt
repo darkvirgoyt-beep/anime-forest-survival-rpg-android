@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -70,6 +72,7 @@ object NativeGameBridge {
     external fun applyAuthoritativeInventory(wood: Int, fiber: Int, stone: Int, emberKit: Boolean)
     external fun setGyroEnabled(enabled: Boolean)
     external fun setGyro(rotationX: Float, rotationY: Float, sensitivity: Float)
+    external fun setPlayerCharacterTexture(width: Int, height: Int, pixels: IntArray)
     external fun attack()
     external fun heavyAttack()
     external fun jump()
@@ -246,6 +249,7 @@ class MainActivity : Activity(), SensorEventListener {
         onboardingOverlay = buildOnboardingOverlay()
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
+        loadHeroineCharacterTexture()
         updateGyroButton()
         registerGyro()
         networkProbeHost = Uri.parse(getString(R.string.auth_exchange_url)).host.orEmpty()
@@ -395,6 +399,20 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun registerGyro() {
         gyroSensor?.let { sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+    }
+
+    private fun loadHeroineCharacterTexture() {
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+            inSampleSize = 4
+        }
+        val bitmap = BitmapFactory.decodeResource(resources, R.drawable.aethelgard_heroine_character, options) ?: return
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        gameView.queueEvent {
+            NativeGameBridge.setPlayerCharacterTexture(bitmap.width, bitmap.height, pixels)
+            bitmap.recycle()
+        }
     }
 
     private fun updateGyroButton() {
@@ -887,11 +905,13 @@ class MainActivity : Activity(), SensorEventListener {
             val eyebrow = cinematicButton("BROW 01", false) { }
             val outfit = cinematicButton("OUTFIT 01", false) { }
             val hair = cinematicButton("HAIR 01", false) { }
-            val avatars = listOf("trailblazer", "ember", "verdant", "tide", "moon", "sunward")
-            val avatarMarks = listOf("T", "E", "V", "W", "M", "S")
+            val avatars = listOf("heroine", "trailblazer")
+            val avatarMarks = listOf("✦", "T")
+            val avatarResources = listOf(
+                R.drawable.aethelgard_heroine_character, R.drawable.aethelgard_avatar_trailblazer
+            )
             val avatarColors = listOf(
-                Color.rgb(78, 114, 92), Color.rgb(153, 81, 54), Color.rgb(71, 139, 103),
-                Color.rgb(57, 112, 148), Color.rgb(103, 83, 150), Color.rgb(166, 125, 63)
+                Color.rgb(112, 91, 126), Color.rgb(78, 114, 92)
             )
             var avatarIndex = avatars.indexOf(recoveredProfile?.avatarId).takeIf { it >= 0 } ?: 0
             val avatarStrip = LinearLayout(this).apply { gravity = Gravity.CENTER }
@@ -908,10 +928,9 @@ class MainActivity : Activity(), SensorEventListener {
             }
             avatarMarks.forEachIndexed { index, mark ->
                 avatarChoices += FrameLayout(this).apply {
-                    val portraitId = resources.getIdentifier("aethelgard_avatar_${avatars[index]}", "drawable", packageName)
                     addView(ImageView(this@MainActivity).apply {
-                        scaleType = ImageView.ScaleType.CENTER_CROP
-                        if (portraitId != 0) setImageResource(portraitId)
+                        scaleType = if (index == 0) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+                        setImageResource(avatarResources[index])
                         background = GradientDrawable().apply { shape = GradientDrawable.OVAL }
                         clipToOutline = true
                         contentDescription = "${avatars[index]} profile avatar"
@@ -1260,7 +1279,7 @@ class MainActivity : Activity(), SensorEventListener {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(126), dp(16), dp(136), 0)
+            setPadding(dp(126), dp(12), dp(158), 0)
         }
         val title = TextView(this).apply {
             text = if (BuildConfig.PROTOTYPE_MODE) {
@@ -1273,7 +1292,7 @@ class MainActivity : Activity(), SensorEventListener {
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
         stateLabel = TextView(this).apply {
-            text = "SAND  |  DAY 1  |  DAY  |  CLEAR  |  HP 100  |  STA 100  |  HUN 82  |  LV 1  |  XP 0/100  |  W 12  F 08  S 04"
+            text = "FOREST  •  DAY 1  •  DAY  •  CLEAR  •  HP 100  •  STA 100  •  LV 1"
             textSize = 13f
             setTextColor(Color.WHITE)
             setShadowLayer(4f, 1f, 1f, Color.BLACK)
@@ -1298,16 +1317,16 @@ class MainActivity : Activity(), SensorEventListener {
         top.addView(title, LinearLayout.LayoutParams(-2, -1))
         top.addView(stateLabel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = dp(16); rightMargin = dp(10) })
         overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
-        overlay.addView(CircularMiniMapView(this), FrameLayout.LayoutParams(dp(94), dp(94), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(10)
-            leftMargin = dp(16)
-        })
         overlay.addView(gyroButton, FrameLayout.LayoutParams(dp(118), dp(38), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(72)
             rightMargin = dp(18)
         })
         overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
-        overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply { topMargin = dp(54) })
+        overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply {
+            topMargin = dp(54)
+            leftMargin = dp(126)
+            rightMargin = dp(210)
+        })
 
         val profileBadge = ImageView(this).apply {
             setImageResource(R.drawable.aethelgard_profile_gold)
@@ -1327,7 +1346,7 @@ class MainActivity : Activity(), SensorEventListener {
         })
 
         var firstPerson = false
-        var worldMapVisible = false
+        var worldMapDialog: AlertDialog? = null
         val navigation = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -1340,19 +1359,37 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val mapButton = actionButton("WORLD MAP") { }
         mapButton.setOnClickListener {
-            worldMapVisible = !worldMapVisible
-            mapButton.text = if (worldMapVisible) "MAP: CLOSE" else "WORLD MAP"
-            gameView.queueEvent { NativeGameBridge.setWorldMapVisible(worldMapVisible) }
+            val openDialog = worldMapDialog
+            if (openDialog?.isShowing == true) {
+                openDialog.dismiss()
+            } else {
+                mapButton.text = "MAP: CLOSE"
+                gameView.queueEvent { NativeGameBridge.setWorldMapVisible(true) }
+                    worldMapDialog = showWorldMapDialog {
+                    mapButton.text = "WORLD MAP"
+                    worldMapDialog = null
+                    gameView.queueEvent { NativeGameBridge.setWorldMapVisible(false) }
+                }
+            }
         }
+        val miniMap = CircularMiniMapView(this).apply {
+            isClickable = true
+            contentDescription = "Open world map"
+            setOnClickListener { mapButton.performClick() }
+        }
+        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(94), dp(94), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(10)
+            leftMargin = dp(16)
+        })
         val towerButton = actionButton("TOWER / TELEPORT") {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.teleportToTower() }
         }
         val controlsButton = actionButton("CONTROLS") { showControlSettings() }
-        navigation.addView(viewModeButton, LinearLayout.LayoutParams(dp(156), dp(42)).apply { rightMargin = dp(6) })
-        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(112), dp(42)).apply { rightMargin = dp(6) })
-        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(148), dp(42)).apply { rightMargin = dp(6) })
-        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(112), dp(42)))
+        navigation.addView(viewModeButton, LinearLayout.LayoutParams(dp(122), dp(42)).apply { rightMargin = dp(4) })
+        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(96), dp(42)).apply { rightMargin = dp(4) })
+        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(124), dp(42)).apply { rightMargin = dp(4) })
+        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(90), dp(42)))
         overlay.addView(navigation, FrameLayout.LayoutParams(-1, dp(46), Gravity.TOP).apply {
             topMargin = dp(96)
             leftMargin = dp(20)
@@ -1492,7 +1529,7 @@ class MainActivity : Activity(), SensorEventListener {
         val towerState = values.getOrNull(21)?.replace('_', ' ')?.ifBlank { "TOWER READY" } ?: "TOWER READY"
         val emberling = values.getOrNull(22)?.replace('_', ' ')?.ifBlank { "EMBERLING WILD" } ?: "EMBERLING WILD"
         val target = values.getOrNull(23)?.replace('_', ' ')?.ifBlank { "NO TARGET" } ?: "NO TARGET"
-        stateLabel.text = "$biome  |  $phase  |  DAY $daysPlayed  |  $weather  |  $viewMode  |  $mapState  |  $towerState  |  $emberling  |  TARGET $target  |  HP $health/100  |  STA $stamina  |  HUN $hunger  |  $water  |  $locomotion  |  LV $level/100  |  $xpLabel  |  W $wood  F $fiber  S $stone"
+        stateLabel.text = "$biome  •  DAY $daysPlayed  •  $phase  •  $weather  •  $viewMode  •  TARGET $target  •  HP $health  •  STA $stamina  •  LV $level"
         stateLabel.setTextColor(
             when {
                 levelPulse -> Color.rgb(255, 236, 157)
@@ -1502,8 +1539,36 @@ class MainActivity : Activity(), SensorEventListener {
             }
         )
         val recoveryNotice = cloudRecoveryNotice
-        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  $phase  •  $weather  •  FOREST WARDEN HP $warden/100  •  $locomotion" else if (target != "NO TARGET") "$objective  •  $phase  •  $weather  •  TARGET $target  •  $locomotion" else "$objective  •  $phase  •  DAY $daysPlayed  •  $biome BIOME  •  $weather  •  $water"
+        questLabel.text = recoveryNotice ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  WARDEN HP $warden/100  •  $locomotion" else if (target != "NO TARGET") "$objective  •  TARGET $target  •  $biome  •  $weather  •  W $wood  F $fiber  S $stone" else "$objective  •  $biome  •  $weather  •  $water  •  W $wood  F $fiber  S $stone  •  $xpLabel"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
+    }
+
+    private fun showWorldMapDialog(onClosed: () -> Unit): AlertDialog {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(4))
+        }
+        content.addView(TextView(this).apply {
+            text = "AETHELGRAD WORLD  •  TAP CLOSE TO RETURN"
+            textSize = 12f
+            setTextColor(Color.rgb(244, 218, 155))
+            setPadding(0, 0, 0, dp(8))
+        })
+        content.addView(AethelgardWorldMapView(this), LinearLayout.LayoutParams(-1, dp(300)))
+        content.addView(TextView(this).apply {
+            text = "GOLD: TOWER / LANDMARK     CYAN: RIVER     WHITE: YOU     REGIONS: FOREST  •  SAND  •  SNOW"
+            textSize = 10f
+            setTextColor(Color.rgb(186, 211, 204))
+            setPadding(0, dp(8), 0, 0)
+        })
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("WORLD MAP")
+            .setView(content)
+            .setPositiveButton("CLOSE", null)
+            .create()
+        dialog.setOnDismissListener { onClosed() }
+        dialog.show()
+        return dialog
     }
 
     private fun showCharacterInventoryPanel() {
@@ -1519,6 +1584,11 @@ class MainActivity : Activity(), SensorEventListener {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(22), dp(14), dp(22), dp(8))
                 }
+                panel.addView(ImageView(this).apply {
+                    setImageResource(R.drawable.aethelgard_heroine_character)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    contentDescription = "Silver-haired AETHELGRAD heroine"
+                }, LinearLayout.LayoutParams(-1, dp(180)))
                 panel.addView(TextView(this).apply {
                     text = "${characterCreation.name.ifBlank { "WAYFARER" }}  •  $account"
                     textSize = 17f
@@ -1979,17 +2049,17 @@ class MainActivity : Activity(), SensorEventListener {
         letterSpacing = 0.04f
         setPadding(dp(8), 0, dp(8), 0)
         setTextColor(Color.rgb(248, 239, 213))
-        elevation = dp(4).toFloat()
+        elevation = dp(2).toFloat()
         background = android.graphics.drawable.StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
+                cornerRadius = dp(10).toFloat()
                 setColor(Color.rgb(166, 101, 54))
                 setStroke(dp(2), Color.rgb(255, 231, 154))
             })
             addState(intArrayOf(), GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.argb(225, 34, 47, 52))
-                setStroke(dp(2), Color.rgb(214, 171, 91))
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(238, 24, 39, 45))
+                setStroke(dp(1), Color.rgb(214, 171, 91))
             })
         }
         setOnClickListener { onClick() }
@@ -2025,9 +2095,9 @@ class MainActivity : Activity(), SensorEventListener {
         setTextColor(Color.rgb(255, 239, 193))
         setOnClickListener { onClick() }
         background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(Color.argb(230, 22, 37, 43))
-            setStroke(dp(2), Color.rgb(226, 184, 101))
+            cornerRadius = dp(10).toFloat()
+            setColor(Color.argb(238, 22, 37, 43))
+            setStroke(dp(1), Color.rgb(226, 184, 101))
         }
     }
 

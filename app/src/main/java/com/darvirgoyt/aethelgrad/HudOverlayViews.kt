@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.view.View
 
@@ -26,6 +27,81 @@ class AimCrosshairView(context: Context) : View(context) {
         paint.style = Paint.Style.FILL
         paint.color = Color.rgb(255, 226, 158)
         canvas.drawCircle(cx, cy, unit * 0.065f, paint)
+    }
+}
+
+class AethelgardWorldMapView(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val path = Path()
+
+    override fun onDraw(canvas: Canvas) {
+        val left = width * 0.04f
+        val right = width * 0.96f
+        val top = height * 0.06f
+        val bottom = height * 0.90f
+        val mapWidth = right - left
+        val mapHeight = bottom - top
+
+        paint.style = Paint.Style.FILL
+        paint.color = Color.rgb(9, 24, 31)
+        canvas.drawRoundRect(RectF(left, top, right, bottom), 18f, 18f, paint)
+        canvas.save()
+        canvas.clipRect(left, top, right, bottom)
+        paint.color = Color.rgb(22, 75, 61)
+        canvas.drawRect(left, top, left + mapWidth * 0.34f, bottom, paint)
+        paint.color = Color.rgb(100, 64, 34)
+        canvas.drawRect(left + mapWidth * 0.34f, top, left + mapWidth * 0.68f, bottom, paint)
+        paint.color = Color.rgb(42, 82, 112)
+        canvas.drawRect(left + mapWidth * 0.68f, top, right, bottom, paint)
+
+        paint.color = Color.rgb(42, 119, 112)
+        path.reset()
+        path.moveTo(left + mapWidth * 0.63f, top)
+        path.cubicTo(left + mapWidth * 0.57f, top + mapHeight * 0.23f, left + mapWidth * 0.75f, top + mapHeight * 0.42f, left + mapWidth * 0.61f, bottom)
+        path.lineTo(left + mapWidth * 0.70f, bottom)
+        path.cubicTo(left + mapWidth * 0.84f, top + mapHeight * 0.46f, left + mapWidth * 0.66f, top + mapHeight * 0.26f, left + mapWidth * 0.71f, top)
+        path.close()
+        canvas.drawPath(path, paint)
+
+        paint.color = Color.rgb(218, 174, 79)
+        paint.strokeWidth = 7f
+        paint.style = Paint.Style.STROKE
+        path.reset()
+        path.moveTo(left, top + mapHeight * 0.57f)
+        path.cubicTo(left + mapWidth * 0.25f, top + mapHeight * 0.48f, left + mapWidth * 0.64f, top + mapHeight * 0.63f, right, top + mapHeight * 0.46f)
+        canvas.drawPath(path, paint)
+        paint.style = Paint.Style.FILL
+
+        val landmarks = arrayOf(
+            0.10f to 0.18f, 0.18f to 0.42f, 0.31f to 0.76f,
+            0.47f to 0.34f, 0.56f to 0.70f, 0.78f to 0.58f,
+            0.88f to 0.78f
+        )
+        paint.color = Color.rgb(255, 220, 113)
+        landmarks.forEach { (x, y) -> canvas.drawCircle(left + mapWidth * x, top + mapHeight * y, 5f, paint) }
+        paint.color = Color.rgb(255, 236, 170)
+        canvas.drawCircle(left + mapWidth * 0.47f, top + mapHeight * 0.52f, 9f, paint)
+        paint.color = Color.rgb(11, 25, 31)
+        canvas.drawCircle(left + mapWidth * 0.47f, top + mapHeight * 0.52f, 4f, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2f
+        paint.color = Color.rgb(231, 195, 111)
+        canvas.drawRoundRect(RectF(left, top, right, bottom), 18f, 18f, paint)
+        canvas.restore()
+
+        paint.style = Paint.Style.FILL
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = 12f
+        paint.color = Color.rgb(255, 235, 172)
+        canvas.drawText("N", left + mapWidth * 0.50f, top + 18f, paint)
+        paint.textAlign = Paint.Align.LEFT
+        paint.textSize = 11f
+        paint.color = Color.rgb(231, 215, 174)
+        canvas.drawText("FOREST", left + 12f, bottom - 12f, paint)
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText("SAND", left + mapWidth * 0.50f, bottom - 12f, paint)
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("SNOW", right - 12f, bottom - 12f, paint)
     }
 }
 

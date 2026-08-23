@@ -20,6 +20,7 @@ namespace {
 constexpr float PI = 3.14159265359f;
 GLuint gProgram = 0;
 GLuint g3DProgram = 0;
+GLuint gPlayerTexture = 0;
 GLint gPosition = -1;
 GLint gColor = -1;
 GLint gScale = -1;
@@ -27,6 +28,11 @@ GLint gOffset = -1;
 GLint g3DPosition = -1;
 GLint g3DColor = -1;
 GLint g3DMvp = -1;
+GLuint gBillboardProgram = 0;
+GLint gBillboardPosition = -1;
+GLint gBillboardUv = -1;
+GLint gBillboardMvp = -1;
+GLint gBillboardTexture = -1;
 float gWidth = 1.0f;
 float gHeight = 1.0f;
 float gTime = 0.0f;
@@ -362,6 +368,31 @@ out vec4 fragColor;
 void main() { fragColor = vColor; }
 )GLSL";
 
+const char* kBillboardVertexShader = R"GLSL(
+#version 300 es
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aUv;
+uniform mat4 uMvp;
+out vec2 vUv;
+void main() {
+    gl_Position = uMvp * vec4(aPosition, 1.0);
+    vUv = aUv;
+}
+)GLSL";
+
+const char* kBillboardFragmentShader = R"GLSL(
+#version 300 es
+precision mediump float;
+in vec2 vUv;
+uniform sampler2D uTexture;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(uTexture, vUv);
+    if (color.a < 0.03) discard;
+    fragColor = color;
+}
+)GLSL";
+
 struct Mat4 {
     float v[16]{};
 };
@@ -434,6 +465,21 @@ Mat4 modelMatrix(float x, float y, float z, float width, float height, float dep
 
 GLuint compileShader(GLenum type, const char* source);
 
+void createBillboardProgram() {
+    const GLuint vertex = compileShader(GL_VERTEX_SHADER, kBillboardVertexShader);
+    const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, kBillboardFragmentShader);
+    gBillboardProgram = glCreateProgram();
+    glAttachShader(gBillboardProgram, vertex);
+    glAttachShader(gBillboardProgram, fragment);
+    glLinkProgram(gBillboardProgram);
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    gBillboardPosition = glGetAttribLocation(gBillboardProgram, "aPosition");
+    gBillboardUv = glGetAttribLocation(gBillboardProgram, "aUv");
+    gBillboardMvp = glGetUniformLocation(gBillboardProgram, "uMvp");
+    gBillboardTexture = glGetUniformLocation(gBillboardProgram, "uTexture");
+}
+
 void create3DProgram() {
     const GLuint vertex = compileShader(GL_VERTEX_SHADER, k3DVertexShader);
     const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, k3DFragmentShader);
@@ -484,6 +530,47 @@ void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, vertices.data());
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(primitive, 0, static_cast<GLsizei>(vertices.size() / 3));
+}
+
+void drawBillboard(const Mat4& viewProjection, const std::vector<GLfloat>& vertices) {
+    if (gPlayerTexture == 0 || vertices.empty()) return;
+    glDisable(GL_CULL_FACE);
+    glUseProgram(gBillboardProgram);
+    glUniformMatrix4fv(gBillboardMvp, 1, GL_FALSE, viewProjection.v);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gPlayerTexture);
+    glUniform1i(gBillboardTexture, 0);
+    glVertexAttribPointer(gBillboardPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vertices.data());
+    glEnableVertexAttribArray(gBillboardPosition);
+    glVertexAttribPointer(gBillboardUv, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vertices.data() + 3);
+    glEnableVertexAttribArray(gBillboardUv);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size() / 5));
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glEnable(GL_CULL_FACE);
+}
+
+void drawTextured3DPlayer(const Mat4& viewProjection, float px, float y, float pz) {
+    const float facingX = -std::sin(gController.camera.yaw);
+    const float facingZ = -std::cos(gController.camera.yaw);
+    const float rightX = -facingZ;
+    const float rightZ = facingX;
+    constexpr float width = 1.18f;
+    constexpr float height = 2.70f;
+    const float leftX = px - rightX * width * 0.5f;
+    const float leftZ = pz - rightZ * width * 0.5f;
+    const float rightEdgeX = px + rightX * width * 0.5f;
+    const float rightEdgeZ = pz + rightZ * width * 0.5f;
+    const float bottom = 0.04f + y;
+    const float top = bottom + height;
+    const std::vector<GLfloat> vertices = {
+        leftX, bottom, leftZ, 0.0f, 1.0f,
+        rightEdgeX, bottom, rightEdgeZ, 1.0f, 1.0f,
+        rightEdgeX, top, rightEdgeZ, 1.0f, 0.0f,
+        leftX, bottom, leftZ, 0.0f, 1.0f,
+        rightEdgeX, top, rightEdgeZ, 1.0f, 0.0f,
+        leftX, top, leftZ, 0.0f, 0.0f
+    };
+    drawBillboard(viewProjection, vertices);
 }
 
 void draw3DCylinder(const Mat4& viewProjection, float x, float y, float z,
@@ -728,6 +815,10 @@ void draw3DPlayer(const Mat4& viewProjection, bool firstPerson) {
     // A soft contact shadow grounds the avatar while the independent vertical
     // offset makes the jump readable from the third-person camera.
     draw3DBox(viewProjection, px, 0.026f, pz, 0.58f, 0.025f, 0.38f, 0.02f, 0.03f, 0.04f, 0.52f);
+    if (gPlayerTexture != 0) {
+        drawTextured3DPlayer(viewProjection, px, y, pz);
+        return;
+    }
     draw3DCylinder(viewProjection, px - 0.10f, 0.25f + y, pz, 0.07f, 0.50f, 0.08f, 0.04f, 0.14f);
     draw3DCylinder(viewProjection, px + 0.10f, 0.25f + y, pz, 0.07f, 0.50f, 0.10f, 0.05f, 0.17f);
     draw3DBox(viewProjection, px, 0.72f + y, pz, 0.42f, 0.70f, 0.28f, 0.45f, 0.10f, 0.28f);
@@ -1615,6 +1706,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gController.body.verticalVelocity = 0.0f;
     if (gProgram == 0) createProgram();
     if (g3DProgram == 0) create3DProgram();
+    if (gBillboardProgram == 0) createBillboardProgram();
     glViewport(0, 0, width, height);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1661,6 +1753,32 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_darvirgoyt_aethelgrad_NativeGameBridge_toggleViewMode(JNIEnv*, jobject) {
     gViewMode = gViewMode == ViewMode::ThirdPerson ? ViewMode::FirstPerson : ViewMode::ThirdPerson;
     gWorldMapVisible = false;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setPlayerCharacterTexture(JNIEnv* env, jobject, jint width, jint height, jintArray pixels) {
+    if (width <= 0 || height <= 0 || pixels == nullptr) return;
+    const jsize pixelCount = env->GetArrayLength(pixels);
+    if (pixelCount < width * height) return;
+    std::vector<jint> argb(static_cast<size_t>(width) * static_cast<size_t>(height));
+    env->GetIntArrayRegion(pixels, 0, static_cast<jsize>(argb.size()), argb.data());
+    std::vector<uint8_t> rgba(argb.size() * 4u);
+    for (size_t i = 0; i < argb.size(); ++i) {
+        const uint32_t value = static_cast<uint32_t>(argb[i]);
+        rgba[i * 4u + 0u] = static_cast<uint8_t>((value >> 16u) & 0xffu);
+        rgba[i * 4u + 1u] = static_cast<uint8_t>((value >> 8u) & 0xffu);
+        rgba[i * 4u + 2u] = static_cast<uint8_t>(value & 0xffu);
+        rgba[i * 4u + 3u] = static_cast<uint8_t>((value >> 24u) & 0xffu);
+    }
+    if (gPlayerTexture == 0) glGenTextures(1, &gPlayerTexture);
+    glBindTexture(GL_TEXTURE_2D, gPlayerTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 extern "C" JNIEXPORT void JNICALL
