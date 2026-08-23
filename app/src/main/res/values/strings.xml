@@ -9,8 +9,8 @@
     <string name="gyro_unsupported">GYRO: UNSUPPORTED</string>
     <!-- Non-secret Web OAuth client ID used as the backend-verified Google ID-token audience. -->
     <string name="google_web_client_id" translatable="false">1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com</string>
-    <!-- Temporary managed HTTPS endpoint for the current test login deployment. Replace with the published custom-domain URL before public release. -->
-    <string name="auth_exchange_url" translatable="false">https://3000-i6040xmjz90odduzrpnt3-1b82c801.sg1.manus.computer/api/game-auth/exchange</string>
+    <!-- Stable managed HTTPS endpoint for the current permanent backend deployment. -->
+    <string name="auth_exchange_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth/exchange</string>
     <!-- Matching HTTPS endpoint for rotating in-memory refresh sessions. -->
-    <string name="auth_refresh_url" translatable="false">https://3000-i6040xmjz90odduzrpnt3-1b82c801.sg1.manus.computer/api/game-auth/refresh</string>
+    <string name="auth_refresh_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth/refresh</string>
 </resources>
