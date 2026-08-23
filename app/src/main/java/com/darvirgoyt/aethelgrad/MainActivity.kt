@@ -10,6 +10,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -124,6 +125,15 @@ class MainActivity : Activity(), SensorEventListener {
     private var coOpRequestCounter = 0L
     private lateinit var coOpStatusLabel: TextView
     private var selectedServer = ServerDirectory.regions.first()
+    private var networkProbeHost = ""
+    private lateinit var networkMonitor: NetworkConnectivityMonitor
+    private var networkOnline = false
+    private var pingProbeInFlight = false
+    private var latestPingMs: Int? = null
+    private var guestSignInAttempted = false
+    private var currentPlayerProfile: PlayerProfile? = null
+    private lateinit var networkStatusLabel: TextView
+    private lateinit var identityStatusLabel: TextView
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
         override fun run() {
@@ -139,7 +149,14 @@ class MainActivity : Activity(), SensorEventListener {
     private val coOpUpdater = object : Runnable {
         override fun run() {
             val room = activeCoOpRoom
-            if (room != null && !coOpHeartbeatInFlight && ::gameView.isInitialized) {
+            if (room != null && !networkOnline) {
+                if (::coOpStatusLabel.isInitialized) {
+                    coOpStatusLabel.text = "CO-OP PAUSED  •  CONNECT WI-FI OR MOBILE DATA"
+                }
+                if (::gameView.isInitialized) {
+                    gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(false) }
+                }
+            } else if (room != null && !coOpHeartbeatInFlight && ::gameView.isInitialized) {
                 coOpHeartbeatInFlight = true
                 gameView.queueEvent {
                     val local = NativeGameBridge.getCoOpLocalState().split('|')
@@ -161,7 +178,7 @@ class MainActivity : Activity(), SensorEventListener {
     private val cloudSaveUpdater = object : Runnable {
         override fun run() {
             val world = activeCloudWorld
-            if (world != null && !cloudSaveInFlight && ::gameView.isInitialized) {
+            if (world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
                 cloudSaveInFlight = true
                 gameView.queueEvent {
                     val nativeState = NativeGameBridge.getCloudState()
@@ -220,6 +237,9 @@ class MainActivity : Activity(), SensorEventListener {
         setContentView(rootContainer)
         updateGyroButton()
         registerGyro()
+        networkProbeHost = Uri.parse(getString(R.string.auth_exchange_url)).host.orEmpty()
+        networkMonitor = NetworkConnectivityMonitor(this)
+        networkMonitor.start(::applyConnectivitySnapshot)
         if (BuildConfig.PROTOTYPE_MODE) {
             // The .prototype application id is an offline development harness.
             // It must not masquerade as the signed online release or request a
@@ -230,16 +250,105 @@ class MainActivity : Activity(), SensorEventListener {
             // it connects silently and never opens a Gmail account picker.
             onboardingOverlay.visibility = View.VISIBLE
             accountSession.initialize(this, ::applyAccountSnapshot)
-            accountSession.requestGuestSignIn()
-            when {
-                selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
-                    applyResourceTier(chosenTier)
-                    showAssetPatchOverlay()
+            if (networkOnline) {
+                requestOnlineGuestSession()
+                when {
+                    selectedResourceTier == null -> showResourceTierChooser { chosenTier ->
+                        applyResourceTier(chosenTier)
+                        showAssetPatchOverlay()
+                    }
+                    assetPacks.productionContentReady(selectedResourceTier!!) -> resourcePreparationComplete = true
+                    else -> showAssetPatchOverlay()
                 }
-                assetPacks.productionContentReady(selectedResourceTier!!) -> resourcePreparationComplete = true
-                else -> showAssetPatchOverlay()
+            } else {
+                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
             }
         }
+    }
+
+    private fun requestOnlineGuestSession() {
+        if (BuildConfig.PROTOTYPE_MODE || !networkOnline || guestSignInAttempted) return
+        guestSignInAttempted = true
+        onboardingStatus.text = "ONLINE ONLY / GUEST SESSION  •  CONNECTING…"
+        accountSession.requestGuestSignIn()
+    }
+
+    private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
+        networkOnline = snapshot.isOnline
+        if (!networkOnline) {
+            latestPingMs = null
+            if (::networkStatusLabel.isInitialized) {
+                networkStatusLabel.text = "NETWORK: OFFLINE  •  ${snapshot.message}"
+                networkStatusLabel.setTextColor(Color.rgb(255, 180, 150))
+            }
+            if (::coOpStatusLabel.isInitialized && activeCoOpRoom == null) {
+                coOpStatusLabel.text = "CO-OP BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+            }
+            if (!BuildConfig.PROTOTYPE_MODE && ::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+            }
+            return
+        }
+
+        if (::networkStatusLabel.isInitialized) {
+            networkStatusLabel.text = "NETWORK: ${snapshot.message}  •  PING: —"
+            networkStatusLabel.setTextColor(Color.rgb(164, 231, 190))
+        }
+        if (!BuildConfig.PROTOTYPE_MODE && accountSession.snapshot.state != SessionState.AUTHENTICATED) {
+            guestSignInAttempted = false
+            requestOnlineGuestSession()
+        }
+        refreshSelectedServerPing()
+    }
+
+    private fun refreshSelectedServerPing() {
+        if (!networkOnline || pingProbeInFlight) return
+        pingProbeInFlight = true
+        val pingHost = networkProbeHost.ifBlank { selectedServer.host }
+        networkMonitor.measureTcpLatency(pingHost) { measuredPing ->
+            runOnUiThread {
+                pingProbeInFlight = false
+                latestPingMs = measuredPing
+                selectedServer = selectedServer.copy(
+                    pingMs = measuredPing,
+                    status = if (measuredPing != null) "REACHABLE" else "UNREACHABLE"
+                )
+                updateNetworkAndIdentityLabels()
+                if (::onboardingStatus.isInitialized && accountSession.snapshot.state != SessionState.AUTHENTICATED) {
+                    onboardingStatus.text = if (measuredPing != null) {
+                        "${selectedServer.name}  •  PING ${measuredPing} ms  •  READY"
+                    } else {
+                        "${selectedServer.name}  •  SERVER UNREACHABLE"
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateNetworkAndIdentityLabels() {
+        if (::networkStatusLabel.isInitialized) {
+            val connection = if (networkOnline) "${selectedServer.name.uppercase()} ${latestPingMs?.let { "• PING ${it} ms" } ?: "• PING —"}" else "OFFLINE"
+            networkStatusLabel.text = "NETWORK: $connection"
+            networkStatusLabel.setTextColor(if (networkOnline) Color.rgb(164, 231, 190) else Color.rgb(255, 180, 150))
+        }
+        if (::identityStatusLabel.isInitialized) {
+            val accountId = accountSession.snapshot.accountId
+            val username = currentPlayerProfile?.username?.takeIf { it.isNotBlank() }
+                ?: if (accountSession.snapshot.isGuest) "GUEST" else "WAYFARER"
+            val safeId = accountId?.take(10)?.let { "$it…" } ?: "PENDING"
+            identityStatusLabel.text = "PLAYER: $username  •  ID: $safeId"
+        }
+    }
+
+    private fun requireOnline(action: String): Boolean {
+        if (BuildConfig.PROTOTYPE_MODE || networkOnline) return true
+        if (::coOpStatusLabel.isInitialized) {
+            coOpStatusLabel.text = "$action BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+        }
+        if (::onboardingStatus.isInitialized) {
+            onboardingStatus.text = "ONLINE BLOCKED  •  CONNECT WI-FI OR MOBILE DATA"
+        }
+        return false
     }
 
     private fun detectSupportedTargetFps(): List<Int> {
@@ -322,11 +431,11 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
-        activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+        if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
         activeCoOpRoom = null
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
         val world = activeCloudWorld
-        if (world != null && !cloudSaveInFlight) {
+        if (world != null && networkOnline && !cloudSaveInFlight) {
             cloudSaveInFlight = true
             gameView.queueEvent {
                 val nativeState = NativeGameBridge.getCloudState()
@@ -363,8 +472,9 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
-        activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+        if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
         accountSession.shutdown()
+        if (::networkMonitor.isInitialized) networkMonitor.stop()
         if (::assetDelivery.isInitialized) assetDelivery.shutdown()
         if (::assetPacks.isInitialized) assetPacks.close()
         if (::audio.isInitialized) audio.release()
@@ -400,7 +510,9 @@ class MainActivity : Activity(), SensorEventListener {
         val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {
             val index = ServerDirectory.regions.indexOfFirst { it.id == selectedServer.id }
             selectedServer = ServerDirectory.regions[(index + 1) % ServerDirectory.regions.size]
-            onboardingStatus.text = "${selectedServer.name} selected  •  PING: ${selectedServer.pingMs?.let { "$it ms" } ?: "—"}  •  ${selectedServer.status}"
+            latestPingMs = null
+            onboardingStatus.text = "${selectedServer.name} selected  •  PING: —  •  CHECKING SERVER"
+            refreshSelectedServerPing()
         }
         overlay.addView(serverButton, FrameLayout.LayoutParams(dp(176), dp(42), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(18)
@@ -586,6 +698,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
+        updateNetworkAndIdentityLabels()
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
@@ -599,6 +712,8 @@ class MainActivity : Activity(), SensorEventListener {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
                 accountSession.fetchProfile { profile, profileError ->
+                    currentPlayerProfile = profile
+                    updateNetworkAndIdentityLabels()
                     accountSession.fetchOwnedWorlds { worlds, worldsError ->
                         showCharacterSetup(snapshot.accountId, profile, worlds.orEmpty(), worldsError ?: profileError)
                     }
@@ -626,12 +741,14 @@ class MainActivity : Activity(), SensorEventListener {
 
     /** Guest mode skips account setup and opens the online world immediately. */
     private fun enterGuestOnlineWorld() {
+        if (!requireOnline("ONLINE WORLD")) return
         onboardingOverlay.visibility = View.GONE
         gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
         connectGuestToOnlineRoom()
     }
 
     private fun connectGuestToOnlineRoom() {
+        if (!requireOnline("CO-OP")) return
         if (guestRoomConnectInFlight || activeCoOpRoom != null) return
         guestRoomConnectInFlight = true
         accountSession.createCoOpRoom(selectedServer.id) { room, error ->
@@ -906,6 +1023,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun submitAuthoritativeCombat(action: String) {
+        if (!requireOnline("COMBAT")) return
         val room = activeCoOpRoom
         if (room == null) {
             gameView.queueEvent { if (action == "heavy_attack") NativeGameBridge.heavyAttack() else NativeGameBridge.attack() }
@@ -924,6 +1042,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun submitAuthoritativeInventory(operation: String) {
+        if (!requireOnline(operation.uppercase())) return
         val room = activeCoOpRoom
         if (room == null) {
             gameView.queueEvent { if (operation == "craft") NativeGameBridge.craft() else NativeGameBridge.gather() }
@@ -1028,6 +1147,10 @@ class MainActivity : Activity(), SensorEventListener {
         }
         panel.addView(result, LinearLayout.LayoutParams(-1, dp(32)))
         val create = actionButton("CREATE TOWER ROOM") {
+            if (!requireOnline("CO-OP")) {
+                result.text = "Connect Wi-Fi or mobile data before creating a room."
+                return@actionButton
+            }
             result.text = "Allocating a shared tower room…"
             accountSession.createCoOpRoom(selectedServer.id) { room, error ->
                 if (room == null) {
@@ -1042,6 +1165,10 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val join = actionButton("JOIN TOWER ROOM") {
+            if (!requireOnline("CO-OP")) {
+                result.text = "Connect Wi-Fi or mobile data before joining a room."
+                return@actionButton
+            }
             result.text = "Joining tower room…"
             accountSession.joinCoOpRoom(codeInput.text.toString()) { room, error ->
                 if (room == null) {
@@ -1196,6 +1323,32 @@ class MainActivity : Activity(), SensorEventListener {
         }
         overlay.addView(coOpStatusLabel, FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP).apply {
             topMargin = dp(168)
+            leftMargin = dp(24)
+            rightMargin = dp(214)
+        })
+        networkStatusLabel = TextView(this).apply {
+            text = "NETWORK: CHECKING  •  PING: —"
+            textSize = 10f
+            setTextColor(Color.rgb(255, 205, 145))
+            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            setSingleLine(true)
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        overlay.addView(networkStatusLabel, FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP).apply {
+            topMargin = dp(190)
+            leftMargin = dp(24)
+            rightMargin = dp(214)
+        })
+        identityStatusLabel = TextView(this).apply {
+            text = "PLAYER: GUEST  •  ID: PENDING"
+            textSize = 10f
+            setTextColor(Color.rgb(229, 211, 167))
+            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            setSingleLine(true)
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        overlay.addView(identityStatusLabel, FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP).apply {
+            topMargin = dp(211)
             leftMargin = dp(24)
             rightMargin = dp(214)
         })
@@ -1365,9 +1518,10 @@ class MainActivity : Activity(), SensorEventListener {
             .setMessage("This removes the local session from this device. Your cloud world remains protected in your account.")
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("LOG OUT") { _, _ ->
-                activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+                if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
                 activeCoOpRoom = null
                 activeCloudWorld = null
+                currentPlayerProfile = null
                 authenticationTransitionStarted = false
                 cloudRecoveryNotice = null
                 hudHandler.removeCallbacks(cloudSaveUpdater)
