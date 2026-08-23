@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "scenario": {
+    "rooms": 50,
+    "playersPerRoom": 4,
+    "totalPlayers": 200,
+    "syntheticDbLatencyMs": 1,
+    "databaseMode": "in-memory SQL-pattern simulation",
+    "note": "This is not a PostgreSQL capacity benchmark."
+  },
+  "phases": [
+    {
+      "name": "create_rooms",
+      "elapsedMs": 78.832,
+      "requests": 50,
+      "statusCounts": {
+        "201": 50
+      },
+      "minMs": 36.795,
+      "p50Ms": 59.265,
+      "p95Ms": 76.838,
+      "maxMs": 78.914
+    },
+    {
+      "name": "join_members",
+      "elapsedMs": 116.997,
+      "requests": 150,
+      "statusCounts": {
+        "200": 150
+      },
+      "minMs": 42.173,
+      "p50Ms": 75.68,
+      "p95Ms": 111.639,
+      "maxMs": 117.031
+    },
+    {
+      "name": "heartbeats",
+      "elapsedMs": 89.911,
+      "requests": 200,
+      "statusCounts": {
+        "200": 200
+      },
+      "minMs": 51.363,
+      "p50Ms": 57.594,
+      "p95Ms": 84.534,
+      "maxMs": 90.012
+    },
+    {
+      "name": "combat",
+      "elapsedMs": 24.985,
+      "requests": 50,
+      "statusCounts": {
+        "200": 50
+      },
+      "minMs": 24.079,
+      "p50Ms": 24.349,
+      "p95Ms": 24.466,
+      "maxMs": 25.015
+    },
+    {
+      "name": "gather",
+      "elapsedMs": 22.405,
+      "requests": 50,
+      "statusCounts": {
+        "200": 50
+      },
+      "minMs": 16.193,
+      "p50Ms": 16.802,
+      "p95Ms": 22.38,
+      "maxMs": 22.418
+    },
+    {
+      "name": "craft",
+      "elapsedMs": 20.133,
+      "requests": 50,
+      "statusCounts": {
+        "200": 50
+      },
+      "minMs": 17.777,
+      "p50Ms": 18.823,
+      "p95Ms": 19.454,
+      "maxMs": 20.144
+    }
+  ],
+  "aggregate": {
+    "requests": 550,
+    "statusCounts": {
+      "200": 500,
+      "201": 50
+    },
+    "minMs": 16.193,
+    "p50Ms": 52.94,
+    "p95Ms": 100.56,
+    "maxMs": 117.031,
+    "elapsedMs": 353.263,
+    "throughputRps": 1556.91
+  },
+  "databaseSimulation": {
+    "queryCount": 5400,
+    "transactionCount": 150,
+    "roomCount": 50,
+    "memberCount": 200
+  },
+  "validation": {
+    "expectedStatuses": {
+      "createRooms": 201,
+      "allOtherRequests": 200
+    },
+    "unexpectedFailures": 0
+  }
+}
