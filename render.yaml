@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: aethelgard-api
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    preDeployCommand: node scripts/migrate.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
+      - key: GOOGLE_ID_TOKEN_AUDIENCE
+        value: 1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com
+      - key: GAME_SESSION_JWT_SECRET
+        generateValue: true
+      - key: GAME_ACCESS_TOKEN_TTL_SECONDS
+        value: "900"
+      - key: GAME_REFRESH_TOKEN_TTL_SECONDS
+        value: "2592000"
+      - key: ALLOWED_ORIGIN
+        value: https://aethelgard-api.onrender.com
+      - key: GOOGLE_GAME_SERVER_CLIENT_ID
+        sync: false
+      - key: GOOGLE_GAME_SERVER_CLIENT_SECRET
+        sync: false
+
+# The API requires a PostgreSQL DATABASE_URL. Keep database creation separate so
+# this service can also use a free Supabase/Postgres database when available.

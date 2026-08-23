@@ -10,11 +10,11 @@
     <!-- Non-secret Web OAuth client ID used as the backend-verified Google ID-token audience. -->
     <string name="google_web_client_id" translatable="false">1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com</string>
     <!-- Stable managed HTTPS endpoint for the online service. The route matches server/src/server.mjs. -->
-    <string name="api_base_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/v1</string>
-    <string name="auth_exchange_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/v1/auth/google-id-token/exchange</string>
-    <string name="auth_guest_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/v1/auth/guest</string>
+    <string name="api_base_url" translatable="false">https://aethelgard-api.onrender.com/v1</string>
+    <string name="auth_exchange_url" translatable="false">https://aethelgard-api.onrender.com/v1/auth/google-id-token/exchange</string>
+    <string name="auth_guest_url" translatable="false">https://aethelgard-api.onrender.com/v1/auth/guest</string>
     <!-- Matching HTTPS endpoint for rotating in-memory refresh sessions. -->
-    <string name="auth_refresh_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/v1/auth/refresh</string>
+    <string name="auth_refresh_url" translatable="false">https://aethelgard-api.onrender.com/v1/auth/refresh</string>
     <!-- Public story film played before the player enters the world; Skip remains available if streaming fails. -->
     <string name="first_ember_story_video_url" translatable="false">https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/releases/download/aethelgard-story-pitch-v0.2.2/aethelgard-five-minute-story-pitch.mp4</string>
 </resources>
