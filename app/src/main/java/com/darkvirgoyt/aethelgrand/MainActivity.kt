@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrand
 
 import android.Manifest
 import android.app.Activity
@@ -126,6 +126,8 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
+    private var lastBackPressAtMs = 0L
+    private val backPressWindowMs = 1_600L
     private var cinematicEntryOverlay: View? = null
     private var worldLoadingOverlay: View? = null
     private var worldFadeCurtain: View? = null
@@ -732,6 +734,67 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) enterImmersiveMode()
+    }
+
+    /**
+     * Handles Android system Back as navigation first and exit second. Dialogs
+     * consume Back themselves; this method covers the full-screen game overlays
+     * that are intentionally hosted inside the Activity root.
+     */
+    override fun onBackPressed() {
+        if (characterSetupOverlay != null) {
+            dismissCharacterSetupOverlay()
+            return
+        }
+        if (worldLoadingOverlay != null) {
+            skipLoadingPresentation()
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressAtMs <= backPressWindowMs) {
+            lastBackPressAtMs = 0L
+            showCloseGameDialog()
+        } else {
+            lastBackPressAtMs = now
+            android.widget.Toast.makeText(this, "Press Back again to close AETHELGRAD", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showCloseGameDialog() {
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("CLOSE AETHELGRAD?")
+            .setMessage("Do you want to close this game?")
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("YES") { _, _ ->
+                finishAndRemoveTask()
+            }
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.rgb(64, 145, 255))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.rgb(226, 184, 101))
+        }
+        dialog.show()
+    }
+
+    private fun dismissCharacterSetupOverlay() {
+        val overlay = characterSetupOverlay ?: return
+        rootContainer.removeView(overlay)
+        characterSetupOverlay = null
+        authenticationTransitionStarted = false
+        onboardingOverlay.visibility = View.VISIBLE
+        if (::onboardingStatus.isInitialized) {
+            onboardingStatus.text = "SIGN IN WITH GOOGLE TO CONTINUE"
+        }
+    }
+
+    private fun addBackArrow(parent: FrameLayout, onBack: () -> Unit) {
+        val back = cinematicButton("‹  BACK", false, onBack).apply {
+            contentDescription = "Go back one screen"
+        }
+        parent.addView(back, FrameLayout.LayoutParams(dp(122), dp(42), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(18)
+            leftMargin = dp(18)
+        })
     }
 
     private fun enterImmersiveMode() {
@@ -1606,7 +1669,15 @@ class MainActivity : Activity(), SensorEventListener {
                     }
                 }
             }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(4) })
-            overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
+            val scroll = ScrollView(this).apply {
+                isFillViewport = false
+                clipToPadding = false
+                isVerticalScrollBarEnabled = true
+                setPadding(dp(30), dp(72), dp(30), dp(24))
+                addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
+            }
+            overlay.addView(scroll, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
+            addBackArrow(overlay) { dismissCharacterSetupOverlay() }
             characterSetupOverlay = overlay
             rootContainer.addView(overlay)
         }
@@ -2189,7 +2260,7 @@ class MainActivity : Activity(), SensorEventListener {
         AlertDialog.Builder(this)
             .setTitle("CO-OP TOWER RENDEZVOUS")
             .setView(scroll)
-            .setNegativeButton("CLOSE", null)
+            .setNegativeButton("‹ BACK", null)
             .show()
     }
 
@@ -2526,7 +2597,7 @@ class MainActivity : Activity(), SensorEventListener {
         val dialog = AlertDialog.Builder(this)
             .setTitle("WORLD MAP")
             .setView(content)
-            .setPositiveButton("CLOSE", null)
+            .setNegativeButton("‹ BACK", null)
             .create()
         dialog.setOnDismissListener { onClosed() }
         dialog.show()
@@ -2588,7 +2659,7 @@ class MainActivity : Activity(), SensorEventListener {
                 val accountDialog = AlertDialog.Builder(this)
                     .setTitle("CHARACTER / INVENTORY")
                     .setView(panel)
-                    .setNegativeButton("CLOSE", null)
+                    .setNegativeButton("‹ BACK", null)
                     .setPositiveButton("LOG OUT") { _, _ -> confirmLogout() }
                 accountDialog.show()
             }
@@ -2872,7 +2943,7 @@ class MainActivity : Activity(), SensorEventListener {
         AlertDialog.Builder(this)
             .setTitle("GRAPHICS / FPS SETTINGS")
             .setView(panel)
-            .setNegativeButton("CANCEL", null)
+            .setNegativeButton("‹ BACK", null)
             .setPositiveButton("APPLY") { _, _ ->
                 val auto = autoFps.isChecked
                 graphicsPreferences.edit().putBoolean("auto_fps", auto).apply()
@@ -2975,7 +3046,7 @@ class MainActivity : Activity(), SensorEventListener {
         dialog = AlertDialog.Builder(this)
             .setTitle("AETHELGARD CONTROLS")
             .setView(panel)
-            .setNegativeButton("CLOSE", null)
+            .setNegativeButton("‹ BACK", null)
             .create()
         dialog.show()
     }
@@ -3006,7 +3077,7 @@ class MainActivity : Activity(), SensorEventListener {
         AlertDialog.Builder(this)
             .setTitle("AETHELGARD AUDIO")
             .setView(panel)
-            .setNegativeButton("Close", null)
+            .setNegativeButton("‹ BACK", null)
             .show()
     }
 
