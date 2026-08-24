@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box;margin:0}
+.slide-container{width:1280px;min-height:720px;background:#FFFFFF;color:#3A4F5E;border:8px solid #0F2537;display:grid;grid-template-columns:92px 8px 1fr;font-family:Georgia,serif}
+.rail{background:#0F2537;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.rail span{writing-mode:vertical-rl;transform:rotate(180deg);font-family:Impact,"Arial Narrow",sans-serif;font-size:24px;font-weight:900;letter-spacing:2px}
+.divider{background:#C84B31}
+.main{display:flex;flex-direction:column;justify-content:flex-start;padding-top:50px;padding-left:54px;padding-right:58px}
+.kicker{font-family:Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#C84B31}
+h1{font-family:Impact,"Arial Narrow",sans-serif;font-size:52px;font-weight:900;line-height:.95;color:#0F2537;margin-top:10px}
+.lede{font-size:21px;line-height:1.4;color:#0F2537;max-width:900px;margin-top:14px}
+.sequence{display:grid;grid-template-columns:1fr 1fr;column-gap:46px;row-gap:0;border-top:8px solid #0F2537;margin-top:20px}
+.item{display:grid;grid-template-columns:66px 1fr;min-height:82px;border-bottom:2px solid #AFC3CA;padding-top:8px;padding-bottom:8px}
+.rank{font-family:Impact,"Arial Narrow",sans-serif;font-size:43px;line-height:.9;color:#C84B31}
+.item h2{font-family:Impact,"Arial Narrow",sans-serif;font-size:22px;font-weight:900;line-height:1.05;text-transform:uppercase;color:#0F2537}
+.item p{font-size:15px;line-height:1.42;margin-top:6px;max-width:430px}
+.note{display:grid;grid-template-columns:235px 1fr;gap:18px;border-top:8px solid #C84B31;padding-top:10px;margin-top:12px;margin-bottom:16px}
+.note strong{font-family:Impact,"Arial Narrow",sans-serif;font-size:21px;line-height:1.05;text-transform:uppercase;color:#0F2537}
+.note p{font-size:17px;line-height:1.45;color:#3A4F5E}
+.square{font-family:Arial,sans-serif;color:#C84B31;font-weight:900;margin-right:8px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rail"><span>PRIORITY ORDER</span></div>
+  <div class="divider"></div>
+  <main class="main">
+    <section>
+      <div class="kicker">08 / Recommended sequence</div>
+      <h1>DEPTH BEFORE SCALE</h1>
+      <p class="lede">The roadmap is not a feature wish list. Each step removes a production risk that would make the next step more expensive.</p>
+      <section class="sequence">
+        <article class="item"><div class="rank">01</div><div><h2>Freeze the contract</h2><p>Lock product name, device tiers, input actions, reference resolution, and authority boundaries.</p></div></article>
+        <article class="item"><div class="rank">02</div><div><h2>Build the Unreal 3D slice</h2><p>Ship one forest micro-region with real camera, collision, hero, target dummy, and Android device proof.</p></div></article>
+        <article class="item"><div class="rank">03</div><div><h2>Make progression authoritative</h2><p>Version inventory, equipment, XP, quests, and saves so UI state becomes durable gameplay state.</p></div></article>
+        <article class="item"><div class="rank">04</div><div><h2>Complete the combat loop</h2><p>Add enemy AI, telegraphs, player damage, stagger, death, respawn, and meaningful loot.</p></div></article>
+        <article class="item"><div class="rank">05</div><div><h2>Reduce field HUD density</h2><p>Keep combat essentials visible; move craft, inventory, and settings into contextual or pause layers.</p></div></article>
+        <article class="item"><div class="rank">06</div><div><h2>Establish content production</h2><p>Run original asset, animation, audio, localization, LOD, and device-profile pipelines.</p></div></article>
+        <article class="item"><div class="rank">07</div><div><h2>Add co-op after proof</h2><p>Only then validate server authority, reconnect, shared world mutations, and replicated rewards.</p></div></article>
+      </section>
+    </section>
+    <section class="note"><strong><span class="square">■</span>Decision rule</strong><p>Do not expand placeholder maps, menus, or item catalogs until one real region, one threatening enemy, one build-changing item, and one save/reload cycle are fun and measured.</p></section>
+  </main>
+</div>
+</body>
+</html>

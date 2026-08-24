@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#FFFFFF;color:#3A4F5E;border:6px solid #0F2537;display:grid;grid-template-columns:92px 1fr;font-family:Georgia,serif}
+.rail{background:#0F2537;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.rail span{writing-mode:vertical-rl;transform:rotate(180deg);font-family:Impact,"Arial Narrow",sans-serif;font-size:24px;font-weight:900;letter-spacing:2px}
+.main{padding-top:50px;padding-left:58px;padding-right:56px;display:flex;flex-direction:column;justify-content:flex-start}
+.kicker{font-family:Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#C84B31}
+h1{font-family:Impact,"Arial Narrow",sans-serif;font-size:52px;font-weight:900;line-height:.95;color:#0F2537;margin-top:10px}
+.lede{font-size:21px;line-height:1.38;color:#0F2537;max-width:930px;margin-top:13px}
+.runway{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:6px solid #0F2537;border-bottom:6px solid #0F2537;margin-top:20px;min-height:280px}
+.stage{padding-top:12px;padding-left:12px;padding-right:12px;display:flex;flex-direction:column;justify-content:space-between}
+.stage:not(:last-child){border-right:2px solid #AFC3CA}
+.stage-id{font-family:Impact,"Arial Narrow",sans-serif;font-size:46px;font-weight:900;line-height:.82;color:#C84B31}
+.stage h2{font-family:Impact,"Arial Narrow",sans-serif;font-size:22px;font-weight:900;line-height:1.04;text-transform:uppercase;color:#0F2537;margin-top:10px}
+.stage p{font-size:15px;line-height:1.42;margin-top:8px}
+.proof{border-top:6px solid #F2B84B;padding-top:8px;font-family:Arial,sans-serif;font-size:14px;font-weight:700;line-height:1.38;text-transform:uppercase;letter-spacing:.35px;color:#0F2537}
+.gate{display:grid;grid-template-columns:290px 1fr;gap:24px;border-top:6px solid #C84B31;padding-top:12px;margin-top:12px;margin-bottom:16px}
+.gate h3{font-family:Impact,"Arial Narrow",sans-serif;font-size:22px;font-weight:900;line-height:1.05;text-transform:uppercase;color:#0F2537}
+.gate p{font-size:17px;line-height:1.45;color:#3A4F5E}
+.square{color:#C84B31;font-family:Arial,sans-serif;font-weight:900;margin-right:8px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rail"><span>MILESTONES &amp; EVIDENCE</span></div>
+  <main class="main">
+    <section>
+      <div class="kicker">09 / Production gates</div>
+      <h1>CODE IS NOT THE EXIT CRITERIA</h1>
+      <p class="lede">Every milestone must prove a playable, measured outcome. The evidence below is the minimum bar before the team claims progress.</p>
+    </section>
+    <section class="runway">
+      <article class="stage">
+        <div><div class="stage-id">M1</div><h2>3D controller</h2><p>Perspective camera, real collision, original hero placeholder, target dummy, mobile input, and one forest micro-region.</p></div>
+        <div class="proof">Device video<br/>Target-tier frame-time<br/>Controller tests</div>
+      </article>
+      <article class="stage">
+        <div><div class="stage-id">M2</div><h2>Forest combat</h2><p>Hostile AI, passive animal, three-hit combo, heavy attack, hit reactions, loot, death, and respawn.</p></div>
+        <div class="proof">5–10 minute loop<br/>No debug-only path<br/>Combat readability review</div>
+      </article>
+      <article class="stage">
+        <div><div class="stage-id">M3</div><h2>Survival &amp; inventory</h2><p>Durable profile, equipment stats, crafting, quick slots, migration rules, and offline save/reload.</p></div>
+        <div class="proof">Save round-trip<br/>Inventory transaction tests<br/>Migration recovery test</div>
+      </article>
+      <article class="stage">
+        <div><div class="stage-id">M4</div><h2>Boss &amp; building</h2><p>Readable boss phases, arena, camp storage, farm/build pieces, structure validation, and rewards.</p></div>
+        <div class="proof">Repeatable encounter<br/>Memory capture<br/>Frame-time capture</div>
+      </article>
+      <article class="stage">
+        <div><div class="stage-id">M5</div><h2>Co-op alpha</h2><p>Four clients, dedicated authority, reconnect, replicated combat, loot, building, quests, and revive flow.</p></div>
+        <div class="proof">Four-client session<br/>Invalid-command rejection<br/>Reconnect proof</div>
+      </article>
+    </section>
+    <section class="gate"><h3><span class="square">■</span>Definition of done</h3><p>A milestone is complete only when it is playable on Android, has stable frame-time and memory evidence, survives lifecycle or reconnect behavior, is covered by the appropriate tests, uses original or licensed content, and is packaged through the intended pipeline.</p></section>
+  </main>
+</div>
+</body>
+</html>

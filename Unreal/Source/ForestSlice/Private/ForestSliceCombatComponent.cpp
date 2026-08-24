@@ -4,6 +4,10 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/World.h"
+#include "CollisionShape.h"
+#include "Kismet/GameplayStatics.h"
+#include "ForestSliceWeaponComponent.h"
 
 UForestSliceCombatComponent::UForestSliceCombatComponent()
 {
@@ -11,11 +15,11 @@ UForestSliceCombatComponent::UForestSliceCombatComponent()
     SetIsReplicatedByDefault(true);
 
     LightCombo = {
-        {TEXT("Light_01"), 0.08f, 0.10f, 0.26f, 0.18f, 10.0f, 180.0f, 10.0f, 8.0f, 120.0f, TEXT("Light_01")},
-        {TEXT("Light_02"), 0.10f, 0.11f, 0.28f, 0.20f, 12.0f, 190.0f, 13.0f, 10.0f, 145.0f, TEXT("Light_02")},
-        {TEXT("Light_03"), 0.14f, 0.14f, 0.38f, 0.24f, 16.0f, 220.0f, 20.0f, 16.0f, 220.0f, TEXT("Light_03")}
+        {TEXT("Light_01"), 0.08f, 0.10f, 0.26f, 0.18f, 10.0f, 180.0f, 10.0f, 8.0f, 120.0f, 45.0f, 36.0f, TEXT("Light_01")},
+        {TEXT("Light_02"), 0.10f, 0.11f, 0.28f, 0.20f, 12.0f, 190.0f, 13.0f, 10.0f, 145.0f, 55.0f, 40.0f, TEXT("Light_02")},
+        {TEXT("Light_03"), 0.14f, 0.14f, 0.38f, 0.24f, 16.0f, 220.0f, 20.0f, 16.0f, 220.0f, 70.0f, 48.0f, TEXT("Light_03")}
     };
-    HeavyAttack = {TEXT("Heavy_01"), 0.32f, 0.18f, 0.58f, 0.0f, 28.0f, 240.0f, 38.0f, 28.0f, 320.0f, TEXT("Heavy_01")};
+    HeavyAttack = {TEXT("Heavy_01"), 0.32f, 0.18f, 0.58f, 0.0f, 28.0f, 240.0f, 38.0f, 28.0f, 320.0f, 90.0f, 54.0f, TEXT("Heavy_01")};
     WeaponIds = {TEXT("Blade"), TEXT("Greatblade"), TEXT("Bow"), TEXT("GatheringTool")};
 }
 
@@ -112,6 +116,13 @@ void UForestSliceCombatComponent::BeginAttack(bool bHeavy)
     if (!Attack) return;
     CombatPhase = EForestSliceCombatPhase::Startup;
     PhaseTimer = Attack->StartupSeconds;
+
+    if (ACharacter* Character = Cast<ACharacter>(GetOwner())) {
+        const FVector Lunge = Character->GetActorForwardVector() * Attack->LungeDistance;
+        if (Attack->LungeDistance > 0.0f && Character->GetCharacterMovement()->IsMovingOnGround()) {
+            Character->LaunchCharacter(Lunge, true, false);
+        }
+    }
     CombatEvent.Broadcast(Attack->AttackId, ComboIndex, 0.0f, EquippedWeaponIndex);
 }
 
@@ -119,11 +130,69 @@ void UForestSliceCombatComponent::ResolveActiveHit()
 {
     const FForestSliceAttackDefinition* Attack = GetCurrentAttack();
     if (bHeavyAttack) Attack = &HeavyAttack;
-    if (!Attack || bHitResolved) return;
+    if (!Attack || bHitResolved || !GetOwner()->HasAuthority()) return;
 
-    // Replace this event with an authoritative capsule/sweep trace against hurtbox components.
     bHitResolved = true;
-    CombatEvent.Broadcast(TEXT("HitWindow"), ComboIndex, Attack->Damage, EquippedWeaponIndex);
+    AActor* OwnerActor = GetOwner();
+    ACharacter* Character = Cast<ACharacter>(OwnerActor);
+    if (!Character || !GetWorld()) return;
+
+    const FVector Forward = Character->GetActorForwardVector();
+    const FVector Start = OwnerActor->GetActorLocation() + Forward * FMath::Min(Attack->Range * 0.35f, 80.0f);
+    const FVector End = OwnerActor->GetActorLocation() + Forward * Attack->Range;
+    const FCollisionShape Shape = FCollisionShape::MakeSphere(Attack->HitRadius);
+    FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ForestSliceAttack), false, OwnerActor);
+    QueryParams.AddIgnoredActor(OwnerActor);
+
+    TArray<FHitResult> Hits;
+    const bool bHitAnything = GetWorld()->SweepMultiByChannel(
+        Hits,
+        Start,
+        End,
+        FQuat::Identity,
+        ECC_Pawn,
+        Shape,
+        QueryParams
+    );
+
+    const UForestSliceWeaponComponent* WeaponComponent = OwnerActor->FindComponentByClass<UForestSliceWeaponComponent>();
+    const FForestSliceWeaponDefinition Weapon = WeaponComponent
+        ? WeaponComponent->GetEquippedDefinition()
+        : FForestSliceWeaponDefinition{};
+    const float DamageMultiplier = bHeavyAttack ? Weapon.HeavyDamageMultiplier : Weapon.LightDamageMultiplier;
+    const float Damage = Attack->Damage * FMath::Max(0.0f, DamageMultiplier);
+
+    if (bHitAnything) {
+        TSet<AActor*> UniqueActors;
+        for (const FHitResult& Hit : Hits) {
+            AActor* HitActor = Hit.GetActor();
+            if (!IsValid(HitActor) || UniqueActors.Contains(HitActor)) continue;
+            UniqueActors.Add(HitActor);
+            UGameplayStatics::ApplyDamage(HitActor, Damage, Character->GetController(), OwnerActor, nullptr);
+            CombatEvent.Broadcast(TEXT("HitConfirmed"), ComboIndex, Damage, EquippedWeaponIndex);
+        }
+    } else {
+        CombatEvent.Broadcast(TEXT("AttackWhiff"), ComboIndex, 0.0f, EquippedWeaponIndex);
+    }
+}
+
+float UForestSliceCombatComponent::GetMovementSpeedScale() const
+{
+    switch (CombatPhase) {
+        case EForestSliceCombatPhase::Startup:
+            return bHeavyAttack ? 0.25f : 0.55f;
+        case EForestSliceCombatPhase::Active:
+            return 0.10f;
+        case EForestSliceCombatPhase::Recovery:
+            return 0.45f;
+        case EForestSliceCombatPhase::Stagger:
+        case EForestSliceCombatPhase::Downed:
+        case EForestSliceCombatPhase::Dead:
+            return 0.0f;
+        case EForestSliceCombatPhase::None:
+        default:
+            return 1.0f;
+    }
 }
 
 void UForestSliceCombatComponent::FinishAttack()

@@ -66,6 +66,18 @@ void AForestSliceCharacter::Tick(float DeltaSeconds)
     SlideCooldown = FMath::Max(0.0f, SlideCooldown - DeltaSeconds);
     DodgeCooldown = FMath::Max(0.0f, DodgeCooldown - DeltaSeconds);
 
+    const float CombatSpeedScale = CombatComponent ? CombatComponent->GetMovementSpeedScale() : 1.0f;
+    const float TargetSpeed = bSprintHeld ? SprintSpeed : WalkSpeed;
+    GetCharacterMovement()->MaxWalkSpeed = TargetSpeed * CombatSpeedScale;
+    if (CombatComponent && CombatComponent->GetCombatPhase() != EForestSliceCombatPhase::None && bAllowAttackMovement) {
+        const FRotator CurrentRotation = GetActorRotation();
+        const FVector DesiredDirection = GetCameraRelativeMoveDirection();
+        if (!DesiredDirection.IsNearlyZero()) {
+            const FRotator DesiredRotation = DesiredDirection.Rotation();
+            SetActorRotation(FMath::RInterpTo(CurrentRotation, DesiredRotation, DeltaSeconds, AttackTurnRate));
+        }
+    }
+
     if (!bSprintHeld && SlideCooldown <= 0.0f) {
         Stamina = FMath::Min(MaxStamina, Stamina + 16.0f * DeltaSeconds);
     }
@@ -100,13 +112,21 @@ void AForestSliceCharacter::Move(const FInputActionValue& Value)
 
 void AForestSliceCharacter::ApplyMoveVector(FVector2D MoveVector)
 {
-    MoveVector = MoveVector.GetClampedToMaxSize(1.0f);
-    if (!Controller || MoveVector.IsNearlyZero()) return;
+    LastMoveInput = MoveVector.GetClampedToMaxSize(1.0f);
+    if (!Controller || LastMoveInput.IsNearlyZero()) return;
 
+    const FVector MoveDirection = GetCameraRelativeMoveDirection();
+    const float MovementScale = CombatComponent ? CombatComponent->GetMovementSpeedScale() : 1.0f;
+    AddMovementInput(MoveDirection, MovementScale);
+}
+
+FVector AForestSliceCharacter::GetCameraRelativeMoveDirection() const
+{
+    if (!Controller || LastMoveInput.IsNearlyZero()) return FVector::ZeroVector;
     const FRotator ControlRotation = Controller->GetControlRotation();
     const FRotator YawRotation(0.0f, ControlRotation.Yaw, 0.0f);
-    AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X), MoveVector.Y);
-    AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), MoveVector.X);
+    return (FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X) * LastMoveInput.Y
+        + FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y) * LastMoveInput.X).GetSafeNormal();
 }
 
 void AForestSliceCharacter::Look(const FInputActionValue& Value)
@@ -183,16 +203,23 @@ void AForestSliceCharacter::StartSlide(const FInputActionValue& Value)
 
 void AForestSliceCharacter::StartDodge(const FInputActionValue& Value)
 {
-    if (DodgeCooldown > 0.0f || Stamina < 25.0f) return;
+    if (DodgeCooldown > 0.0f || Stamina < 25.0f || !GetCharacterMovement()->IsMovingOnGround()) return;
     Stamina -= 25.0f;
     DodgeCooldown = 0.85f;
-    LaunchCharacter(GetActorForwardVector() * DodgeImpulse, true, false);
+    const FVector DodgeDirection = GetCameraRelativeMoveDirection().IsNearlyZero()
+        ? GetActorForwardVector()
+        : GetCameraRelativeMoveDirection();
+    LaunchCharacter(DodgeDirection * DodgeImpulse, true, false);
     // Gameplay Ability System will own the authoritative invulnerability tag in the next slice.
 }
 
 void AForestSliceCharacter::StartLightAttack(const FInputActionValue& Value)
 {
-    if (CombatComponent) CombatComponent->RequestLightAttack();
+    if (!CombatComponent || !GetCharacterMovement()->IsMovingOnGround()) return;
+    if (!LastMoveInput.IsNearlyZero()) {
+        SetActorRotation(GetCameraRelativeMoveDirection().Rotation());
+    }
+    CombatComponent->RequestLightAttack();
 }
 
 void AForestSliceCharacter::StartJump(const FInputActionValue& Value)

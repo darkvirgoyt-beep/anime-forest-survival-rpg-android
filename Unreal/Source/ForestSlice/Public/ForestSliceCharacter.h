@@ -118,6 +118,12 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float DodgeImpulse = 1050.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Combat")
+    float AttackTurnRate = 8.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|Combat")
+    bool bAllowAttackMovement = true;
+
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Mobile|Aim")
     bool bDeviceHasGyroscope = false;
 
@@ -152,8 +158,10 @@ private:
     bool bSprintHeld = false;
     float SlideCooldown = 0.0f;
     float DodgeCooldown = 0.0f;
+    FVector2D LastMoveInput = FVector2D::ZeroVector;
 
     void ApplyMoveVector(FVector2D MoveVector);
+    FVector GetCameraRelativeMoveDirection() const;
     void ApplyLookVector(FVector2D LookVector);
     bool DetectGyroscopeSupport() const;
 

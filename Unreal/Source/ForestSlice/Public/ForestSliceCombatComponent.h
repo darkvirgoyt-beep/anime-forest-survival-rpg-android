@@ -52,6 +52,12 @@ struct FForestSliceAttackDefinition
     float Knockback = 120.0f;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    float LungeDistance = 65.0f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+    float HitRadius = 42.0f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     FName MontageSection = NAME_None;
 };
 
@@ -86,6 +92,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "Combat")
     int32 GetEquippedWeaponIndex() const { return EquippedWeaponIndex; }
+
+    UFUNCTION(BlueprintPure, Category = "Combat")
+    float GetMovementSpeedScale() const;
 
     UPROPERTY(BlueprintAssignable, Category = "Combat")
     FForestSliceCombatEvent CombatEvent;

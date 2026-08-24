@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#FFFFFF;color:#3A4F5E;border:8px solid #0F2537;display:grid;grid-template-columns:92px 1fr;font-family:Georgia,serif}
+.rail{background:#0F2537;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.rail span{writing-mode:vertical-rl;transform:rotate(180deg);font:900 24px/1 Impact,"Arial Narrow",sans-serif;letter-spacing:2px}
+.main{padding:52px 36px 6px 42px;display:flex;flex-direction:column;justify-content:flex-start}
+.kicker{font:700 14px/1.2 Arial,sans-serif;letter-spacing:2px;text-transform:uppercase;color:#C84B31}
+h1{font:900 54px/.94 Impact,"Arial Narrow",sans-serif;color:#0F2537;max-width:840px}
+.lede{font-size:21px;line-height:1.38;color:#0F2537;max-width:930px}
+.compare{display:grid;grid-template-columns:1fr 92px 1fr;min-height:220px;border-top:8px solid #0F2537;border-bottom:8px solid #0F2537}
+.runtime{padding:12px 12px 8px 12px;display:flex;flex-direction:column}
+.runtime h2{font:900 34px/.95 Impact,"Arial Narrow",sans-serif;color:#0F2537;text-transform:uppercase}
+.runtime .tag{font:700 13px/1 Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:#C84B31;margin-top:8px}
+.runtime ul{list-style:none;font-size:18px;line-height:1.45;margin-top:10px}
+.runtime li{margin-top:6px}.square{font-family:Arial,sans-serif;color:#C84B31;font-weight:900;margin-right:9px}
+.runtime .outcome{font:700 16px/1.45 Arial,sans-serif;text-transform:uppercase;letter-spacing:.5px;color:#0F2537;border-top:2px solid #AFC3CA;padding-top:8px}
+.spine{background:#0F2537;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.spine span{font:900 22px/1 Impact,"Arial Narrow",sans-serif;writing-mode:vertical-rl;letter-spacing:2px;color:#F2B84B}
+.decision{display:grid;grid-template-columns:190px 1fr;gap:10px;border-top:8px solid #C84B31;padding-top:6px}
+.decision h3{font:900 22px/1 Impact,"Arial Narrow",sans-serif;color:#0F2537;text-transform:uppercase}
+.decision p{font-size:18px;line-height:1.38;color:#3A4F5E;max-width:850px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rail"><span>TWO-LAYER ARCHITECTURE</span></div>
+  <main class="main">
+    <div>
+      <div class="kicker">03 / Runtime boundary</div>
+      <h1>PROTOTYPE THE CONTRACT.<br/>PRODUCE THE 3D GAME IN UNREAL.</h1>
+      <p class="lede">The repository is healthiest when each runtime has a distinct job. The Android build proves touch input and deterministic gameplay rules; Unreal carries the player-facing 3D production burden.</p>
+    </div>
+    <section class="compare">
+      <article class="runtime">
+        <div>
+          <h2>Android</h2><p class="tag">Contract prototype</p>
+          <ul>
+            <li><span class="square">■</span>Kotlin activity, Compose overlay, touch and gyro routing</li>
+            <li><span class="square">■</span>C++ fixed-step simulation and native host tests</li>
+            <li><span class="square">■</span>Offline loop experiments and rapid UI validation</li>
+          </ul>
+        </div>
+        <p class="outcome">Outcome: stable input and systems contract</p>
+      </article>
+      <div class="spine"><span>TRANSFER THE CONTRACT →</span></div>
+      <article class="runtime">
+        <div>
+          <h2>Unreal</h2><p class="tag">Production path</p>
+          <ul>
+            <li><span class="square">■</span>3D capsule movement, spring-arm camera, real collision</li>
+            <li><span class="square">■</span>Authored meshes, animation, VFX, LOD, and forest world</li>
+            <li><span class="square">■</span>Server-ready combat, survival, weapons, and world systems</li>
+          </ul>
+        </div>
+        <p class="outcome">Outcome: measurable, player-facing 3D vertical slice</p>
+      </article>
+    </section>
+    <section class="decision">
+      <h3>Decision rule</h3>
+      <p>Do not mistake the 2D-ish Android renderer for the final 3D game. Freeze the established input and progression semantics, then validate them in one authored Unreal forest micro-region on a real Android device.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

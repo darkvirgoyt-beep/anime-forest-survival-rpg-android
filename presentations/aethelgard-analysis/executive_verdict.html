@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#0F2537;color:#F8F3E8;display:grid;grid-template-columns:88px 1fr 360px;border:8px solid #0F2537;font-family:Georgia,serif}
+.rail{border-right:8px solid #C84B31;display:flex;align-items:center;justify-content:center}
+.rail span{font-family:Impact,"Arial Narrow",sans-serif;font-size:25px;letter-spacing:3px;writing-mode:vertical-rl;transform:rotate(180deg);color:#F8F3E8}
+.hero{padding:88px 64px 40px 76px;display:flex;flex-direction:column;justify-content:space-between;border-right:8px solid #F8F3E8}
+.eyebrow{font-family:Arial,sans-serif;font-size:15px;letter-spacing:3px;text-transform:uppercase;color:#F2B84B}
+h1{font-family:Impact,"Arial Narrow",sans-serif;font-size:106px;line-height:.9;letter-spacing:1px;color:#F8F3E8;max-width:620px}
+.subtitle{font-size:28px;line-height:1.35;color:#D5E2E6;max-width:560px}
+.verdict{font-family:Arial,sans-serif;font-size:18px;line-height:1.5;border-left:8px solid #C84B31;padding-left:18px;max-width:610px}
+.panel{padding:58px 38px 38px;display:flex;flex-direction:column;justify-content:space-between;background:#143247}
+.panel-label{font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:2px;font-size:14px;color:#AFC3CA}
+.score{font-family:Impact,"Arial Narrow",sans-serif;font-size:170px;line-height:.8;color:#C84B31}
+.score-label{font-family:Arial,sans-serif;text-transform:uppercase;font-size:18px;letter-spacing:2px;color:#F8F3E8;line-height:1.25}
+.bridge{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;border-top:8px solid #F2B84B;padding-top:18px;font-family:Arial,sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:1px}
+.bridge div:last-child{text-align:right;color:#F2B84B}
+.footer{font-size:14px;color:#AFC3CA;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rail"><span>EXECUTIVE VERDICT</span></div>
+  <main class="hero">
+    <div class="eyebrow">Game analysis / 24 Aug 2026</div>
+    <h1>AETHELGARD</h1>
+    <p class="subtitle">Game Analysis<br/>and AAA Roadmap</p>
+    <p class="verdict">A credible prototype foundation — not yet an AAA-ready game. The next move is depth: one real 3D forest slice, one threatening enemy, one meaningful equipment item, and one durable save cycle.</p>
+  </main>
+  <aside class="panel">
+    <div class="panel-label">Current assessment</div>
+    <div><div class="score">2/10</div><div class="score-label">AAA readiness<br/>overall</div></div>
+    <div class="bridge"><div>Prototype<br/>proven</div><div>Production<br/>next</div></div>
+    <p class="footer">Evidence-led review of the Android prototype and Unreal production foundations. Scores are engineering/product assessments, not commercial benchmarks.</p>
+  </aside>
+</div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+{
+  "project_info": {
+    "title": "Executive verdict",
+    "created": 1787536594.637,
+    "last_updated": 1787536868.947,
+    "total_slides": 10
+  },
+  "slides": [
+    {
+      "id": "executive_verdict",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "product_identity",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "playable_loop",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "architecture_boundary",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "current_strengths",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "critical_gaps",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "readiness_scorecard",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "priority_order",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "milestone_exit_evidence",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "immediate_decision",
+      "state": "edited",
+      "pageNum": 10
+    }
+  ],
+  "outline": [
+    {
+      "id": "executive_verdict",
+      "title": "Executive verdict",
+      "summary": "Aethelgard has a credible prototype foundation, but it is not yet an AAA-ready game. Frame the immediate decision around truthful depth and a device-tested 3D slice."
+    },
+    {
+      "id": "product_identity",
+      "title": "Product identity",
+      "summary": "Position Aethelgard as a landscape anime-fantasy survival RPG with a two-layer Android prototype and Unreal production path.",
+      "image_plan": "/home/ubuntu/upload/search_images/Q6ivcCqHTkQI.jpg - Anime fantasy forest background matching product identity description"
+    },
+    {
+      "id": "playable_loop",
+      "title": "The playable loop already connects",
+      "summary": "Show the current Android sequence: move, gather, craft, fight, gain XP, and complete The First Ember quest."
+    },
+    {
+      "id": "architecture_boundary",
+      "title": "Two-layer architecture",
+      "summary": "Contrast the deterministic Android contract prototype with the intended Unreal 3D production path."
+    },
+    {
+      "id": "current_strengths",
+      "title": "What is working",
+      "summary": "Highlight input, native module separation, progression testing, audio polish, and Compose inventory foundations."
+    },
+    {
+      "id": "critical_gaps",
+      "title": "The critical gaps",
+      "summary": "Show the most important risks: 2D presentation, static enemy behavior, UI-only inventory, missing saves, hard-coded content, and no multiplayer authority."
+    },
+    {
+      "id": "readiness_scorecard",
+      "title": "Readiness scorecard",
+      "summary": "Present the repository-grounded subjective scorecard: prototype loop and input are strongest; content, multiplayer, and overall AAA readiness are low."
+    },
+    {
+      "id": "priority_order",
+      "title": "Priority order",
+      "summary": "Lay out the recommended sequence: freeze the contract, build the Unreal 3D slice, make progression authoritative, complete combat, reduce HUD density, then scale content and co-op."
+    },
+    {
+      "id": "milestone_exit_evidence",
+      "title": "Milestones and exit evidence",
+      "summary": "Map M1 through M5 to concrete proof: device captures, frame-time, save round-trip, combat depth, and four-client authority tests."
+    },
+    {
+      "id": "immediate_decision",
+      "title": "Immediate decision",
+      "summary": "Close with the recommendation to start the device-tested M1 Unreal slice and stop expanding placeholder surface area.",
+      "image_plan": "/home/ubuntu/upload/search_images/jE54uZWdSReP.jpg - Unreal engine jungle/forest path representing Unreal production path target"
+    }
+  ]
+}

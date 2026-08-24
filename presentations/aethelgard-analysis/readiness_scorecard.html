@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.slide-container{width:1280px;min-height:720px;background:#FFFFFF;color:#3A4F5E;border:8px solid #0F2537;display:grid;grid-template-columns:92px 1fr;font-family:Georgia,serif}
+.rail{background:#0F2537;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.rail span{writing-mode:vertical-rl;transform:rotate(180deg);font:900 24px/1 Impact,"Arial Narrow",sans-serif;letter-spacing:2px}
+.main{padding:52px 54px 30px 60px;display:grid;grid-template-columns:1fr 270px;grid-template-rows:150px 1fr 72px;column-gap:54px}
+.kicker{font:700 14px/1.2 Arial,sans-serif;letter-spacing:2px;text-transform:uppercase;color:#C84B31}
+h1{font:900 52px/.95 Impact,"Arial Narrow",sans-serif;color:#0F2537;margin-top:12px}
+.lede{font-size:20px;line-height:1.4;margin-top:14px;max-width:800px;color:#0F2537}
+.overall{grid-column:2;grid-row:1 / span 2;border-top:8px solid #C84B31;border-bottom:8px solid #0F2537;padding-top:28px;display:flex;flex-direction:column;justify-content:center}
+.overall .label{font:700 14px/1.2 Arial,sans-serif;letter-spacing:1.8px;text-transform:uppercase;color:#C84B31}
+.overall .score{font:900 108px/.8 Impact,"Arial Narrow",sans-serif;color:#0F2537;margin-top:20px}
+.overall .word{font:900 27px/1 Impact,"Arial Narrow",sans-serif;color:#C84B31;text-transform:uppercase;margin-top:20px}
+.overall p{font-size:16px;line-height:1.45;margin-top:16px}
+.matrix{grid-column:1;grid-row:2;border-top:8px solid #0F2537;padding-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:13px 38px;align-content:start}
+.row{display:grid;grid-template-columns:176px 1fr 34px;gap:10px;align-items:center;min-height:34px}
+.row .name{font:700 15px/1.15 Arial,sans-serif;color:#0F2537;text-transform:uppercase;letter-spacing:.3px}
+.track{height:14px;background:#DCE9E6;position:relative}
+.fill{height:14px;background:#2C8C8C}
+.fill.warn{background:#C84B31}
+.fill.mid{background:#F2B84B}
+.row .value{font:900 22px/1 Impact,"Arial Narrow",sans-serif;color:#0F2537;text-align:right}
+.note{grid-column:1 / span 2;grid-row:3;border-top:8px solid #C84B31;padding-top:12px;font-size:15px;line-height:1.42;color:#3A4F5E}
+.note strong{font-family:Arial,sans-serif;color:#0F2537;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <div class="rail"><span>READINESS SCORECARD</span></div>
+  <main class="main">
+    <section>
+      <div class="kicker">06 / Repository-grounded assessment</div>
+      <h1>PROTOTYPE HEALTHY.<br/>AAA READINESS LOW.</h1>
+      <p class="lede">The project scores well where deterministic prototype engineering is visible. It scores low where a commercial 3D game needs content, authority, persistence, and live validation.</p>
+    </section>
+    <aside class="overall">
+      <div class="label">Overall AAA readiness</div>
+      <div class="score">2/10</div>
+      <div class="word">Prototype → M1 transition</div>
+      <p>Strong systems hygiene does not substitute for device-tested 3D gameplay and authored production content.</p>
+    </aside>
+    <section class="matrix">
+      <div class="row"><div class="name">Playable loop</div><div class="track"><div class="fill" style="width:70%"></div></div><div class="value">7</div></div>
+      <div class="row"><div class="name">Input contract</div><div class="track"><div class="fill" style="width:70%"></div></div><div class="value">7</div></div>
+      <div class="row"><div class="name">UI foundation</div><div class="track"><div class="fill" style="width:60%"></div></div><div class="value">6</div></div>
+      <div class="row"><div class="name">Combat readability</div><div class="track"><div class="fill mid" style="width:50%"></div></div><div class="value">5</div></div>
+      <div class="row"><div class="name">RPG progression</div><div class="track"><div class="fill mid" style="width:40%"></div></div><div class="value">4</div></div>
+      <div class="row"><div class="name">Android production</div><div class="track"><div class="fill warn" style="width:30%"></div></div><div class="value">3</div></div>
+      <div class="row"><div class="name">Unreal production</div><div class="track"><div class="fill warn" style="width:30%"></div></div><div class="value">3</div></div>
+      <div class="row"><div class="name">Content readiness</div><div class="track"><div class="fill warn" style="width:20%"></div></div><div class="value">2</div></div>
+      <div class="row"><div class="name">Multiplayer readiness</div><div class="track"><div class="fill warn" style="width:10%"></div></div><div class="value">1</div></div>
+      <div class="row"><div class="name">AAA readiness</div><div class="track"><div class="fill warn" style="width:20%"></div></div><div class="value">2</div></div>
+    </section>
+    <footer class="note"><strong>Interpretation:</strong> Cyan indicates visible foundations, ember-gold indicates partial depth, and coral indicates production-critical gaps. Scores are an engineering/product assessment from the repository analysis — not benchmarked commercial performance.</footer>
+  </main>
+</div>
+</body>
+</html>
