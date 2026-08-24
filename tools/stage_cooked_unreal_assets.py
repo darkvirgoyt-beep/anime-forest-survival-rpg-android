@@ -70,6 +70,32 @@ def matching_files(root: Path, patterns: list[str]) -> list[Path]:
     return sorted(matches)
 
 
+def sync_gradle_asset_packs(staging_dir: Path, repo_root: Path, mapping: dict[str, list[str]]) -> None:
+    staged_pack_root = staging_dir / "asset_packs"
+    if not staged_pack_root.is_dir():
+        fail(f"staging output is missing asset_packs: {staged_pack_root}")
+    for pack_name in mapping:
+        source_root = staged_pack_root / pack_name
+        if not source_root.is_dir():
+            fail(f"staging output is missing pack directory: {source_root}")
+        source_files = [path for path in source_root.rglob("*") if path.is_file()]
+        if not source_files:
+            fail(f"staged pack is empty: {pack_name}")
+        destination_root = repo_root / pack_name / "src" / "main" / "assets"
+        destination_root.mkdir(parents=True, exist_ok=True)
+        existing = [path for path in destination_root.rglob("*") if path.is_file() and path.name != ".gitkeep"]
+        if existing:
+            fail(f"Gradle asset-pack destination is not clean: {existing[0]}")
+        keep_marker = destination_root / ".gitkeep"
+        if keep_marker.exists():
+            keep_marker.unlink()
+        for source in source_files:
+            relative = source.relative_to(source_root)
+            destination = destination_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+
+
 def stage(args: argparse.Namespace) -> None:
     cook_root = Path(args.cook_root).resolve()
     output_dir = Path(args.output_dir).resolve()
@@ -110,6 +136,10 @@ def stage(args: argparse.Namespace) -> None:
         shutil.copy2(source, destination)
         total_bytes += source.stat().st_size
 
+    if args.gradle_root:
+        sync_gradle_asset_packs(output_dir, Path(args.gradle_root).resolve(), mapping)
+        print(f"GRADLE_ASSET_PACKS_SYNCED={Path(args.gradle_root).resolve()}")
+
     print(f"COOK_ROOT={cook_root}")
     print(f"PACKS={len(mapping)}")
     print(f"COOKED_FILES={len(selected)}")
@@ -122,6 +152,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--cook-root", required=True, help="directory containing cooked Unreal runtime outputs")
     command.add_argument("--output-dir", required=True, help="empty directory that becomes the OBB input directory")
     command.add_argument("--mapping-file", default="tools/unreal_pack_mapping.json", help="pack-name to glob mapping JSON")
+    command.add_argument("--gradle-root", default="", help="repository root whose asset-pack modules should receive the staged payload")
     return command
 
 

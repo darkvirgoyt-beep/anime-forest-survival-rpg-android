@@ -47,6 +47,17 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 The sandbox used to create this repository does not include the Android SDK or Godot editor, so final APK compilation must run on a machine or GitHub Actions runner with Android tooling installed.
 
+## Full-content build
+
+The default `assembleRelease` path intentionally produces the small online bootstrap client. It does not claim that empty asset-pack modules are a finished full game. To build the complete content variant, first produce a trusted shipping Unreal Android cook with real `.pak`, `.ucas`, `.utoc`, shader, audio, VFX, and pipeline files. Then run:
+
+```bash
+AETHELGARD_COOKED_ROOT=/absolute/path/to/Saved/StagedBuilds/Android/ForestSlice/Content/Paks \\
+  ./tools/build_full_content.sh
+```
+
+The script stages all eighteen mapped packs into their Gradle modules, rejects empty packs and undersized authored content, runs `clean bundleRelease assembleRelease -PfullContent=true`, and creates/verifies the matching OBB when Android `aapt` is available. It never creates filler data. If Unreal is installed locally, `AETHELGARD_RUN_UAT=1 UE_ROOT=/path/to/Unreal ./tools/build_full_content.sh` can run the cook before staging. The current checkout does not contain the required cooked Unreal payload, so this command is expected to stop at the missing-cook check until that external build output exists.
+
 ## Controls
 
 The left virtual joystick moves the hero. Right-side drag controls camera orbit. `JUMP` applies a grounded impulse, `DODGE` applies a stamina-gated burst, `ATTACK` cycles the light combo, `HEAVY` commits the stronger finisher, `GATHER` rewards the three forest caches and XP, and `CRAFT` consumes wood and fiber to prepare the ember kit at the camp. The Heartfire changes presentation state after the kit is crafted, and the Forest Warden appears in the forest objective stage. Gather three nearby caches to unlock the ember-kit objective, craft once to reveal the forest warden objective, then defeat the warden with the attack combo. The live HUD shows HP, stamina, hunger, level, XP, inventory, warden health, and quest state. The gyro toggle is enabled only when Android reports a gyroscope; otherwise it is visibly disabled as `GYRO: UNSUPPORTED`.

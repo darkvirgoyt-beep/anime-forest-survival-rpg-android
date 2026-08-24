@@ -47,9 +47,13 @@ class AssetPackCatalog(context: Context) {
     )
 
     companion object {
-        /** The launch slice is prepared before world entry; later sectors are on demand. */
+        /** The full-content build requests every physical pack; bootstrap builds request only their required subset. */
         val productionPackNames: List<String>
-            get() = ContentDownloadPlan.requiredPackNames
+            get() = if (BuildConfig.FULL_CONTENT_BUILD) {
+                ContentDownloadPlan.fullContentPackNamesFor(ContentDownloadPlan.ResourceTier.HIGH)
+            } else {
+                ContentDownloadPlan.requiredPackNames
+            }
     }
 
     private val appContext = context.applicationContext
@@ -139,8 +143,17 @@ class AssetPackCatalog(context: Context) {
             }
             return
         }
-        val requestedPackNames = ContentDownloadPlan.startupPackNamesFor(tier)
-        requestPackSet(requestedPackNames, ContentDownloadPlan.startupMiBFor(tier), onProgress)
+        val requestedPackNames = if (BuildConfig.FULL_CONTENT_BUILD) {
+            ContentDownloadPlan.fullContentPackNamesFor(tier)
+        } else {
+            ContentDownloadPlan.startupPackNamesFor(tier)
+        }
+        val requestedMiB = if (BuildConfig.FULL_CONTENT_BUILD) {
+            ContentDownloadPlan.totalMiBFor(tier)
+        } else {
+            ContentDownloadPlan.startupMiBFor(tier)
+        }
+        requestPackSet(requestedPackNames, requestedMiB, onProgress)
     }
 
     /** Requests the immutable pack group associated with a newly discovered sector. */
@@ -293,8 +306,15 @@ class AssetPackCatalog(context: Context) {
 
     fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)
 
-    fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean =
-        standaloneExpansionFile.inspect().ready || ContentDownloadPlan.startupPackNamesFor(tier).all(::isReady)
+    fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean {
+        if (standaloneExpansionFile.inspect().ready) return true
+        val expectedPacks = if (BuildConfig.FULL_CONTENT_BUILD) {
+            ContentDownloadPlan.fullContentPackNamesFor(tier)
+        } else {
+            ContentDownloadPlan.startupPackNamesFor(tier)
+        }
+        return expectedPacks.isNotEmpty() && expectedPacks.all(::isReady)
+    }
 
     fun sectorContentReady(tier: ContentDownloadPlan.ResourceTier, sector: ContentDownloadPlan.WorldSector): Boolean =
         ContentDownloadPlan.packNamesForSector(tier, sector).all(::isReady)

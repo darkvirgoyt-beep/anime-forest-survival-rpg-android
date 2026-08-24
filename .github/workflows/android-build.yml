@@ -131,6 +131,7 @@ jobs:
           python3 tools/test_online_only_contract.py
           python3 tools/test_persistent_multiplayer_contract.py
           python3 tools/test_progressive_content_contract.py
+          python3 tools/test_full_content_build_contract.py
 
   native-tests:
     runs-on: ubuntu-latest
@@ -272,6 +273,8 @@ jobs:
           AETHELGARD_RELEASE_KEY_PASSWORD: ${{ secrets.AETHELGARD_RELEASE_KEY_PASSWORD }}
         run: |
           python3 tools/validate_asset_budget.py
+          # The standard CI artifact remains the small bootstrap unless a trusted
+          # cooked Unreal payload is supplied to the dedicated full-content script.
           gradle bundleRelease assembleRelease --stacktrace
           APK_PACKAGE="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging app/build/outputs/apk/release/app-release.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
           test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"

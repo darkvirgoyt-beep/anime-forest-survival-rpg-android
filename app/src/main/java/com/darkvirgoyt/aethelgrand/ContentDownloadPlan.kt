@@ -23,7 +23,7 @@ object ContentDownloadPlan {
         effectScalePercent = 140,
         shadowQuality = "full mobile dynamic shadows",
         waterQuality = "layered river, foam, and reflection accents",
-        requiresDownloadedContent = false
+        requiresDownloadedContent = BuildConfig.FULL_CONTENT_BUILD
     )
 
     fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope = highQualityEnvelope
@@ -75,14 +75,20 @@ object ContentDownloadPlan {
         Pack("assetpack_pipeline_cache", 10, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
     )
 
-    /** High-detail packs are optional; the bundled world remains immediately playable. */
+    /** Returns the complete physical pack set for the selected resource tier. */
     fun packsFor(tier: ResourceTier): List<Pack> = packs
 
     fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
 
-    fun startupPacksFor(tier: ResourceTier): List<Pack> = packsFor(tier).filter { it.requiredBeforeStart }
+    fun startupPacksFor(tier: ResourceTier): List<Pack> = if (BuildConfig.FULL_CONTENT_BUILD) {
+        packsFor(tier)
+    } else {
+        packsFor(tier).filter { it.requiredBeforeStart }
+    }
 
     fun startupPackNamesFor(tier: ResourceTier): List<String> = startupPacksFor(tier).map { it.playPackName }
+
+    fun fullContentPackNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
 
     fun packsForSector(tier: ResourceTier, sector: WorldSector): List<Pack> = packsFor(tier)
         .filter { it.sector == sector }
@@ -104,4 +110,5 @@ object ContentDownloadPlan {
     val totalGiBLabel: String = "%.1f GB".format(totalMiB / 1024.0)
     val summary: String = packs.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }
     val requiredPackNames: List<String> = startupPackNamesFor(ResourceTier.HIGH)
+    val fullContentRequired: Boolean = BuildConfig.FULL_CONTENT_BUILD
 }
