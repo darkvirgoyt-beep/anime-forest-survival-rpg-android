@@ -909,15 +909,6 @@ class MainActivity : Activity(), SensorEventListener {
             authenticationTransitionStarted = false
         }
         if (!networkOnline) return
-        if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
-            authenticationTransitionStarted = true
-            if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
-                enterGuestOnlineWorld()
-            } else {
-                pendingWorldEntry = ::enterGuestOnlineWorld
-            }
-            return
-        }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -2301,9 +2292,6 @@ class MainActivity : Activity(), SensorEventListener {
                     .setView(panel)
                     .setNegativeButton("CLOSE", null)
                     .setPositiveButton("LOG OUT") { _, _ -> confirmLogout() }
-                if (!BuildConfig.PROTOTYPE_MODE && accountSession.snapshot.isGuest) {
-                    accountDialog.setNeutralButton("LINK GOOGLE") { _, _ -> requestGoogleAccountLink() }
-                }
                 accountDialog.show()
             }
         }
