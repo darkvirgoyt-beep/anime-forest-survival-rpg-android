@@ -202,6 +202,10 @@ class MainActivity : Activity(), SensorEventListener {
     private var serverLatencyProbeToken = 0L
     private lateinit var networkMonitor: NetworkConnectivityMonitor
     private var networkOnline = false
+    private var pingProbeInFlight = false
+    private var latestPingMs: Int? = null
+    private var guestSignInAttempted = false
+    private var googleLoginInFlight = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
     private lateinit var identityStatusLabel: TextView
@@ -518,6 +522,16 @@ class MainActivity : Activity(), SensorEventListener {
                 applyServerRegion(regions[candidateIndex], serverButton)
             }
             .show()
+    }
+
+    private fun requestGoogleAccountLink() {
+        if (!requireOnline("ACCOUNT LINK")) return
+        googleLoginInFlight = true
+        authenticationTransitionStarted = false
+        val immediate = accountSession.requestGoogleSignIn()
+        if (immediate.state != SessionState.SIGNING_IN) {
+            googleLoginInFlight = false
+        }
     }
 
     private fun requireOnline(action: String): Boolean {
@@ -890,7 +904,20 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
+        if (snapshot.state == SessionState.AUTHENTICATED && !snapshot.isGuest && googleLoginInFlight) {
+            googleLoginInFlight = false
+            authenticationTransitionStarted = false
+        }
         if (!networkOnline) return
+        if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest && !authenticationTransitionStarted) {
+            authenticationTransitionStarted = true
+            if (BuildConfig.PROTOTYPE_MODE || resourcePreparationComplete) {
+                enterGuestOnlineWorld()
+            } else {
+                pendingWorldEntry = ::enterGuestOnlineWorld
+            }
+            return
+        }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -2269,12 +2296,15 @@ class MainActivity : Activity(), SensorEventListener {
                     setTextColor(Color.rgb(164, 231, 190))
                     setPadding(0, dp(8), 0, 0)
                 })
-                AlertDialog.Builder(this)
+                val accountDialog = AlertDialog.Builder(this)
                     .setTitle("CHARACTER / INVENTORY")
                     .setView(panel)
                     .setNegativeButton("CLOSE", null)
                     .setPositiveButton("LOG OUT") { _, _ -> confirmLogout() }
-                    .show()
+                if (!BuildConfig.PROTOTYPE_MODE && accountSession.snapshot.isGuest) {
+                    accountDialog.setNeutralButton("LINK GOOGLE") { _, _ -> requestGoogleAccountLink() }
+                }
+                accountDialog.show()
             }
         }
     }
