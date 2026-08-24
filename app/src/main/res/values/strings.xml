@@ -9,11 +9,11 @@
     <string name="gyro_unsupported">GYRO: UNSUPPORTED</string>
     <!-- Non-secret Web OAuth client ID used as the backend-verified Google ID-token audience. -->
     <string name="google_web_client_id" translatable="false">1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com</string>
-    <!-- Stable managed HTTPS endpoint for the deployed Render v2 online service. -->
-    <string name="api_base_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1</string>
-    <string name="auth_exchange_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1/auth/google-id-token/exchange</string>
+    <!-- Live managed HTTPS game-auth boundary verified by the Android release device test. -->
+    <string name="api_base_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth</string>
+    <string name="auth_exchange_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth/exchange</string>
     <!-- Matching HTTPS endpoint for rotating game sessions. -->
-    <string name="auth_refresh_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1/auth/refresh</string>
+    <string name="auth_refresh_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth/refresh</string>
     <!-- Private four-player distribution endpoints; serve the signed high-end OBB from the backend or CDN. -->
     <string name="private_content_manifest_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1/content/high/manifest</string>
     <string name="private_content_archive_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1/content/high/archive</string>
