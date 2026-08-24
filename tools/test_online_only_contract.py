@@ -13,10 +13,9 @@ REQUIRED = (
     ("server/src/server.mjs", "/v1/content/high/manifest", "private high-end manifest route"),
     ("server/src/server.mjs", "/v1/content/high/archive", "private high-end archive route"),
     ("server/.env.example", "PRIVATE_CONTENT_ARCHIVE_PATH", "private archive server configuration"),
-    ("app/build.gradle.kts", 'namespace = "com.darkvirgoyt.aethelgrand"', "exact Android namespace"),
-    ("app/build.gradle.kts", 'applicationId = "com.darkvirgoyt.aethelgrand"', "exact Android application ID"),
-    ("app/src/main/res/values/strings.xml", "https://aethelgard-api-v2.onrender.com/v1", "deployed v2 API endpoint"),
-    ("render.yaml", "name: aethelgard-api-v2", "deployed v2 Render service"),
+    ("app/build.gradle.kts", 'namespace = "com.darvirgoyt.aethelgrad"', "exact Android namespace"),
+    ("app/build.gradle.kts", 'applicationId = "com.darvirgoyt.aethelgrad"', "exact Android application ID"),
+    ("app/src/main/res/values/strings.xml", "https://aethelservs-g7pzbnwp.manus.space/api/game-auth", "managed game-auth endpoint"),
     ("app/build.gradle.kts", "release {", "release build contract"),
     (".github/workflows/android-build.yml", "gradle bundleRelease assembleRelease", "release CI build"),
     ("tools/build_expansion_obb.py", "production-v1", "production content version"),
@@ -73,4 +72,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

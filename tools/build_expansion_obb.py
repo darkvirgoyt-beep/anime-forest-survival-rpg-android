@@ -120,7 +120,7 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     command.add_argument("--input-dir", required=True, help="staged runtime content directory")
     command.add_argument("--output-dir", required=True, help="directory for main.<version>.<package>.obb")
-    command.add_argument("--package-name", default="com.darkvirgoyt.aethelgrand")
+    command.add_argument("--package-name", default="com.darvirgoyt.aethelgrad")
     command.add_argument("--version-code", type=int, default=int(os.environ.get("ANDROID_VERSION_CODE", "3")))
     command.add_argument("--content-version", default="production-v1")
     return command

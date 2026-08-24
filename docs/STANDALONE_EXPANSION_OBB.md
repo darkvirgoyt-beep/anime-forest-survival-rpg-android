@@ -3,7 +3,7 @@
 Aethelgard now has a reproducible standalone expansion-file path for private APK distribution, device labs, and legacy Android channels. The builder creates the standard opaque expansion filename:
 
 ```text
-main.<versionCode>.com.darkvirgoyt.aethelgrand.obb
+main.<versionCode>.com.darvirgoyt.aethelgrad.obb
 ```
 
 The OBB is a ZIP container with a checked `obb_manifest.json` plus a `content/` tree containing only staged runtime files. Every content file is recorded with its byte size and SHA-256 digest. The builder rejects an empty input directory, symlinks, unsafe paths, and fake size padding.
@@ -39,9 +39,9 @@ For a device-lab test, install the matching APK and copy the OBB to Android’s 
 
 ```bash
 adb install app-release.apk
-adb shell mkdir -p /sdcard/Android/obb/com.darkvirgoyt.aethelgrand
-adb push main.3.com.darkvirgoyt.aethelgrand.obb \
-  /sdcard/Android/obb/com.darkvirgoyt.aethelgrand/
+adb shell mkdir -p /sdcard/Android/obb/com.darvirgoyt.aethelgrad
+adb push main.3.com.darvirgoyt.aethelgrad.obb \
+  /sdcard/Android/obb/com.darvirgoyt.aethelgrad/
 ```
 
 Android treats the OBB as opaque data. The game or its launcher must explicitly locate and mount/read the package; copying an OBB beside an APK does not make Play Asset Delivery packs appear automatically. The Aethelgard production resource center remains the authoritative runtime path for the AAB/PAD build.

@@ -15,6 +15,6 @@ Create these repository-level Actions secrets in **Settings → Secrets and vari
 | `AETHELGARD_RELEASE_KEY_ALIAS` | Key alias. |
 | `AETHELGARD_RELEASE_KEY_PASSWORD` | Key password. |
 
-After a workflow run, download the `aethelgard-android-signing-certificate` artifact and register its **SHA1** value on the Android OAuth client in Google Cloud Console, together with package `com.darkvirgoyt.aethelgrand`. Keep an encrypted offline backup of the keystore outside GitHub; losing it means future production APKs must use a new Android OAuth SHA-1.
+After a workflow run, download the `aethelgard-android-signing-certificate` artifact and register its **SHA1** value on the Android OAuth client in Google Cloud Console, together with package `com.darvirgoyt.aethelgrad`. Keep an encrypted offline backup of the keystore outside GitHub; losing it means future production APKs must use a new Android OAuth SHA-1.
 
 If these secrets are absent, CI continues with debug signing for compilation-only validation. Do not distribute those changing debug-signed CI APKs as a permanent Google sign-in build.

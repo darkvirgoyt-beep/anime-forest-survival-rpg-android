@@ -9,7 +9,7 @@ Create the Android OAuth client you already made with this identity:
 | Setting | Value |
 |---|---|
 | Application type | Android |
-| Package name | `com.darkvirgoyt.aethelgrand` |
+| Package name | `com.darvirgoyt.aethelgrad` |
 | Signing SHA-1 | The SHA-1 for the exact installed APK |
 
 Then create a separate **Web application** OAuth client in the same Google Cloud project. Its **client ID** is the required `GOOGLE_ID_TOKEN_AUDIENCE` and Android `google_web_client_id`. The client ID is public configuration, not a secret. This Credential Manager ID-token flow does not use a custom URL scheme or Android redirect URI. Do not copy the Web client secret into the APK or repository.

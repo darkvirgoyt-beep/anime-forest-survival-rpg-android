@@ -21,7 +21,7 @@ Run this from the repository root after the Android/Unreal build has produced a 
 ```bash
 python3 tools/publish_internal_test.py \
   --aab path/to/app-release.aab \
-  --package-name com.darkvirgoyt.aethelgrand \
+  --package-name com.darvirgoyt.aethelgrad \
   --track qa \
   --release-name "Aethelgard internal build" \
   --release-notes "Resource center and 540-class camera test build"
@@ -36,7 +36,7 @@ After checking the dry-run output, supply the service account file from a secure
 ```bash
 python3 tools/publish_internal_test.py \
   --aab path/to/app-release.aab \
-  --package-name com.darkvirgoyt.aethelgrand \
+  --package-name com.darvirgoyt.aethelgrad \
   --track qa \
   --service-account /secure/credentials/play-publisher.json \
   --release-name "Aethelgard internal build" \
