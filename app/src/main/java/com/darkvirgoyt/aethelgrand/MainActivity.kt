@@ -379,12 +379,6 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    private fun beginAutomaticContentPreparation() {
-        if (resourcePreparationComplete) return
-        markProductionContentReady()
-        continuePendingWorldEntry()
-    }
-
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
         networkOnline = snapshot.isOnline
         if (!networkOnline) {

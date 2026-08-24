@@ -111,7 +111,7 @@ jobs:
           grep -q '/v1/content/high/archive' server/src/server.mjs
           grep -q 'automaticExpansion' app/src/main/assets/asset_manifest.json
           grep -q 'deliveryType.set("fast-follow")' assetpack_forest/build.gradle.kts
-          grep -q 'beginAutomaticContentPreparation' app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt
+          grep -q 'showAssetPatchOverlay' app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt
           grep -q 'showDownloadConfirmation' app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt
           test -f app/src/main/cpp/mobs/mob_catalog.h
           test -f assetpack_core/build.gradle.kts
