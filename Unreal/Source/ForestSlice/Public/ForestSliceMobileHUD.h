@@ -5,10 +5,43 @@
 #include "ForestSliceMobileHUD.generated.h"
 
 class AForestSliceCharacter;
+class UButton;
+class UCanvasPanel;
+class UForestSliceGraphicsSettingsSubsystem;
+class USlider;
+class UTextBlock;
+class UWidget;
 class UForestSliceMobPresentationComponent;
 enum class EForestSliceTool : uint8;
 
-UCLASS(Abstract, BlueprintType)
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FForestSliceVirtualStickChanged, FVector2D, Value);
+
+UCLASS(BlueprintType)
+class FORESTSLICE_API UForestSliceVirtualJoystick : public UUserWidget
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(BlueprintAssignable, Category = "Mobile|Input")
+    FForestSliceVirtualStickChanged ValueChanged;
+
+protected:
+    virtual FReply NativeOnTouchStarted(const FGeometry& InGeometry, const FPointerEvent& InGestureEvent) override;
+    virtual FReply NativeOnTouchMoved(const FGeometry& InGeometry, const FPointerEvent& InGestureEvent) override;
+    virtual FReply NativeOnTouchEnded(const FGeometry& InGeometry, const FPointerEvent& InGestureEvent) override;
+    virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect,
+        FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle,
+        bool bParentEnabled) const override;
+
+private:
+    FVector2D StickValue = FVector2D::ZeroVector;
+    int32 ActivePointerIndex = INDEX_NONE;
+
+    FVector2D CalculateValue(const FGeometry& InGeometry, const FVector2D& ScreenPosition) const;
+    void EmitValue(const FVector2D& Value);
+};
+
+UCLASS(BlueprintType)
 class FORESTSLICE_API UForestSliceMobileHUD : public UUserWidget
 {
     GENERATED_BODY()
@@ -80,6 +113,18 @@ public:
     UFUNCTION(BlueprintPure, Category = "Mobile|Aim")
     bool IsGyroEnabled() const { return bGyroEnabled; }
 
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Settings")
+    void ToggleSettingsPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Settings")
+    void CloseSettingsPressed();
+
+    UFUNCTION(BlueprintCallable, Category = "Mobile|Settings")
+    void GraphicsQualityChanged(float NormalizedValue);
+
+    UFUNCTION(BlueprintPure, Category = "Mobile|Settings")
+    FText GetGraphicsQualityLabel() const;
+
     UFUNCTION(BlueprintCallable, Category = "Mobile|Mob HUD")
     void SetFocusedMob(UForestSliceMobPresentationComponent* InMob);
 
@@ -108,6 +153,9 @@ public:
     void RefreshGyroVisualState();
 
 protected:
+    virtual void NativeConstruct() override;
+    virtual void NativeDestruct() override;
+
     UPROPERTY(BlueprintReadOnly, Category = "Mobile|Binding")
     TWeakObjectPtr<AForestSliceCharacter> ControlledCharacter;
 
@@ -119,4 +167,21 @@ protected:
 
     UPROPERTY(BlueprintReadOnly, Category = "Mobile|Aim")
     bool bGyroEnabled = false;
+
+private:
+    UPROPERTY(Transient)
+    TObjectPtr<UCanvasPanel> RuntimeCanvas;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UCanvasPanel> SettingsPanel;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UTextBlock> GraphicsQualityLabel;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UForestSliceGraphicsSettingsSubsystem> GraphicsSettings;
+
+    void BuildRuntimeControlSurface();
+    UButton* AddRuntimeButton(const FText& Label, const FVector2D& Position, const FVector2D& Size);
+    void RefreshGraphicsQualityLabel();
 };

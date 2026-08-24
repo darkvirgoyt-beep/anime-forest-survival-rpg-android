@@ -4,6 +4,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "ForestSliceGameMode.generated.h"
 
+class AForestSlicePlayerController;
+
 UCLASS()
 class FORESTSLICE_API AForestSliceGameMode : public AGameModeBase
 {
@@ -11,5 +13,9 @@ class FORESTSLICE_API AForestSliceGameMode : public AGameModeBase
 
 public:
     AForestSliceGameMode();
+
+protected:
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Player")
+    TSubclassOf<AForestSlicePlayerController> ProductionPlayerControllerClass;
 };
 
