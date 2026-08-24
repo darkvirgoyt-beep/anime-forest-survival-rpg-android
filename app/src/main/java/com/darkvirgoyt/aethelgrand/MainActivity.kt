@@ -172,6 +172,7 @@ class MainActivity : Activity(), SensorEventListener {
         LoadingLore("WAYFARER'S BREATH", "Dodge with intent. Saving breath before a Warden strike matters more than winning a race through the undergrowth.")
     )
     private var resourcePreparationComplete = false
+    private var highResolutionContentReady = false
     private var pendingWorldEntry: (() -> Unit)? = null
     private lateinit var standaloneExpansionFile: StandaloneExpansionFile
     private var authenticationTransitionStarted = false
@@ -439,12 +440,26 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun markProductionContentReady() {
         if (resourcePreparationComplete) return
+        highResolutionContentReady = true
         resourcePreparationComplete = true
         markWorldLoadingTaskReady("content")
         val readyTier = selectedResourceTier
         applyGraphicsTier(readyTier.graphicsTierIndex)
         if (::gameView.isInitialized) {
             gameView.queueEvent { NativeGameBridge.setContentTierReady(true, readyTier.graphicsTierIndex) }
+        }
+    }
+
+    /** Opens the verified base online world only when optional high-resolution delivery is unavailable. */
+    private fun markCoreOnlineContentReady() {
+        if (resourcePreparationComplete) return
+        highResolutionContentReady = false
+        resourcePreparationComplete = true
+        markWorldLoadingTaskReady("content")
+        val coreGraphicsTier = selectedGraphicsTier.coerceAtMost(2)
+        if (::gameView.isInitialized) {
+            gameView.applyGraphicsTier(coreGraphicsTier)
+            gameView.queueEvent { NativeGameBridge.setContentTierReady(true, coreGraphicsTier) }
         }
     }
 
@@ -812,7 +827,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun requestDiscoveredSectorContent(discoveredMask: Int) {
-        if (!resourcePreparationComplete || !networkOnline) return
+        if (!resourcePreparationComplete || !highResolutionContentReady || !networkOnline) return
         val tier = selectedResourceTier
         ContentDownloadPlan.WorldSector.values().forEach { sector ->
             if (discoveredMask and sector.bit == 0) return@forEach
@@ -2664,7 +2679,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The complete private high-end archive must be verified before Google sign-in and online world entry."
+            text = "High-resolution world content is verified separately. The core online world remains available when the optional archive service is temporarily unavailable."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2672,6 +2687,8 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val retry = actionButton("RETRY ASSET PREPARATION") { }
         retry.visibility = View.GONE
+        val enterCoreWorld = actionButton("ENTER CORE ONLINE WORLD") { }
+        enterCoreWorld.visibility = View.GONE
         panel.addView(ambientEmber, LinearLayout.LayoutParams(-1, dp(58)))
         panel.addView(title, LinearLayout.LayoutParams(-1, dp(34)))
         panel.addView(status, LinearLayout.LayoutParams(-1, dp(46)))
@@ -2679,6 +2696,7 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(details, LinearLayout.LayoutParams(-1, dp(48)))
         panel.addView(note, LinearLayout.LayoutParams(-1, dp(60)))
         panel.addView(retry, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(12) })
+        panel.addView(enterCoreWorld, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         overlay.addView(panel, FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER))
         rootContainer.addView(overlay)
         assetPatchOverlay = overlay
@@ -2697,12 +2715,12 @@ class MainActivity : Activity(), SensorEventListener {
         }
         loadingAnimationHandler.post(loadingAnimation)
 
-        fun finishPreparation() {
+        fun finishPreparation(highResolution: Boolean) {
             loadingAnimationHandler.removeCallbacks(loadingAnimation)
             hudHandler.postDelayed({
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
-                markProductionContentReady()
+                if (highResolution) markProductionContentReady() else markCoreOnlineContentReady()
                 onReady()
                 continuePendingWorldEntry()
             }, 450L)
@@ -2711,6 +2729,7 @@ class MainActivity : Activity(), SensorEventListener {
         lateinit var startPreparation: () -> Unit
         startPreparation = {
             retry.visibility = View.GONE
+            enterCoreWorld.visibility = View.GONE
             progress.progress = 0
             var failureShown = false
             assetPacks.requestProductionContent(resourceTier) { event ->
@@ -2718,12 +2737,21 @@ class MainActivity : Activity(), SensorEventListener {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
-                        details.text = event.failedPack ?: "Private high-end content service could not start for this installation."
-                        note.text = "The complete high-end archive is required before sign-in and world entry. Check the private HTTPS service, then retry."
+                        val failure = event.failedPack ?: "Private high-end content service could not start for this installation."
+                        val serviceUnavailable = failure.contains("timed out", ignoreCase = true) ||
+                            failure.contains("HTTP 5", ignoreCase = true) ||
+                            failure.contains("private_content_not_configured", ignoreCase = true)
+                        status.text = if (serviceUnavailable) "HIGH GRAPHICS SERVICE UNAVAILABLE" else "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
+                        details.text = failure
+                        note.text = if (serviceUnavailable) {
+                            "The optional high-resolution archive is not published or reachable. You can retry it later, or continue into the verified core online world now."
+                        } else {
+                            "The downloaded archive did not pass a release integrity check. Retry after the content service is corrected."
+                        }
                         note.setTextColor(Color.rgb(255, 188, 142))
                         progress.progress = 0
                         retry.visibility = View.VISIBLE
+                        if (serviceUnavailable) enterCoreWorld.visibility = View.VISIBLE
                     }
                 } else {
                     val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2755,7 +2783,7 @@ class MainActivity : Activity(), SensorEventListener {
                         }
                     }
                     progress.progress = event.percent
-                    if (event.complete) finishPreparation()
+                    if (event.complete) finishPreparation(highResolution = true)
                 }
             }
             }
@@ -2763,6 +2791,10 @@ class MainActivity : Activity(), SensorEventListener {
         retry.setOnClickListener {
             retry.visibility = View.GONE
             startPreparation()
+        }
+        enterCoreWorld.setOnClickListener {
+            enterCoreWorld.visibility = View.GONE
+            finishPreparation(highResolution = false)
         }
         startPreparation()
     }

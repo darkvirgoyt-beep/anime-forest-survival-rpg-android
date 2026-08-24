@@ -4,8 +4,10 @@ import android.content.Context
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.Executors
@@ -98,6 +100,10 @@ class PrivateContentDownloader(
                 require(sha256(partial) == expectedSha256) { "Private content SHA-256 verification failed." }
                 mountVerified(partial, versionCode, packageName)
                 onProgress(Progress(Status.COMPLETED, expectedBytes, expectedBytes, 100))
+            } catch (_: SocketTimeoutException) {
+                onProgress(Progress(Status.FAILED, 0L, 0L, 0, "Private high-end content service timed out. The archive may be unavailable or waking up; retry later."))
+            } catch (error: IOException) {
+                onProgress(Progress(Status.FAILED, 0L, 0L, 0, "Private high-end content network failure: ${error.message ?: "connection error"}"))
             } catch (error: Exception) {
                 onProgress(Progress(Status.FAILED, 0L, 0L, 0, error.message ?: "Private content download failed."))
             }
@@ -111,7 +117,10 @@ class PrivateContentDownloader(
     private fun fetchManifest(): JSONObject {
         val connection = openHttps(manifestUrl)
         return try {
-            require(connection.responseCode in 200..299) { "Private content manifest HTTP ${connection.responseCode}." }
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                throw IOException("Private high-end content manifest HTTP $responseCode${readFailureBody(connection)}")
+            }
             JSONObject(connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
         } finally {
             connection.disconnect()
@@ -122,12 +131,19 @@ class PrivateContentDownloader(
         val connection = openHttps(url)
         if (existing > 0L) connection.setRequestProperty("Range", "bytes=$existing-")
         val code = connection.responseCode
-        require(code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_PARTIAL) {
+        if (code != HttpURLConnection.HTTP_OK && code != HttpURLConnection.HTTP_PARTIAL) {
+            val message = "Private high-end content archive HTTP $code${readFailureBody(connection)}"
             connection.disconnect()
-            "Private content archive HTTP $code."
+            throw IOException(message)
         }
         return connection
     }
+
+    private fun readFailureBody(connection: HttpURLConnection): String = runCatching {
+        connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
+            reader.readText().take(240).trim()
+        }?.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()
+    }.getOrDefault("")
 
     private fun openHttps(rawUrl: String): HttpURLConnection {
         require(rawUrl.startsWith("https://")) { "Private content endpoints must use HTTPS." }

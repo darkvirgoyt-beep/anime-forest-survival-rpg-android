@@ -37,3 +37,4 @@
 - [x] Add a premium top-right health bar and stamina meter beside the profile icon, driven by the existing live native HUD state.
 - [x] Design and implement the Emberling companion-bond milestone with original creature interaction, visible follow/stay behavior, cloud-state persistence, native regression coverage, and explicit mobile/online authority boundaries.
 - [x] Confirm on a physical Android device that Google sign-in exchanges successfully with the live backend and opens the authenticated world/profile flow.
+- [x] Diagnose and repair the post-login high-graphics content download timeout that locks authenticated players out of world entry; preserve release integrity checks while permitting verified core online-world entry only when the optional high-resolution service is unavailable.
