@@ -224,6 +224,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var latestPingMs: Int? = null
     private var googleLoginInFlight = false
     private var googleSignInButton: Button? = null
+    private var accountLinkConsentAccepted = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
     private lateinit var identityStatusLabel: TextView
@@ -647,6 +648,10 @@ class MainActivity : Activity(), SensorEventListener {
             if (::onboardingStatus.isInitialized) onboardingStatus.text = "ACCOUNT LINK  •  CONNECTION RESTORING"
             return
         }
+        if (!accountLinkConsentAccepted) {
+            if (::onboardingStatus.isInitialized) onboardingStatus.text = "CHECK THE ACCOUNT-LINK CONSENT BOX FIRST"
+            return
+        }
         if (googleLoginInFlight) {
             if (::onboardingStatus.isInitialized) onboardingStatus.text = "GOOGLE ACCOUNT CHOOSER IS ALREADY OPEN"
             return
@@ -667,8 +672,8 @@ class MainActivity : Activity(), SensorEventListener {
     private fun restoreGoogleSignInAction(state: SessionState) {
         googleLoginInFlight = false
         googleSignInButton?.apply {
-            isEnabled = true
-            alpha = 1.0f
+            isEnabled = accountLinkConsentAccepted
+            alpha = if (accountLinkConsentAccepted) 1.0f else 0.5f
             text = when (state) {
                 SessionState.DENIED -> "↻  RETRY GOOGLE SIGN-IN"
                 SessionState.CONFIGURATION_ERROR -> "GOOGLE LOGIN CONFIGURATION REQUIRED"
@@ -1040,7 +1045,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "REQUIRED ACCOUNT LINK  •  Sign in with Google to protect your cloud world and continue online."
+            text = "REQUIRED ACCOUNT LINK  •  Google confirms your identity; cloud saves stay in Aethelgard’s game service."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
@@ -1058,7 +1063,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val consent = CheckBox(this).apply {
-            text = "I agree to the Terms of Service and Privacy Policy"
+            text = "I consent to link my Google identity to this cloud world. The game does not read Gmail, Drive, or contacts."
             textSize = 11f
             setTextColor(Color.rgb(220, 222, 224))
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.rgb(220, 182, 101))
@@ -1068,10 +1073,15 @@ class MainActivity : Activity(), SensorEventListener {
             requestGoogleAccountLink()
         }
         googleSignInButton = google
-        consent.visibility = View.GONE
+        google.isEnabled = false
+        google.alpha = 0.5f
         consent.setOnCheckedChangeListener { _, checked ->
+            accountLinkConsentAccepted = checked
             google.isEnabled = checked
             google.alpha = if (checked) 1f else 0.5f
+            if (!checked && ::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "ACCOUNT-LINK CONSENT IS REQUIRED TO CONTINUE ONLINE"
+            }
         }
         val trustRow = LinearLayout(this).apply {
             gravity = Gravity.CENTER
