@@ -53,6 +53,9 @@ def main() -> None:
     by_pack = {entry["pack"]: entry for entry in manifest["packs"]}
     if manifest["contentId"] != "aethelgard-forest-launch-v1":
         raise SystemExit("FAIL launch_slice_content: unexpected content ID")
+    for pack in (*STARTUP_PACKS, *DEFERRED_PACKS):
+        if (ROOT / pack / "src/main/assets/content_receipt.json").exists():
+            raise SystemExit(f"FAIL launch_slice_content: duplicate root receipt would break bundletool: {pack}")
     for pack in STARTUP_PACKS:
         files = payload_files(pack)
         if not files:

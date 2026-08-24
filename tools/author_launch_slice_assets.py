@@ -183,8 +183,8 @@ def main() -> None:
             "origin": "original procedural and repository-owned AETHELGRAD content",
             "license": "AETHELGRAD project-owned generated source; no third-party game assets",
         })
-        if files:
-            write_json(root / "content_receipt.json", receipt_ledger[-1])
+        # Keep receipts in the single project ledger below. Repeating the same
+        # root filename across asset-pack modules makes bundletool reject the AAB.
 
     write_json(ROOT / "assets/production_content/pack_receipts.json", {
         "contentId": "aethelgard-forest-launch-v1",
@@ -210,7 +210,6 @@ def main() -> None:
         "origin": "original generated/procedural AETHELGRAD audio bank",
         "license": "AETHELGRAD project-owned generated source",
     }
-    write_json(ROOT / "assetpack_audio_hd/src/main/assets/content_receipt.json", audio_receipt)
     for entry in receipt_ledger:
         if entry["pack"] == "assetpack_audio_hd":
             entry.update(audio_receipt)
