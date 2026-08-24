@@ -67,6 +67,7 @@ object NativeGameBridge {
     external fun orbitCamera(deltaYaw: Float, deltaPitch: Float)
     external fun toggleViewMode()
     external fun setWorldMapVisible(visible: Boolean)
+    external fun getWorldMapState(): String
     external fun setWorldTime(worldTime: Float)
     external fun setCoOpPeer(index: Int, active: Boolean, x: Float, y: Float, atTower: Boolean)
     external fun clearCoOpPeers()
@@ -124,6 +125,8 @@ class MainActivity : Activity(), SensorEventListener {
     private var hudPlayerTitle: TextView? = null
     private var currentPlayerName = "PLAYER NAME"
     private lateinit var vitalMeter: VitalMeterView
+    private var miniMapView: CircularMiniMapView? = null
+    private var worldMapView: AethelgardWorldMapView? = null
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
@@ -309,6 +312,17 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
     private val hudHandler = Handler(Looper.getMainLooper())
+    private val mapStateUpdater = object : Runnable {
+        override fun run() {
+            if (::gameView.isInitialized) {
+                gameView.queueEvent {
+                    val snapshot = NativeGameBridge.getWorldMapState()
+                    runOnUiThread { applyWorldMapState(snapshot) }
+                }
+            }
+            hudHandler.postDelayed(this, 250L)
+        }
+    }
     private val hudUpdater = object : Runnable {
         override fun run() {
             if (::gameView.isInitialized) {
@@ -893,6 +907,7 @@ class MainActivity : Activity(), SensorEventListener {
         audio.stopMusic()
         gyroEnabled = false
         hudHandler.removeCallbacks(hudUpdater)
+        hudHandler.removeCallbacks(mapStateUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
         hudHandler.removeCallbacks(coOpSaveUpdater)
@@ -936,6 +951,7 @@ class MainActivity : Activity(), SensorEventListener {
             worldLoadingProgressHandler.post(worldLoadingProgressTicker)
         }
         hudHandler.postDelayed(hudUpdater, 350L)
+        hudHandler.postDelayed(mapStateUpdater, 400L)
         hudHandler.postDelayed(cloudSaveUpdater, 45_000L)
         if (activeCoOpRoom != null) {
             hudHandler.postDelayed(coOpUpdater, 1_000L)
@@ -945,6 +961,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
+        hudHandler.removeCallbacks(mapStateUpdater)
         hudHandler.removeCallbacks(cloudSaveUpdater)
         hudHandler.removeCallbacks(coOpUpdater)
         hudHandler.removeCallbacks(coOpSaveUpdater)
@@ -2575,6 +2592,7 @@ class MainActivity : Activity(), SensorEventListener {
             contentDescription = "Open world map"
             setOnClickListener { mapButton.performClick() }
         }
+        miniMapView = miniMap
         overlay.addView(miniMap, FrameLayout.LayoutParams(dp(112), dp(112), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(86)
             rightMargin = dp(18)
@@ -2810,6 +2828,18 @@ class MainActivity : Activity(), SensorEventListener {
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 
+    private fun applyWorldMapState(snapshot: String) {
+        val values = snapshot.split('|')
+        if (values.size < 4) return
+        val xKm = values[0].toFloatOrNull() ?: return
+        val yKm = values[1].toFloatOrNull() ?: return
+        val yawDegrees = values[2].toFloatOrNull() ?: 0f
+        val discoveredMask = values[3].toIntOrNull() ?: 1
+        val state = WorldMapPlayerState(xKm, yKm, yawDegrees, discoveredMask)
+        miniMapView?.setPlayerState(state)
+        worldMapView?.setPlayerState(state)
+    }
+
     private fun showWorldMapDialog(onClosed: () -> Unit): AlertDialog {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -2821,7 +2851,9 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(244, 218, 155))
             setPadding(0, 0, 0, dp(8))
         })
-        content.addView(AethelgardWorldMapView(this), LinearLayout.LayoutParams(-1, dp(300)))
+        val liveMapView = AethelgardWorldMapView(this)
+        worldMapView = liveMapView
+        content.addView(liveMapView, LinearLayout.LayoutParams(-1, dp(360)))
         content.addView(TextView(this).apply {
             text = "GOLD: TOWER / LANDMARK     CYAN: RIVER     WHITE: YOU     REGIONS: FOREST  •  SAND  •  SNOW"
             textSize = 10f
@@ -2833,7 +2865,10 @@ class MainActivity : Activity(), SensorEventListener {
             .setView(content)
             .setNegativeButton("‹ BACK", null)
             .create()
-        dialog.setOnDismissListener { onClosed() }
+        dialog.setOnDismissListener {
+            worldMapView = null
+            onClosed()
+        }
         dialog.show()
         return dialog
     }

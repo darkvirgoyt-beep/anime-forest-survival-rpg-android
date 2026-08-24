@@ -2598,6 +2598,17 @@ Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_setWorldMapVisible(JNIEnv*, job
     gWorldMapVisible = visible == JNI_TRUE;
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_getWorldMapState(JNIEnv* env, jobject) {
+    std::ostringstream state;
+    state << worldXFromSimulation(gPlayerX) << '|'
+          << worldYFromSimulation(gPlayerY) << '|'
+          << (gController.camera.yaw * 57.2957795f) << '|'
+          << gDiscoveredSectors;
+    const std::string value = state.str();
+    return env->NewStringUTF(value.c_str());
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_setAuthoritativeOnline(JNIEnv*, jobject, jboolean enabled) {
     gAuthoritativeOnline = enabled == JNI_TRUE;
