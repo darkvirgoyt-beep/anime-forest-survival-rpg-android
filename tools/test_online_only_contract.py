@@ -88,8 +88,8 @@ def main() -> None:
             ("Platform", "MinSdk"): "30",
             ("Online", "Mode"): "online-only",
             ("Online", "GameAuthBase"): "https://aethelgard-api-v2.onrender.com/v1",
-            ("Online", "GameAuthExchange"): "/exchange",
-            ("Online", "GameAuthRefresh"): "/refresh",
+            ("Online", "GameAuthExchange"): "/auth/google-id-token/exchange",
+            ("Online", "GameAuthRefresh"): "/auth/refresh",
             ("Content", "HighGraphicsPublished"): "false",
             ("Engine", "UnrealSource"): "external-private-only",
         }
