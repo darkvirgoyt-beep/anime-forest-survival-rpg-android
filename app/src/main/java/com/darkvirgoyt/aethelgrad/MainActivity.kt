@@ -2685,6 +2685,7 @@ class MainActivity : Activity(), SensorEventListener {
             audio.playEffect("ui")
             submitAuthoritativeCapture()
         }
+        capture.contentDescription = "TAME ANIMAL"
         val camp = circularControlButton("⌂", "CAMP") {
             audio.playEffect("craft")
             submitAuthoritativeCamp()
