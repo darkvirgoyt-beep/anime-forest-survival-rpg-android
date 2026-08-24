@@ -5,7 +5,7 @@ Aethelgard uses two independent systems: **server-backed account/world saves** a
 | Distribution path | Expansion behavior | Player action |
 |---|---|---|
 | Google Play signed AAB | The bootstrap core is install-time, the launch forest is `fast-follow`, and later biome/presentation packs are `on-demand`. Play stores each ready pack locally and the installed footprint grows as the player discovers new sectors. | Open the game, allow the launch download if requested, then accept later sector downloads when Play asks for consent. |
-| Standalone APK plus OBB | The workflow still produces `main.<versionCode>.<package>.obb`. The app detects the standard OBB location automatically when an installer or device lab has placed the file there. | Copy the matching OBB to `Android/obb/com.darvirgoyt.aethelgrad/` or use the provided installer. |
+| Standalone APK plus OBB | The workflow still produces `main.<versionCode>.<package>.obb`. The app detects the standard OBB location automatically when an installer or device lab has placed the file there. | Copy the matching OBB to `Android/obb/com.darkvirgoyt.aethelgrand/` or use the provided installer. |
 
 A raw APK cannot silently install a separate OBB into Android’s protected expansion directory. For a PUBG/BGMI-style experience, the signed Google Play App Bundle with Play Asset Delivery is the supported path: Play manages pack download, resume, storage, and updates, while the app presents progress and keeps the world safe until its launch slice is ready.
 

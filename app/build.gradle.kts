@@ -10,7 +10,7 @@ val ciKeyPassword = providers.environmentVariable("AETHELGARD_RELEASE_KEY_PASSWO
 val hasCiReleaseSigning = listOf(ciKeystorePath, ciKeystorePassword, ciKeyAlias, ciKeyPassword).all { !it.isNullOrBlank() }
 
 android {
-    namespace = "com.darvirgoyt.aethelgrad"
+    namespace = "com.darkvirgoyt.aethelgrand"
     compileSdk = 35
     ndkVersion = "28.0.12433566"
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.darvirgoyt.aethelgrad"
+        applicationId = "com.darkvirgoyt.aethelgrand"
         minSdk = 26
         targetSdk = 35
         versionCode = 6

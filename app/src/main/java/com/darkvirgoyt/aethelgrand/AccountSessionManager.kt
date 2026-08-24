@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrand
 
 import android.app.Activity
 import android.os.Handler
@@ -277,12 +277,13 @@ class AccountSessionManager {
                 val response = postJson(authExchangeUrl, "{\"idToken\":\"${escapeJson(idToken)}\"}")
                 if (!response.isJson()) {
                     Log.w("AethelgardAuth", "Google token exchange returned a non-JSON response")
-                    publishFromNetwork(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Internal error. Please try again later."))
+                    publishFromNetwork(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The game login service returned an unexpected response. Please update the game and try again."))
                     return@execute
                 }
                 if (response.statusCode !in 200..299) {
-                    Log.w("AethelgardAuth", "Google token exchange was rejected with HTTP ${response.statusCode}")
-                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
+                    val serverError = jsonString(response.body, "error")
+                    Log.w("AethelgardAuth", "Google token exchange was rejected with HTTP ${response.statusCode}: $serverError")
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = describeExchangeFailure(response.statusCode, serverError)))
                     return@execute
                 }
                 val sessionToken = jsonString(response.body, "accessToken")
@@ -291,7 +292,7 @@ class AccountSessionManager {
                 val expiresAt = parseIsoEpochMs(jsonString(response.body, "expiresAt"))
                 if (sessionToken.isNullOrBlank() || accountId.isNullOrBlank() || refreshToken.isNullOrBlank() || expiresAt == null) {
                     Log.w("AethelgardAuth", "Google token exchange returned an incomplete session payload")
-                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "The game login service returned an incomplete secure session. Please try again."))
                     return@execute
                 }
                 accessSessionToken = sessionToken
@@ -308,9 +309,17 @@ class AccountSessionManager {
                 )
             } catch (error: Exception) {
                 Log.w("AethelgardAuth", "Google token exchange failed: ${error::class.java.simpleName}")
-                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Internal error. Please try again later."))
+                publishFromNetwork(SessionSnapshot(SessionState.NETWORK_ERROR, message = "Could not reach the game login service. Check your connection and try again."))
             }
         }
+    }
+
+    private fun describeExchangeFailure(statusCode: Int, serverError: String?): String = when {
+        statusCode == 404 -> "Online login service is not deployed at the configured address. Please update the game and try again."
+        statusCode == 503 || serverError == "game_auth_not_configured" -> "Online login service is temporarily unavailable. Try again in a moment."
+        serverError == "google_id_token_authentication_failed" || statusCode == 401 -> "Google account verification was rejected. Check the release APK’s Android OAuth package and signing certificate, then retry."
+        serverError == "invalid_google_id_token" -> "Google returned an incomplete sign-in credential. Please choose your account again."
+        else -> "Game login was rejected by the service (HTTP $statusCode). Please try again."
     }
 
     /** Refreshes the rotating backend session; the refresh token is stored only in Android Keystore-backed encrypted storage. */
@@ -965,8 +974,10 @@ class AccountSessionManager {
 
     private fun hasGoogleConfiguration(): Boolean =
         !googleWebClientId.startsWith("REPLACE_") &&
+            !apiBaseUrl.startsWith("REPLACE_") &&
             !authExchangeUrl.startsWith("REPLACE_") &&
             !authRefreshUrl.startsWith("REPLACE_") &&
+            apiBaseUrl.startsWith("https://") &&
             authExchangeUrl.startsWith("https://") &&
             authRefreshUrl.startsWith("https://")
 

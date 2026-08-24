@@ -29,6 +29,7 @@
 - [ ] Verify the release signing certificate fingerprint and Google Android OAuth registration required for device Google Sign-In.
 - [x] Diagnose the reported Google Credential Manager cancellation before backend exchange and improve the device-facing remediation guidance.
 - [x] Separate the offline `.prototype` harness from the online release at launch and document the matching Google OAuth package/artifact path; physical release-device sign-in validation remains required.
+- [ ] Update the Android release authentication base URL and exchange/refresh endpoints to the live `/api/game-auth` contract, then verify the real Google token exchange.
 - [x] Add authenticated logout and character/inventory access controls, and repair reversed horizontal joystick direction in the mobile gameplay HUD.
 - [x] Add a centered aim crosshair, repair jump activation, replace the sprint box with a touch-first hold control, move the profile to the top-right, and add a circular top-left mini-map.
 - [x] Add a premium top-right health bar and stamina meter beside the profile icon, driven by the existing live native HUD state.
