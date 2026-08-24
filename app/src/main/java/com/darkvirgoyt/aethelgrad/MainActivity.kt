@@ -654,7 +654,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun requireOnline(action: String): Boolean {
-        if (networkOnline || localSessionActive) return true
+        if (networkOnline) return true
         if (::coOpStatusLabel.isInitialized) {
             coOpStatusLabel.text = "$action  •  CONNECTION RESTORING"
         }
@@ -817,13 +817,13 @@ class MainActivity : Activity(), SensorEventListener {
         hudHandler.removeCallbacks(coOpSaveUpdater)
         stopWorldLoadingLoreRotation()
         stopWorldLoadingProgressTicker()
-        if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
+        if (networkOnline) activeCoOpRoom?.let { savePersistentCoOpState() }
         if (localSessionActive) {
             localMultiplayer.leaveSession()
             localSessionActive = false
             localRoom = null
         }
-        activeCoOpRoom = null
+        // Keep the hosted room reference for resume; onDestroy performs the explicit leave.
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
         val world = activeCloudWorld
         if (world != null && networkOnline && !cloudSaveInFlight) {
@@ -2119,15 +2119,22 @@ class MainActivity : Activity(), SensorEventListener {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(4))
         }
+        val hostedHeading = TextView(this).apply {
+            text = "HOSTED INTERNET CO-OP  •  FREE RENDER SERVICE"
+            textSize = 12f
+            setTextColor(Color.rgb(164, 231, 190))
+            setPadding(0, 0, 0, dp(5))
+        }
+        panel.addView(hostedHeading)
         val explanation = TextView(this).apply {
-            text = "Create a six-character tower room code and share it with friends. The room synchronizes the day-night clock, weather phase, player positions, and tower arrivals."
+            text = "No Termux, local server, or same Wi-Fi is required. Create a six-character room code and share it with friends. Render synchronizes the day-night clock, weather phase, player positions, tower arrivals, combat, inventory, crafting, and cloud saves for up to four players."
             textSize = 12f
             setTextColor(Color.rgb(205, 220, 218))
             setPadding(0, 0, 0, dp(10))
         }
         panel.addView(explanation)
         val status = TextView(this).apply {
-            text = activeCoOpRoom?.let { "Internet room: ${it.code}" } ?: localRoom?.let { "Local room: ${it.code}  •  ${it.transport}" } ?: "No active tower room"
+            text = activeCoOpRoom?.let { "Hosted room: ${it.code}  •  ${it.participants.size}/${it.maxPlayers} PLAYERS" } ?: "No active hosted room"
             textSize = 12f
             setTextColor(Color.rgb(244, 218, 155))
             gravity = Gravity.CENTER
@@ -2193,47 +2200,32 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(create, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         panel.addView(join, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
 
-        val localHeading = TextView(this).apply {
-            text = "LOCAL MULTIPLAYER  •  SAME WI-FI OR WI-FI DIRECT"
-            textSize = 11f
-            setTextColor(Color.rgb(164, 231, 190))
-            setPadding(0, dp(14), 0, dp(4))
+        val savedRoomCode = accountSession.lastPersistentCoOpRoomCode()
+        if (activeCoOpRoom == null && !savedRoomCode.isNullOrBlank()) {
+            val reconnect = actionButton("RECONNECT HOSTED ROOM  •  ${savedRoomCode}") {
+                result.text = "Reconnecting to hosted room ${savedRoomCode}…"
+                accountSession.reconnectCoOpRoom(savedRoomCode) { room, error ->
+                    if (room == null) {
+                        result.text = error ?: "Hosted room is unavailable. Create or join another room."
+                    } else {
+                        startCoOpRoom(room)
+                        result.setTextColor(Color.rgb(164, 231, 190))
+                        result.text = "Reconnected to ${room.code}."
+                        status.text = "Hosted room: ${room.code}  •  ${room.participants.size}/${room.maxPlayers} PLAYERS"
+                    }
+                }
+            }
+            panel.addView(reconnect, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
         }
-        panel.addView(localHeading)
-        localDiscoverySummary = TextView(this).apply {
-            text = if (localRooms.isEmpty()) "No LAN rooms discovered yet." else localRooms.values.joinToString("\n") { "• ${it.name}  [${it.code}]  ${it.address}:${it.port}" }
-            textSize = 10f
-            setTextColor(Color.rgb(205, 220, 218))
-            setPadding(0, dp(3), 0, dp(3))
-        }
-        panel.addView(localDiscoverySummary)
-        localPeerSummary = TextView(this).apply {
-            text = if (localWifiPeers.isEmpty()) "No Wi-Fi Direct peers discovered yet." else localWifiPeers.values.joinToString("\n") { "• ${it.name}  [${it.address}]" }
-            textSize = 10f
-            setTextColor(Color.rgb(205, 220, 218))
-            setPadding(0, dp(3), 0, dp(3))
-        }
-        panel.addView(localPeerSummary)
-        val hostLan = actionButton("HOST LAN ROOM") { hostLocalLan(result) }
-        val discoverLan = actionButton("FIND LAN ROOMS") { showLocalDiscoveryDialog(result) }
-        val joinLan = actionButton("JOIN FIRST LAN ROOM") { joinLocalLan(result) }
-        panel.addView(hostLan, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(4) })
-        panel.addView(discoverLan, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
-        panel.addView(joinLan, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
-        val hostDirect = actionButton("CREATE WI-FI DIRECT GROUP") { hostWifiDirect(result) }
-        val discoverDirect = actionButton("FIND WI-FI DIRECT DEVICES") { discoverWifiDirect(result) }
-        val joinDirect = actionButton("JOIN FIRST WI-FI DIRECT DEVICE") { joinWifiDirect(result) }
-        panel.addView(hostDirect, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
-        panel.addView(discoverDirect, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
-        panel.addView(joinDirect, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
 
         if (activeCoOpRoom != null) {
             val share = actionButton("SHARE ROOM INVITE") {
                 val room = activeCoOpRoom ?: return@actionButton
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, "Join my AETHELGRAD co-op tower room ${room.code} in ${room.region}. Up to ${room.maxPlayers} players.")
-                }, "Share AETHELGRAD invite"))
+                                        putExtra(Intent.EXTRA_TEXT, "Join my AETHELGRAD hosted co-op tower room ${room.code} in ${room.region}. No Termux or local server is required. Up to ${room.maxPlayers} players.")
+                }, "Share AETHELGRAD hosted invite")
+)
             }
             panel.addView(share, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
         }
@@ -2258,7 +2250,7 @@ class MainActivity : Activity(), SensorEventListener {
             addView(panel)
         }
         AlertDialog.Builder(this)
-            .setTitle("CO-OP TOWER RENDEZVOUS")
+            .setTitle("HOSTED CO-OP TOWER RENDEZVOUS")
             .setView(scroll)
             .setNegativeButton("‹ BACK", null)
             .show()

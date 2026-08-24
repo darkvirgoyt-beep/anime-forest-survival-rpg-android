@@ -13,7 +13,10 @@ REQUIRED = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "markCoreOnlineContentReady", "core-world content readiness boundary"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "override fun onBackPressed", "Android back navigation guard"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "Do you want to close this game?", "close confirmation copy"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "‹  BACK", "visible back arrow action"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "CO-OP READY", "online co-op trust row"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "HOSTED INTERNET CO-OP  •  FREE RENDER SERVICE", "hosted Render multiplayer heading"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "No Termux, local server, or same Wi-Fi is required.", "phone-only hosted multiplayer path"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "RECONNECT HOSTED ROOM", "hosted room reconnect action"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "finishAndRemoveTask()", "confirmed game close"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "isVerticalScrollBarEnabled = true", "scrollable character setup"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/PrivateContentDownloader.kt", "archiveSha256", "private archive verification"),
@@ -61,6 +64,9 @@ FORBIDDEN = (
     ("tools/build_expansion_obb.py", "prototype-v1", "prototype content version"),
     ("app/src/main/assets/asset_manifest.json", "LOW RESOURCES", "low-end player resource tier"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "SELECT GRAPHICS QUALITY", "player-facing resource tier selector"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "LOCAL MULTIPLAYER  •  SAME WI-FI OR WI-FI DIRECT", "local multiplayer UI removed from hosted flow"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "HOST LAN ROOM", "local LAN host control removed from hosted flow"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "CREATE WI-FI DIRECT GROUP", "local Wi-Fi Direct control removed from hosted flow"),
 )
 
 
