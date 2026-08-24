@@ -17,7 +17,7 @@ import androidx.credentials.exceptions.GetCredentialInterruptedException
 import androidx.credentials.exceptions.GetCredentialProviderConfigurationException
 import androidx.credentials.exceptions.GetCredentialUnsupportedException
 import androidx.credentials.exceptions.NoCredentialException
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import org.json.JSONArray
 import org.json.JSONObject
@@ -243,7 +243,11 @@ class AccountSessionManager {
 
         publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Choose a Google account to connect…"))
         try {
-            val option = GetSignInWithGoogleOption.Builder(googleWebClientId).build()
+            val option = GetGoogleIdOption.Builder()
+                .setServerClientId(googleWebClientId)
+                .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(false)
+                .build()
             val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
             manager.getCredentialAsync(
                 owner,
@@ -280,7 +284,7 @@ class AccountSessionManager {
     private fun describeGoogleCredentialFailure(error: GetCredentialException): String {
         Log.w("AethelgardAuth", "Google credential request failed: ${error::class.java.simpleName}")
         return when (error) {
-            is GetCredentialCancellationException -> "Google sign-in was cancelled. Tap the button and choose an account."
+            is GetCredentialCancellationException -> "Google account selection was dismissed before sign-in completed. Choose an account and keep the Google sheet open until you return to the game."
             is NoCredentialException -> "No Google credential is available. Add a Google account to this phone, then retry."
             is GetCredentialProviderConfigurationException -> "Google sign-in is not configured for this release APK. Check its Android OAuth package and signing certificate."
             is GetCredentialUnsupportedException -> "Google sign-in is unavailable on this device. Update Google Play services, then retry."

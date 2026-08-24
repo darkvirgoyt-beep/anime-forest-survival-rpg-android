@@ -30,6 +30,8 @@ REQUIRED = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "GOOGLE ACCOUNT CHOOSER IS ALREADY OPEN", "duplicate Google chooser launch guard"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "does not read Gmail, Drive, or contacts", "identity-only cloud-save consent explanation"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "accountLinkConsentAccepted", "required account-link consent gate"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "GetGoogleIdOption.Builder", "standard all-account Google identity request"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "setFilterByAuthorizedAccounts(false)", "all installed Google accounts are eligible for identity login"),
     ("server/src/server.mjs", "/v1/content/high/manifest", "private high-end manifest route"),
     ("server/src/server.mjs", "/v1/content/high/archive", "private high-end archive route"),
     ("server/.env.example", "PRIVATE_CONTENT_ARCHIVE_PATH", "private archive server configuration"),
