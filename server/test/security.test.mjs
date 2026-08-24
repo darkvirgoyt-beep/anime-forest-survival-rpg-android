@@ -12,7 +12,7 @@ import {
   validateServerAuthCode,
   verifyAccessToken
 } from "../src/security.mjs";
-import { createOnlineService } from "../src/server.mjs";
+import { classifyGoogleIdTokenError, createOnlineService } from "../src/server.mjs";
 
 const validConfig = {
   DATABASE_URL: "postgres://example",
@@ -140,6 +140,14 @@ test("Play Games exchange rejects an invalid code and a replayed code", async ()
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+test("Google verification errors are classified without exposing token data", () => {
+  assert.equal(classifyGoogleIdTokenError(new Error("Wrong recipient, payload audience != expected")), "google_id_token_audience_mismatch");
+  assert.equal(classifyGoogleIdTokenError(new Error("Invalid issuer")), "google_id_token_issuer_mismatch");
+  assert.equal(classifyGoogleIdTokenError(new Error("Token is expired")), "google_id_token_expired");
+  assert.equal(classifyGoogleIdTokenError(new Error("Invalid signature")), "google_id_token_signature_invalid");
+  assert.equal(classifyGoogleIdTokenError(new Error("provider unavailable")), "google_id_token_verification_failed");
 });
 
 test("Google ID-token exchange verifies identity server-side and issues a game session", async () => {

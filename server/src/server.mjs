@@ -129,8 +129,9 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
         refreshExpiresAt: new Date(bundle.refreshExpiresAt * 1000).toISOString()
       });
     } catch (error) {
-      console.error("google_id_token_exchange_failed", safeErrorCode(error));
-      res.status(401).json({ error: "google_id_token_authentication_failed" });
+      const errorCode = classifyGoogleIdTokenError(error);
+      console.error("google_id_token_exchange_failed", errorCode);
+      res.status(401).json({ error: errorCode });
     }
   });
 
@@ -1052,6 +1053,15 @@ function createSessionGuard({ pool, config }) {
       res.status(401).json({ error: code === "expired_session" ? "expired_session" : "invalid_session" });
     }
   };
+}
+
+export function classifyGoogleIdTokenError(error) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (/audience|recipient/.test(message)) return "google_id_token_audience_mismatch";
+  if (/issuer|iss/.test(message)) return "google_id_token_issuer_mismatch";
+  if (/expired|expiration|exp claim/.test(message)) return "google_id_token_expired";
+  if (/signature|certificate|public key/.test(message)) return "google_id_token_signature_invalid";
+  return "google_id_token_verification_failed";
 }
 
 function safeErrorCode(error) {

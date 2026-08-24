@@ -317,7 +317,11 @@ class AccountSessionManager {
     private fun describeExchangeFailure(statusCode: Int, serverError: String?): String = when {
         statusCode == 404 -> "Online login service is not deployed at the configured address. Please update the game and try again."
         statusCode == 503 || serverError == "game_auth_not_configured" -> "Online login service is temporarily unavailable. Try again in a moment."
-        serverError == "google_id_token_authentication_failed" || statusCode == 401 -> "Google account verification was rejected. Check the release APK’s Android OAuth package and signing certificate, then retry."
+        serverError == "google_id_token_audience_mismatch" -> "Google login configuration mismatch. Render GOOGLE_ID_TOKEN_AUDIENCE must match the Web OAuth client ID in this game."
+        serverError == "google_id_token_issuer_mismatch" -> "Google returned an untrusted account issuer. Choose your Google account again."
+        serverError == "google_id_token_expired" -> "The Google sign-in expired. Choose your Google account again."
+        serverError == "google_id_token_signature_invalid" -> "Google could not verify this sign-in certificate. Check the Android OAuth package and signing certificate."
+        serverError == "google_id_token_verification_failed" || serverError == "google_id_token_authentication_failed" || statusCode == 401 -> "Google account verification was rejected. Check the Web OAuth audience and the release APK identity, then retry."
         serverError == "invalid_google_id_token" -> "Google returned an incomplete sign-in credential. Please choose your account again."
         else -> "Game login was rejected by the service (HTTP $statusCode). Please try again."
     }
