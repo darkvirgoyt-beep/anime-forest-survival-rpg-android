@@ -1,9 +1,11 @@
 package com.darvirgoyt.aethelgrad
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -202,12 +204,100 @@ class MainActivity : Activity(), SensorEventListener {
     private var serverLatencyProbeToken = 0L
     private lateinit var networkMonitor: NetworkConnectivityMonitor
     private var networkOnline = false
+    private var localSessionActive = false
+    private var localSessionHost = false
+    private var localRoom: LocalRoom? = null
+    private val localRooms = linkedMapOf<String, LocalRoom>()
+    private val localWifiPeers = linkedMapOf<String, LocalWifiPeer>()
+    private var localDiscoverySummary: TextView? = null
+    private var localPeerSummary: TextView? = null
+    private var pendingLocalPermissionAction: (() -> Unit)? = null
+    private lateinit var localMultiplayer: LocalMultiplayerManager
+    private companion object {
+        const val LOCAL_PERMISSION_REQUEST = 4207
+    }
     private var pingProbeInFlight = false
     private var latestPingMs: Int? = null
     private var googleLoginInFlight = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
     private lateinit var identityStatusLabel: TextView
+    private val localMultiplayerCallbacks = object : LocalMultiplayerManager.Callbacks {
+        override fun onLocalRoomFound(room: LocalRoom) {
+            localRooms[room.code] = room
+            localDiscoverySummary?.text = localRooms.values.joinToString("\n") { "• ${it.name}  [${it.code}]  ${it.address}:${it.port}" }
+            if (::coOpStatusLabel.isInitialized) {
+                coOpStatusLabel.text = "LAN ROOM FOUND  •  ${room.name}  •  ${room.code}"
+            }
+        }
+
+        override fun onWifiPeerFound(peer: LocalWifiPeer) {
+            localWifiPeers[peer.address] = peer
+            localPeerSummary?.text = localWifiPeers.values.joinToString("\n") { "• ${it.name}  [${it.address}]" }
+            if (::coOpStatusLabel.isInitialized) {
+                coOpStatusLabel.text = "WI-FI DIRECT PEER FOUND  •  ${peer.name}"
+            }
+        }
+
+        override fun onLocalSessionChanged(connected: Boolean, host: Boolean, room: LocalRoom?) {
+            localSessionActive = connected
+            localSessionHost = host
+            localRoom = room
+            if (connected) {
+                activeCoOpRoom = null
+                if (::gameView.isInitialized) {
+                    gameView.queueEvent { NativeGameBridge.setAuthoritativeOnline(true) }
+                }
+                hudHandler.removeCallbacks(coOpUpdater)
+                hudHandler.postDelayed(coOpUpdater, 120L)
+                if (::coOpStatusLabel.isInitialized) {
+                    val role = if (host) "HOST" else "CLIENT"
+                    coOpStatusLabel.text = "LOCAL CO-OP  •  $role  •  ${room?.code ?: "CONNECTED"}  •  LAN/WI-FI DIRECT"
+                }
+            } else {
+                hudHandler.removeCallbacks(coOpUpdater)
+                if (::coOpStatusLabel.isInitialized) {
+                    coOpStatusLabel.text = "CO-OP SYNC PENDING  •  LOCAL SESSION CLOSED"
+                }
+            }
+        }
+
+        override fun onPeerStatesChanged(states: List<LocalPeerState>) {
+            if (!::gameView.isInitialized) return
+            gameView.queueEvent {
+                NativeGameBridge.clearCoOpPeers()
+                states.take(3).forEachIndexed { index, peer ->
+                    NativeGameBridge.setCoOpPeer(index, true, peer.x, peer.y, peer.atTower)
+                }
+            }
+            if (::coOpStatusLabel.isInitialized && localSessionActive) {
+                coOpStatusLabel.text = "LOCAL CO-OP  •  ${if (localSessionHost) "HOST" else "CLIENT"}  •  ${states.size + 1}/4 PLAYERS"
+            }
+        }
+
+        override fun onRemoteEvent(action: String, payload: JSONObject) {
+            if (!::gameView.isInitialized) return
+            when (action) {
+                "attack" -> {
+                    audio.playEffect("attack")
+                    gameView.queueEvent { NativeGameBridge.attack() }
+                }
+                "heavy_attack" -> {
+                    audio.playEffect("attack")
+                    gameView.queueEvent { NativeGameBridge.heavyAttack() }
+                }
+                "gather" -> gameView.queueEvent { NativeGameBridge.gather() }
+                "craft" -> gameView.queueEvent { NativeGameBridge.craft() }
+                "build_camp" -> gameView.queueEvent { NativeGameBridge.buildCamp() }
+                "capture" -> gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
+                "companion_command" -> gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
+            }
+        }
+
+        override fun onLocalError(message: String) {
+            if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "LOCAL CO-OP  •  $message"
+        }
+    }
     private val hudHandler = Handler(Looper.getMainLooper())
     private val hudUpdater = object : Runnable {
         override fun run() {
@@ -222,6 +312,18 @@ class MainActivity : Activity(), SensorEventListener {
     }
     private val coOpUpdater = object : Runnable {
         override fun run() {
+            if (localSessionActive && ::gameView.isInitialized) {
+                gameView.queueEvent {
+                    val local = NativeGameBridge.getCoOpLocalState().split('|')
+                    val x = local.getOrNull(0)?.toFloatOrNull() ?: -0.55f
+                    val y = local.getOrNull(1)?.toFloatOrNull() ?: -0.08f
+                    val atTower = local.getOrNull(2) == "1"
+                    val towerRevision = local.getOrNull(3)?.toIntOrNull() ?: 0
+                    runOnUiThread { localMultiplayer.sendState(x, y, atTower, towerRevision) }
+                }
+                hudHandler.postDelayed(this, 120L)
+                return
+            }
             val room = activeCoOpRoom
             if (room != null && !networkOnline) {
                 if (::coOpStatusLabel.isInitialized) {
@@ -326,6 +428,7 @@ class MainActivity : Activity(), SensorEventListener {
         // Initialize the session boundary before starting connectivity callbacks;
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
+        localMultiplayer = LocalMultiplayerManager(this, localMultiplayerCallbacks)
         networkMonitor.start(::applyConnectivitySnapshot)
         onboardingOverlay.visibility = View.VISIBLE
         // The private high-end archive is a hard gate before Google sign-in and
@@ -521,7 +624,10 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun requestGoogleAccountLink() {
-        if (!requireOnline("ACCOUNT LINK")) return
+        if (!networkOnline) {
+            if (::onboardingStatus.isInitialized) onboardingStatus.text = "ACCOUNT LINK  •  CONNECTION RESTORING"
+            return
+        }
         googleLoginInFlight = true
         authenticationTransitionStarted = false
         val immediate = accountSession.requestGoogleSignIn()
@@ -531,7 +637,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun requireOnline(action: String): Boolean {
-        if (networkOnline) return true
+        if (networkOnline || localSessionActive) return true
         if (::coOpStatusLabel.isInitialized) {
             coOpStatusLabel.text = "$action  •  CONNECTION RESTORING"
         }
@@ -634,6 +740,11 @@ class MainActivity : Activity(), SensorEventListener {
         stopWorldLoadingLoreRotation()
         stopWorldLoadingProgressTicker()
         if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
+        if (localSessionActive) {
+            localMultiplayer.leaveSession()
+            localSessionActive = false
+            localRoom = null
+        }
         activeCoOpRoom = null
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
         val world = activeCloudWorld
@@ -680,6 +791,8 @@ class MainActivity : Activity(), SensorEventListener {
         stopWorldLoadingLoreRotation()
         stopWorldLoadingProgressTicker()
         if (networkOnline) activeCoOpRoom?.let { room -> savePersistentCoOpState(); accountSession.leaveCoOpRoom(room.code) }
+        if (localSessionActive) localMultiplayer.leaveSession()
+        if (::localMultiplayer.isInitialized) localMultiplayer.stop()
         accountSession.shutdown()
         if (::networkMonitor.isInitialized) networkMonitor.stop()
         if (::assetPacks.isInitialized) assetPacks.close()
@@ -1547,6 +1660,11 @@ class MainActivity : Activity(), SensorEventListener {
     private fun submitAuthoritativeCapture() {
         if (!requireOnline("COMPANION CAPTURE")) return
         val room = activeCoOpRoom
+        if (localSessionActive) {
+            gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
+            localMultiplayer.sendEvent("capture")
+            return
+        }
         if (room == null) {
             gameView.queueEvent { NativeGameBridge.captureNearestCreature() }
             return
@@ -1581,6 +1699,11 @@ class MainActivity : Activity(), SensorEventListener {
         if (!requireOnline("COMPANION COMMAND")) return
         val room = activeCoOpRoom
         val companion = authoritativeCompanion
+        if (localSessionActive) {
+            gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
+            localMultiplayer.sendEvent("companion_command")
+            return
+        }
         if (room == null || companion == null) {
             if (room == null) gameView.queueEvent { NativeGameBridge.toggleCompanionCommand() }
             else coOpStatusLabel.text = "CO-OP ${room.code}  •  NO ACTIVE COMPANION"
@@ -1601,6 +1724,11 @@ class MainActivity : Activity(), SensorEventListener {
     private fun submitAuthoritativeCamp() {
         if (!requireOnline("FIELD CAMP")) return
         val room = activeCoOpRoom
+        if (localSessionActive) {
+            gameView.queueEvent { NativeGameBridge.buildCamp() }
+            localMultiplayer.sendEvent("build_camp")
+            return
+        }
         if (room == null) {
             gameView.queueEvent { NativeGameBridge.buildCamp() }
             return
@@ -1629,6 +1757,12 @@ class MainActivity : Activity(), SensorEventListener {
     private fun submitAuthoritativeCombat(action: String) {
         if (!requireOnline("COMBAT")) return
         val room = activeCoOpRoom
+        if (localSessionActive) {
+            audio.playEffect("attack")
+            gameView.queueEvent { if (action == "heavy_attack") NativeGameBridge.heavyAttack() else NativeGameBridge.attack() }
+            localMultiplayer.sendEvent(action)
+            return
+        }
         if (room == null) {
             gameView.queueEvent { if (action == "heavy_attack") NativeGameBridge.heavyAttack() else NativeGameBridge.attack() }
             return
@@ -1648,6 +1782,12 @@ class MainActivity : Activity(), SensorEventListener {
     private fun submitAuthoritativeInventory(operation: String) {
         if (!requireOnline(operation.uppercase())) return
         val room = activeCoOpRoom
+        if (localSessionActive) {
+            audio.playEffect(if (operation == "craft") "craft" else "gather")
+            gameView.queueEvent { if (operation == "craft") NativeGameBridge.craft() else NativeGameBridge.gather() }
+            localMultiplayer.sendEvent(operation)
+            return
+        }
         if (room == null) {
             gameView.queueEvent { if (operation == "craft") NativeGameBridge.craft() else NativeGameBridge.gather() }
             return
@@ -1796,6 +1936,98 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    private fun ensureLocalPermissions(action: () -> Unit): Boolean {
+        val required = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES)
+        } else {
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        val missing = required.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (missing.isEmpty()) {
+            action()
+            return true
+        }
+        pendingLocalPermissionAction = action
+        requestPermissions(missing.toTypedArray(), LOCAL_PERMISSION_REQUEST)
+        return false
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != LOCAL_PERMISSION_REQUEST) return
+        val action = pendingLocalPermissionAction
+        pendingLocalPermissionAction = null
+        if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            action?.invoke()
+        } else if (::coOpStatusLabel.isInitialized) {
+            coOpStatusLabel.text = "LOCAL CO-OP  •  NEARBY DEVICES PERMISSION DENIED"
+        }
+    }
+
+    private fun showLocalDiscoveryDialog(result: TextView) {
+        ensureLocalPermissions {
+            localRooms.clear()
+            localWifiPeers.clear()
+            localDiscoverySummary?.text = "No LAN rooms discovered yet."
+            localPeerSummary?.text = "No Wi-Fi Direct peers discovered yet."
+            localMultiplayer.setDisplayName(currentPlayerName)
+            localMultiplayer.startLanDiscovery()
+            result.text = "Searching for LAN rooms…"
+        }
+    }
+
+    private fun hostLocalLan(result: TextView) {
+        ensureLocalPermissions {
+            localMultiplayer.setDisplayName(currentPlayerName)
+            val room = localMultiplayer.startLanHost(currentPlayerName)
+            localRoom = room
+            result.text = "Hosting ${room.code} on ${room.address}:${room.port}"
+        }
+    }
+
+    private fun joinLocalLan(result: TextView) {
+        ensureLocalPermissions {
+            val room = localRooms.values.firstOrNull()
+            if (room == null) {
+                result.text = "No LAN room found. Search first, then try again."
+                return@ensureLocalPermissions
+            }
+            localMultiplayer.setDisplayName(currentPlayerName)
+            localMultiplayer.connectToRoom(room)
+            result.text = "Joining ${room.name}…"
+        }
+    }
+
+    private fun hostWifiDirect(result: TextView) {
+        ensureLocalPermissions {
+            localMultiplayer.setDisplayName(currentPlayerName)
+            localMultiplayer.createWifiDirectGroup()
+            result.text = "Creating Wi-Fi Direct group…"
+        }
+    }
+
+    private fun discoverWifiDirect(result: TextView) {
+        ensureLocalPermissions {
+            localWifiPeers.clear()
+            localPeerSummary?.text = "Searching for Wi-Fi Direct peers…"
+            localMultiplayer.startWifiDirectDiscovery()
+            result.text = "Searching for nearby Wi-Fi Direct devices…"
+        }
+    }
+
+    private fun joinWifiDirect(result: TextView) {
+        ensureLocalPermissions {
+            val peer = localWifiPeers.values.firstOrNull()
+            if (peer == null) {
+                result.text = "No Wi-Fi Direct peer found. Discover first, then try again."
+                return@ensureLocalPermissions
+            }
+            localMultiplayer.setDisplayName(currentPlayerName)
+            localMultiplayer.connectToWifiPeer(peer.address)
+            result.text = "Connecting to ${peer.name}…"
+        }
+    }
+
     private fun showCoOpDialog() {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1809,7 +2041,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         panel.addView(explanation)
         val status = TextView(this).apply {
-            text = activeCoOpRoom?.let { "Active room: ${it.code}" } ?: "No active tower room"
+            text = activeCoOpRoom?.let { "Internet room: ${it.code}" } ?: localRoom?.let { "Local room: ${it.code}  •  ${it.transport}" } ?: "No active tower room"
             textSize = 12f
             setTextColor(Color.rgb(244, 218, 155))
             gravity = Gravity.CENTER
@@ -1874,6 +2106,41 @@ class MainActivity : Activity(), SensorEventListener {
         }
         panel.addView(create, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         panel.addView(join, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+
+        val localHeading = TextView(this).apply {
+            text = "LOCAL MULTIPLAYER  •  SAME WI-FI OR WI-FI DIRECT"
+            textSize = 11f
+            setTextColor(Color.rgb(164, 231, 190))
+            setPadding(0, dp(14), 0, dp(4))
+        }
+        panel.addView(localHeading)
+        localDiscoverySummary = TextView(this).apply {
+            text = if (localRooms.isEmpty()) "No LAN rooms discovered yet." else localRooms.values.joinToString("\n") { "• ${it.name}  [${it.code}]  ${it.address}:${it.port}" }
+            textSize = 10f
+            setTextColor(Color.rgb(205, 220, 218))
+            setPadding(0, dp(3), 0, dp(3))
+        }
+        panel.addView(localDiscoverySummary)
+        localPeerSummary = TextView(this).apply {
+            text = if (localWifiPeers.isEmpty()) "No Wi-Fi Direct peers discovered yet." else localWifiPeers.values.joinToString("\n") { "• ${it.name}  [${it.address}]" }
+            textSize = 10f
+            setTextColor(Color.rgb(205, 220, 218))
+            setPadding(0, dp(3), 0, dp(3))
+        }
+        panel.addView(localPeerSummary)
+        val hostLan = actionButton("HOST LAN ROOM") { hostLocalLan(result) }
+        val discoverLan = actionButton("FIND LAN ROOMS") { showLocalDiscoveryDialog(result) }
+        val joinLan = actionButton("JOIN FIRST LAN ROOM") { joinLocalLan(result) }
+        panel.addView(hostLan, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(4) })
+        panel.addView(discoverLan, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+        panel.addView(joinLan, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+        val hostDirect = actionButton("CREATE WI-FI DIRECT GROUP") { hostWifiDirect(result) }
+        val discoverDirect = actionButton("FIND WI-FI DIRECT DEVICES") { discoverWifiDirect(result) }
+        val joinDirect = actionButton("JOIN FIRST WI-FI DIRECT DEVICE") { joinWifiDirect(result) }
+        panel.addView(hostDirect, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+        panel.addView(discoverDirect, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+        panel.addView(joinDirect, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+
         if (activeCoOpRoom != null) {
             val share = actionButton("SHARE ROOM INVITE") {
                 val room = activeCoOpRoom ?: return@actionButton
@@ -1883,19 +2150,30 @@ class MainActivity : Activity(), SensorEventListener {
                 }, "Share AETHELGRAD invite"))
             }
             panel.addView(share, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
+        }
+        if (activeCoOpRoom != null || localSessionActive) {
             val leave = actionButton("LEAVE CURRENT ROOM") {
                 activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+                if (localSessionActive) localMultiplayer.leaveSession()
                 activeCoOpRoom = null
+                localSessionActive = false
+                localRoom = null
                 hudHandler.removeCallbacks(coOpUpdater)
-                gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
+                gameView.queueEvent {
+                    NativeGameBridge.clearCoOpPeers()
+                    NativeGameBridge.setAuthoritativeOnline(false)
+                }
                 if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP SYNC PENDING  •  WEATHER LOCAL"
-                result.text = "Left the tower room."
+                result.text = "Left the room."
             }
             panel.addView(leave, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
         }
+        val scroll = ScrollView(this).apply {
+            addView(panel)
+        }
         AlertDialog.Builder(this)
             .setTitle("CO-OP TOWER RENDEZVOUS")
-            .setView(panel)
+            .setView(scroll)
             .setNegativeButton("CLOSE", null)
             .show()
     }
@@ -2309,7 +2587,10 @@ class MainActivity : Activity(), SensorEventListener {
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("LOG OUT") { _, _ ->
                 if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
+                if (localSessionActive) localMultiplayer.leaveSession()
                 activeCoOpRoom = null
+                localSessionActive = false
+                localRoom = null
                 activeCloudWorld = null
                 currentPlayerProfile = null
                 authenticationTransitionStarted = false

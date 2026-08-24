@@ -145,6 +145,8 @@ jobs:
           python3 tools/test_online_only_contract.py || { echo 'FAIL online-only contract'; exit 1; }
           echo 'CHECK persistent multiplayer contract'
           python3 tools/test_persistent_multiplayer_contract.py || { echo 'FAIL persistent multiplayer contract'; exit 1; }
+          echo 'CHECK local multiplayer contract'
+          python3 tools/test_local_multiplayer_contract.py || { echo 'FAIL local multiplayer contract'; exit 1; }
           echo 'CHECK progressive content contract'
           python3 tools/test_progressive_content_contract.py || { echo 'FAIL progressive content contract'; exit 1; }
 
