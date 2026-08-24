@@ -38,6 +38,8 @@ GLint g3DFogAmount = -1;
 GLint g3DTime = -1;
 GLint g3DQuality = -1;
 GLint g3DEmissive = -1;
+GLint g3DWeather = -1;
+GLint g3DAmbientOcclusion = -1;
 GLuint gBillboardProgram = 0;
 GLint gBillboardPosition = -1;
 GLint gBillboardUv = -1;
@@ -441,19 +443,28 @@ uniform float uFogAmount;
 uniform float uTime;
 uniform float uQuality;
 uniform float uEmissive;
+uniform float uWeather;
+uniform float uAmbientOcclusion;
 out vec4 fragColor;
 void main() {
     const vec3 sunDirection = normalize(vec3(-0.42, 0.78, 0.36));
     vec3 pseudoNormal = normalize(vec3(vLocalPosition.x * 0.85 + 0.14,
                                        vLocalPosition.y * 0.90 + 0.72,
                                        vLocalPosition.z * 0.72 - 0.18));
-    float faceLight = 0.72 + max(dot(pseudoNormal, sunDirection), 0.0) * 0.38;
+    float sunFacing = max(dot(pseudoNormal, sunDirection), 0.0);
+    float faceLight = 0.72 + sunFacing * 0.38;
     float topLight = mix(0.76, 1.18, vHeightShade);
-    float microLight = 1.0 + (uQuality * 0.014) * sin(gl_FragCoord.x * 0.17 + gl_FragCoord.y * 0.11 + uTime * 0.35);
+    float microLight = 1.0 + (uQuality * 0.008) * sin(gl_FragCoord.x * 0.11 + gl_FragCoord.y * 0.07 + uTime * 0.35);
     float rim = pow(clamp(1.0 - abs(vHeightShade * 2.0 - 1.0), 0.0, 1.0), 3.0) * (0.045 + uQuality * 0.012);
-    vec3 litColor = vColor.rgb * (uLightLevel * topLight * faceLight * microLight + 0.11);
+    float cavity = 1.0 - clamp(length(vLocalPosition.xz) * 0.26, 0.0, 0.34) * uAmbientOcclusion;
+    float wetness = clamp(uWeather, 0.0, 1.0);
+    float specular = pow(sunFacing, mix(18.0, 11.0, wetness)) * (0.035 + wetness * 0.16);
+    vec3 litColor = vColor.rgb * (uLightLevel * topLight * faceLight * microLight * cavity + 0.11);
     litColor += vec3(rim * 0.20, rim * 0.25, rim * 0.30);
+    litColor += uFogColor * (0.045 + wetness * 0.075);
+    litColor += vec3(specular * 0.72, specular * 0.86, specular);
     litColor += vColor.rgb * uEmissive * (0.70 + 0.20 * sin(uTime * 3.4 + vLocalPosition.y * 4.0));
+    litColor = mix(litColor, litColor * vec3(0.78, 0.88, 0.96), wetness * 0.24);
     // Depth fog adds the soft atmospheric separation seen in stylized open worlds.
     float depthFog = clamp(pow(gl_FragCoord.z, 2.15) * uFogAmount, 0.0, 0.88);
     fragColor = vec4(mix(litColor, uFogColor, depthFog), vColor.a);
@@ -590,6 +601,8 @@ void create3DProgram() {
     g3DTime = glGetUniformLocation(g3DProgram, "uTime");
     g3DQuality = glGetUniformLocation(g3DProgram, "uQuality");
     g3DEmissive = glGetUniformLocation(g3DProgram, "uEmissive");
+    g3DWeather = glGetUniformLocation(g3DProgram, "uWeather");
+    g3DAmbientOcclusion = glGetUniformLocation(g3DProgram, "uAmbientOcclusion");
 }
 
 void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float width, float height, float depth,
@@ -1325,8 +1338,9 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
     const float flowPhase = gTime * (3.6f + flowSpeed * 12.0f);
     draw3DBox(viewProjection, x, surfaceY, z, width, 0.024f, depth,
               0.035f, 0.24f, 0.36f, 0.82f);
+    const float reflectedDaylight = 0.45f + gSceneLightLevel * 0.55f;
     draw3DBox(viewProjection, x, surfaceY + 0.016f, z, width * 0.92f, 0.010f, depth * 0.98f,
-              0.10f, 0.42f, 0.55f, 0.38f);
+              0.10f * reflectedDaylight, 0.42f * reflectedDaylight, 0.55f * reflectedDaylight, 0.38f);
     const auto& qualityProfile = forest::rpg::qualityProfileFor(gGraphicsQuality, gContentTierReady);
     const int flowStreaks = qualityProfile.premiumWaterAccents ? 12 : 6;
     for (int i = 0; i < flowStreaks; ++i) {
@@ -1334,8 +1348,9 @@ void draw3DWaterSurface(const Mat4& viewProjection) {
         const float streamOffset = std::fmod(flowPhase * 0.24f + static_cast<float>(i) * depth * 0.19f, depth) - depth * 0.5f;
         const float waveX = x + lane + std::sin(flowPhase + static_cast<float>(i) * 1.73f) * width * 0.07f;
         const float waveZ = z + streamOffset;
+        const float shimmer = 0.54f + 0.34f * std::sin(flowPhase + static_cast<float>(i) * 0.91f);
         draw3DBox(viewProjection, waveX, surfaceY + 0.032f, waveZ, width * 0.19f, 0.009f, 0.075f,
-                  0.36f, 0.86f, 0.94f, 0.68f);
+                  0.30f * shimmer, 0.80f * shimmer, 0.94f * shimmer, 0.68f);
     }
     for (int edge = -1; edge <= 1; edge += 2) {
         const float bankX = x + static_cast<float>(edge) * width * 0.46f;
@@ -1682,7 +1697,8 @@ void draw3DWorld() {
         case TimePhase::Evening: daylight = 0.52f; break;
         case TimePhase::Night: daylight = 0.22f; break;
     }
-    if (currentWeather() == WeatherState::Thunderstorm) daylight *= 0.72f;
+    const WeatherState weather = currentWeather();
+    if (weather == WeatherState::Thunderstorm) daylight *= 0.72f;
     gSceneLightLevel = daylight;
     switch (currentBiome()) {
         case Biome::Forest:
@@ -1699,8 +1715,8 @@ void draw3DWorld() {
         gSceneFogR *= 0.42f; gSceneFogG *= 0.46f; gSceneFogB *= 0.72f;
     }
     gSceneFogAmount = 0.10f + 0.045f * static_cast<float>(effectiveGraphicsQuality());
-    if (currentWeather() == WeatherState::Rain) gSceneFogAmount += 0.08f;
-    if (currentWeather() == WeatherState::Thunderstorm) gSceneFogAmount += 0.14f;
+    if (weather == WeatherState::Rain) gSceneFogAmount += 0.08f;
+    if (weather == WeatherState::Thunderstorm) gSceneFogAmount += 0.14f;
     const float skyR = 0.028f + 0.085f * daylight;
     const float skyG = 0.060f + 0.21f * daylight;
     const float skyB = 0.12f + 0.38f * daylight;
@@ -1712,7 +1728,9 @@ void draw3DWorld() {
     glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
     glUniform1f(g3DFogAmount, gSceneFogAmount);
     glUniform1f(g3DTime, gTime);
-    glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
+    glUniform1f(g3DQuality, static_cast<float>(effectiveGraphicsQuality()));
+    glUniform1f(g3DWeather, weather == WeatherState::Thunderstorm ? 1.0f : weather == WeatherState::Rain ? 0.58f : 0.0f);
+    glUniform1f(g3DAmbientOcclusion, 0.07f + static_cast<float>(effectiveGraphicsQuality()) * 0.035f);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     draw3DSkyOrb(viewProjection, px, pz, yaw, daylight);

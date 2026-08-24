@@ -89,6 +89,9 @@ CHECKS = (
     ("app/src/main/cpp/forest_game.cpp", "applyAuthoritativeCamp", "native camp reconciliation JNI"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "fetchCompanionCampState", "typed Android authority wrapper"),
     ("docs/COMPANION_CAMP_AUTHORITY_DESIGN.md", "Deployment order", "authority deployment documentation"),
+    ("app/src/main/cpp/forest_game.cpp", "uWeather", "weather-aware Android OpenGL material lighting"),
+    ("app/src/main/cpp/forest_game.cpp", "uAmbientOcclusion", "quality-bounded Android OpenGL ambient occlusion"),
+    ("Unreal/ANDROID_RENDERER_GRAPHICS_BOUNDARY.md", "OpenGL ES 3", "truthful Android renderer graphics boundary"),
 )
 
 
