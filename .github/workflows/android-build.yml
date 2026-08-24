@@ -83,11 +83,11 @@ jobs:
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
-          grep -q 'namespace = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
-          grep -q 'applicationId = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
-          ! grep -R -q 'com.darkvirgoyt.aethelgrand' app/src/main app/build.gradle.kts
-          grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
-          ! grep -q 'Java_com_darkvirgoyt_aethelgrand_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
+          grep -q 'namespace = "com.darkvirgoyt.aethelgrand"' app/build.gradle.kts
+          grep -q 'applicationId = "com.darkvirgoyt.aethelgrand"' app/build.gradle.kts
+          ! grep -R -q 'com.darvirgoyt.aethelgrad' app/src/main app/build.gradle.kts app/src/main/cpp
+          grep -q 'Java_com_darkvirgoyt_aethelgrand_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
+          ! grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           grep -q 'void draw3DEmberling' app/src/main/cpp/forest_game.cpp
           grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
@@ -287,7 +287,7 @@ jobs:
           AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
-          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
+          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
           test -s "$APK_PATH"
           test -s "app/build/outputs/bundle/release/app-release.aab"
           APK_BYTES=$(stat -c%s "$APK_PATH")
