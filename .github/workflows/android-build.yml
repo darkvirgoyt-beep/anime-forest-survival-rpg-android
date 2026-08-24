@@ -121,6 +121,7 @@ jobs:
           test -f assetpack_terrain_lod/build.gradle.kts
           test -f assetpack_animation_sets/build.gradle.kts
           python3 tools/validate_asset_budget.py
+          python3 tools/validate_runtime_content_package.py
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
           python3 tools/test_graphics_tier_contract.py
           python3 tools/test_startup_warmup.py --repo .

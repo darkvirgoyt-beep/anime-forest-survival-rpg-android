@@ -27,7 +27,7 @@ def main() -> None:
     require(set(tiers) == {"high"}, "manifest must define only the high-end tier")
     declared_packs = {pack["name"] for pack in manifest["packs"]}
     require(declared_packs == set(tiers["high"]["packs"]), "high-end tier must cover every manifest pack exactly once")
-    require(tiers["high"]["targetMiB"] == 6750, "high-end package must retain the 6750 MiB envelope")
+    require(tiers["high"]["targetMiB"] == 1024, "optional package must target one gibibyte of authored content")
     for pack_name in sorted(declared_packs):
         pack_root = root / pack_name
         require((pack_root / "build.gradle.kts").is_file(), f"asset pack module is missing build.gradle.kts: {pack_name}")
@@ -41,7 +41,7 @@ def main() -> None:
     require("graphicsTierIndex = 4" in content_plan, "high-end content must map to the richest native tier")
     require("foliageDensity = 100" in content_plan and "effectScalePercent = 140" in content_plan, "high-end envelope must retain richer effects")
     require("setContentTierReady" in activity, "Android must notify native rendering when content is ready")
-    require('"selectionRequiredAfterBootstrap": false' in manifest_text, "high-end content must start automatically after bootstrap")
+    require('"requiredBeforeStart": false' in manifest_text, "optional content must not block the bundled world")
     require('"automaticExpansion": false' in manifest_text, "content must not be silently substituted")
     require('"mode": "private-https-archive"' in manifest_text, "manifest must declare private HTTPS distribution")
     require("PrivateContentDownloader" in catalog and "standaloneExpansionFile" in catalog, "catalog must support private OBB content")
@@ -61,7 +61,7 @@ def main() -> None:
     print("GRAPHICS_TIER_CONTRACT_PASS=1")
     print("RESOURCE_TIERS=high")
     print(f"HIGH_PACKS={len(tiers['high']['packs'])}")
-    print(f"HIGH_TARGET_MIB={tiers['high']['targetMiB']}")
+    print(f"OPTIONAL_TARGET_MIB={tiers['high']['targetMiB']}")
 
 
 if __name__ == "__main__":
