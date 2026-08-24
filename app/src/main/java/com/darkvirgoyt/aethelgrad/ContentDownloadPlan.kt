@@ -1,4 +1,4 @@
-package com.darkvirgoyt.aethelgrad
+package com.darvirgoyt.aethelgrad
 
 /**
  * Required high-end runtime-content envelope for the cooked 3D Aethelgrad

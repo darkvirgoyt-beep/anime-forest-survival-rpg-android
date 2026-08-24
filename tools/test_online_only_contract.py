@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Validate that the Android release has one production online launch path."""
 from __future__ import annotations
 
@@ -24,9 +25,9 @@ REQUIRED = (
     ("server/src/server.mjs", "/v1/content/high/manifest", "private high-end manifest route"),
     ("server/src/server.mjs", "/v1/content/high/archive", "private high-end archive route"),
     ("server/.env.example", "PRIVATE_CONTENT_ARCHIVE_PATH", "private archive server configuration"),
-    ("app/build.gradle.kts", 'namespace = "com.darkvirgoyt.aethelgrad"', "exact Android namespace"),
-    ("app/build.gradle.kts", 'applicationId = "com.darkvirgoyt.aethelgrad"', "exact Android application ID"),
-    ("app/src/main/res/values/strings.xml", "https://aethelgard-api-v2.onrender.com/v1", "managed game-auth endpoint"),
+    ("app/build.gradle.kts", 'namespace = "com.darvirgoyt.aethelgrad"', "exact Android namespace"),
+    ("app/build.gradle.kts", 'applicationId = "com.darvirgoyt.aethelgrad"', "exact Android application ID"),
+    ("app/src/main/res/values/strings.xml", "https://aethelservs-g7pzbnwp.manus.space/api/game-auth", "managed game-auth endpoint"),
     ("render.yaml", "dockerContext: ./server", "server Docker build context"),
     ("render.yaml", "DATABASE_SSL_VERIFY", "Render PostgreSQL certificate setting"),
     ("server/src/security.mjs", "databaseSslVerify", "shared PostgreSQL TLS configuration"),
