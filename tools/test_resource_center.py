@@ -127,6 +127,8 @@ def assert_source_contract(repo: Path) -> None:
         raise AssertionError("manifest must retain the unpublished high-end tier with zero measured bytes")
     if not launch_slice.get("published") or tiers["stage-1"].get("measuredBytes") != launch_slice.get("measuredBytes"):
         raise AssertionError("published Stage 1 tier must report only the measured authored launch-slice bytes")
+    if tiers["stage-1"].get("plannedBudgetMiB") != 1024:
+        raise AssertionError("Stage 1 tier must use the 1 GiB plan")
     if set(tiers["high"].get("packs", [])) != set(PACKS):
         raise AssertionError("high-end pack set is inconsistent")
     if content_delivery.get("mode") != "not-published":
