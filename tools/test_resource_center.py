@@ -50,7 +50,7 @@ class PackState:
 class ResourceCenterModel:
     """Small mirror of the aggregate state exposed by AssetPackCatalog."""
 
-    def __init__(self, packs: tuple[str, ...] = PACKS, envelope_total: int = 1024 * 1024 * 1024) -> None:
+    def __init__(self, packs: tuple[str, ...] = PACKS, envelope_total: int = 6750 * 1024 * 1024) -> None:
         self.states = {name: PackState() for name in packs}
         self.envelope_total = envelope_total
         self.retry_count = 0

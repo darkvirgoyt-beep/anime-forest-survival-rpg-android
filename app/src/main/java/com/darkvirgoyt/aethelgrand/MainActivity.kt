@@ -320,9 +320,6 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
         loadHeroineCharacterTexture()
-        // The bundled renderer and launch world are always playable. Extra
-        // visual content may refine presentation later, but never gates entry.
-        markProductionContentReady()
         updateGyroButton()
         registerGyro()
         networkMonitor = NetworkConnectivityMonitor(this)
@@ -330,9 +327,10 @@ class MainActivity : Activity(), SensorEventListener {
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // Online services authenticate in the background; bundled gameplay does
-        // not wait for a large production archive or a server-side content gate.
         onboardingOverlay.visibility = View.VISIBLE
+        // The private high-end archive is a hard gate before Google sign-in and
+        // online world entry. No bundled or optional gameplay path exists.
+        showAssetPatchOverlay { beginOnlineStartup() }
         if (networkOnline) beginOnlineStartup()
     }
 
@@ -357,11 +355,16 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginOnlineStartup() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "CONNECTION RESTORING  •  BUNDLED WORLD READY"
+                onboardingStatus.text = "NETWORK REQUIRED  •  HIGH-END CONTENT AND ONLINE PLAY ARE LOCKED"
             }
             return
         }
-        markProductionContentReady()
+        if (!resourcePreparationComplete) {
+            if (::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "HIGH-END GRAPHICS DOWNLOAD REQUIRED BEFORE SIGN-IN"
+            }
+            return
+        }
         continuePendingWorldEntry()
         when (accountSession.snapshot.state) {
             SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> {
@@ -376,12 +379,6 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    private fun beginAutomaticContentPreparation() {
-        if (resourcePreparationComplete) return
-        markProductionContentReady()
-        continuePendingWorldEntry()
-    }
-
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
         networkOnline = snapshot.isOnline
         if (!networkOnline) {
@@ -393,7 +390,7 @@ class MainActivity : Activity(), SensorEventListener {
                 coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "CONNECTION RESTORING  •  BUNDLED WORLD READY"
+                onboardingStatus.text = "NETWORK REQUIRED  •  HIGH-END CONTENT AND ONLINE PLAY ARE LOCKED"
             }
             return
         }
@@ -2369,7 +2366,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "BUNDLED WORLD READY  •  EXTRA VISUALS DOWNLOAD IN BACKGROUND"
+            text = "HIGH-END GRAPHICS REQUIRED BEFORE SIGN-IN"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -2389,7 +2386,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "The bundled world starts immediately. Optional high-detail visuals can download later without interrupting play."
+            text = "The complete private high-end archive must be verified before Google sign-in and online world entry."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))

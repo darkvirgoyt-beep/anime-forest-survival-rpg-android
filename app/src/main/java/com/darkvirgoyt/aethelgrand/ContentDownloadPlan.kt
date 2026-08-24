@@ -71,7 +71,7 @@ object ContentDownloadPlan {
         Pack("assetpack_cinematics", 450, "story scenes, sequences and camera animation data", sector = WorldSector.DUNGEON),
         Pack("assetpack_voice", 250, "dialogue, localization voice banks, subtitles metadata", sector = WorldSector.DUNGEON),
         Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources", sector = WorldSector.DUNGEON),
-        Pack("assetpack_pipeline_cache", 10, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
+        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
     )
 
     /** Every high-end pack is required before the online world can open. */
