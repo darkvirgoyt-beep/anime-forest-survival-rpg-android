@@ -39,7 +39,7 @@ The Android strings must point to the deployed service with `/v1` appended:
 <string name="auth_refresh_url">https://YOUR-SERVICE.onrender.com/v1/auth/refresh</string>
 ```
 
-The current repository default points to `https://aethelgard-api.onrender.com/v1`, which matches the included Blueprint name. If the host assigns a different service hostname, update the four Android URLs and publish a new Android version.
+The current repository default points to `https://aethelgard-api-v2.onrender.com/v1`, which matches the included Blueprint name. If the host assigns a different service hostname, update the four Android URLs and publish a new Android version.
 
 ## Google sign-in certificate
 
