@@ -1,8 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SceneComponent.h"
-#include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
 #include "ForestSliceCreatureComponent.h"
 #include "ForestSliceWildCreature.generated.h"
 
@@ -40,7 +39,7 @@ struct FForestSliceWildCreatureState
 };
 
 UCLASS(Blueprintable)
-class FORESTSLICE_API AForestSliceWildCreature : public AActor
+class FORESTSLICE_API AForestSliceWildCreature : public ACharacter
 {
     GENERATED_BODY()
 
@@ -57,9 +56,6 @@ public:
     const FForestSliceWildCreatureState& GetCreatureState() const { return CreatureState; }
 
 protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aethelgard|Creature")
-    TObjectPtr<USceneComponent> CreatureRoot;
-
     UPROPERTY(ReplicatedUsing = OnRep_CreatureState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Aethelgard|Creature")
     FForestSliceWildCreatureState CreatureState;
 

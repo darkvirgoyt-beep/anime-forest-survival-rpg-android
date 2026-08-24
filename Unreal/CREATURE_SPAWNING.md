@@ -25,3 +25,5 @@ The client must not create creatures, choose spawn locations, approve capture, g
 3. Place `AForestSliceBiomeSpawnDirector` in `L_VerdantVeil` and assign the Blueprint class to each allowed `FForestSliceBiomeSpawnProfile`.
 4. Have the authoritative game mode call `SetAuthoritativePlayerAnchors` and `RefreshSpawnBudget` after player/session state changes.
 5. Test four players, empty areas, combat despawns, travel, reconnects, and Android performance before increasing the active encounter budget.
+
+For a detailed first-slice Blueprint setup of the Rootback Grazer and Duskmaw Prowler, see [`BLUEPRINT_CREATURE_IMPLEMENTATION_GUIDE.md`](BLUEPRINT_CREATURE_IMPLEMENTATION_GUIDE.md).

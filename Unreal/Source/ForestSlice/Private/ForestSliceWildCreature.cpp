@@ -4,10 +4,9 @@
 
 AForestSliceWildCreature::AForestSliceWildCreature()
 {
-    CreatureRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CreatureRoot"));
-    SetRootComponent(CreatureRoot);
     bReplicates = true;
     SetReplicateMovement(true);
+    AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
     NetCullDistanceSquared = FMath::Square(18000.0f);
 }
 
