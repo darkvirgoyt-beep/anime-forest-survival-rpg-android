@@ -267,7 +267,14 @@ class AccountSessionManager {
     /** Keeps provider diagnostics in Logcat and never exposes registration data in the player UI. */
     private fun describeGoogleCredentialFailure(error: GetCredentialException): String {
         Log.w("AethelgardAuth", "Google credential request failed: ${error::class.java.simpleName}")
-        return "Internal error. Please try again later."
+        return when (error) {
+            is GetCredentialCancellationException -> "Google sign-in was cancelled. Tap the button and choose an account."
+            is NoCredentialException -> "No Google credential is available. Add a Google account to this phone, then retry."
+            is GetCredentialProviderConfigurationException -> "Google sign-in is not configured for this release APK. Check its Android OAuth package and signing certificate."
+            is GetCredentialUnsupportedException -> "Google sign-in is unavailable on this device. Update Google Play services, then retry."
+            is GetCredentialInterruptedException -> "Google sign-in was interrupted. Please try again."
+            else -> "Google sign-in could not start. Check the release APK identity and Google Play services, then retry."
+        }
     }
 
     private fun exchangeGoogleIdToken(idToken: String) {
