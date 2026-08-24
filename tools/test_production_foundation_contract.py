@@ -13,7 +13,7 @@ CHECKS = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestProductionContent", "content preparation request path"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED", "safe fail-closed graphics state"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "CONTENT READY", "downloaded content ready state"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "WARMING HIGH-END GRAPHICS", "high-end startup loading"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "STAGE 1 FOREST CONTENT NOT AVAILABLE", "truthful unpublished-content startup state"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt", "PrivateContentDownloader", "private high-end content downloader"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/ContentDownloadPlan.kt", "QualityEnvelope", "quality envelope model"),
     ("app/src/main/cpp/forest_game.cpp", "effectiveGraphicsQuality", "native quality gate"),

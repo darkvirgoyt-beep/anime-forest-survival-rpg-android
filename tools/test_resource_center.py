@@ -96,7 +96,7 @@ def assert_source_contract(repo: Path) -> None:
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
-        ("high-end preparation title", "PREPARE ${resourceTier.name} GRAPHICS", main),
+        ("stage-1 preparation title", "PREPARE STAGE 1 FOREST CONTENT", main),
         ("locked failure state", "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED", main),
         ("high-end content description", "resourceTier.description", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
@@ -122,8 +122,11 @@ def assert_source_contract(repo: Path) -> None:
     if content_delivery.get("published") is not False or content_delivery.get("measuredArchiveBytes") != 0:
         raise AssertionError("unchecked-in high-end content must be marked unpublished with zero measured bytes")
     tiers = {item.get("id"): item for item in manifest.get("resourceTiers", [])}
-    if set(tiers) != {"high"} or tiers["high"].get("measuredBytes") != 0:
-        raise AssertionError("manifest must declare only the unpublished high-end tier with zero measured bytes")
+    launch_slice = content_delivery.get("launchSlice", {})
+    if set(tiers) != {"stage-1", "high"} or tiers["high"].get("measuredBytes") != 0:
+        raise AssertionError("manifest must retain the unpublished high-end tier with zero measured bytes")
+    if not launch_slice.get("published") or tiers["stage-1"].get("measuredBytes") != launch_slice.get("measuredBytes"):
+        raise AssertionError("published Stage 1 tier must report only the measured authored launch-slice bytes")
     if set(tiers["high"].get("packs", [])) != set(PACKS):
         raise AssertionError("high-end pack set is inconsistent")
     if content_delivery.get("mode") != "not-published":
