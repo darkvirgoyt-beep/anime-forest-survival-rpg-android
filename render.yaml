@@ -7,7 +7,6 @@ services:
     dockerfilePath: ./server/Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
-    preDeployCommand: node scripts/migrate.mjs
     envVars:
       - key: NODE_ENV
         value: production

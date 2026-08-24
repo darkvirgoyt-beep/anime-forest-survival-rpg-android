@@ -7,4 +7,4 @@ COPY scripts ./scripts
 COPY sql ./sql
 ENV NODE_ENV=production
 EXPOSE 8080
-CMD ["node", "src/server.mjs"]
+CMD ["node", "scripts/start.mjs"]
