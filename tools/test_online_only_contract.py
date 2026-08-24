@@ -17,6 +17,7 @@ REQUIRED = (
     ("app/build.gradle.kts", 'applicationId = "com.darkvirgoyt.aethelgrand"', "exact Android application ID"),
     ("app/src/main/res/values/strings.xml", "https://aethelgard-api-v2.onrender.com/v1", "deployed v2 API endpoint"),
     ("render.yaml", "name: aethelgard-api-v2", "deployed v2 Render service"),
+    ("render.yaml", "dockerContext: ./server", "server Docker build context"),
     ("render.yaml", "healthCheckPath: /healthz", "Render health check"),
     ("server/Dockerfile", "CMD [\"node\", \"scripts/start.mjs\"]", "migration-aware container startup"),
     ("server/scripts/start.mjs", "await import(\"./migrate.mjs\")", "startup database migration"),
