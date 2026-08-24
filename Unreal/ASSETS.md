@@ -9,6 +9,7 @@ This production tree accepts **only original or appropriately licensed** assets.
 | Forest region | Procedural placement contract only | Original or licensed tree/rock/ground kit, biome manifest, collision/nav policy, LOD and texture streaming budgets |
 | Combat VFX and audio | Code/UI hook points only | Original/licensed source, platform compression settings, loudness target, replacement plan |
 | UMG/HUD art | Blueprint-ready C++ boundary only | Original icons, type license, safe-area test, localization and accessibility review |
+| Terrain and elevation | No heightmap approved yet; user-selected Google Earth polygon is planning-only | Independent DEM source, license/public-domain notice, boundary ID, crop/resample recipe, elevation range, landscape scale, texture/LOD budget |
 
 ## Import gate
 
