@@ -2756,7 +2756,11 @@ class MainActivity : Activity(), SensorEventListener {
             alpha = 0.92f
         }
         val title = TextView(this).apply {
-            text = "PREPARE STAGE 1 FOREST CONTENT"
+            text = if (resourceTier == ContentDownloadPlan.ResourceTier.STAGE_1) {
+                "PREPARE STAGE 1 FOREST CONTENT"
+            } else {
+                "PREPARE ${resourceTier.name} GRAPHICS"
+            }
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
