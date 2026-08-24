@@ -118,12 +118,9 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var joystickView: JoystickView
     private lateinit var stateLabel: TextView
     private lateinit var questLabel: TextView
-<<<<<<< HEAD
     private var hudPlayerTitle: TextView? = null
     private var currentPlayerName = "PLAYER NAME"
-=======
     private lateinit var vitalMeter: VitalMeterView
->>>>>>> 30fc7c7 (Add profile health and stamina meters)
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
