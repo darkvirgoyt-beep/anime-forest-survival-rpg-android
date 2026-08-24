@@ -2717,15 +2717,19 @@ class MainActivity : Activity(), SensorEventListener {
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         elevation = dp(3).toFloat()
         background = android.graphics.drawable.StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(190, 104, 58), Color.rgb(126, 63, 54))
+            ).apply {
                 cornerRadius = dp(10).toFloat()
-                setColor(Color.rgb(166, 101, 54))
                 setStroke(dp(2), Color.rgb(255, 231, 154))
             })
-            addState(intArrayOf(), GradientDrawable().apply {
+            addState(intArrayOf(), GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(245, 26, 59, 66), Color.argb(235, 12, 27, 35))
+            ).apply {
                 cornerRadius = dp(10).toFloat()
-                setColor(Color.argb(235, 19, 40, 46))
-                setStroke(dp(1), Color.rgb(225, 184, 102))
+                setStroke(dp(1), Color.rgb(108, 192, 182))
             })
         }
         setOnClickListener { onClick() }
@@ -2743,11 +2747,14 @@ class MainActivity : Activity(), SensorEventListener {
         setTextColor(Color.rgb(14, 26, 27))
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         setOnClickListener { onClick() }
-        background = GradientDrawable().apply {
-            cornerRadius = 18f
-            setColor(Color.rgb(238, 194, 112))
-            setStroke(2, Color.rgb(255, 230, 168))
+        background = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(Color.rgb(231, 187, 103), Color.rgb(169, 218, 197))
+        ).apply {
+            cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(255, 236, 174))
         }
+        elevation = dp(2).toFloat()
     }
 
     private fun roundControlButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
@@ -2761,11 +2768,14 @@ class MainActivity : Activity(), SensorEventListener {
         setPadding(dp(6), 0, dp(6), 0)
         setTextColor(Color.rgb(255, 239, 193))
         setOnClickListener { onClick() }
-        background = GradientDrawable().apply {
+        background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.argb(245, 27, 59, 67), Color.argb(235, 10, 23, 31))
+        ).apply {
             cornerRadius = dp(10).toFloat()
-            setColor(Color.argb(238, 22, 37, 43))
-            setStroke(dp(1), Color.rgb(226, 184, 101))
+            setStroke(dp(1), Color.rgb(111, 193, 182))
         }
+        elevation = dp(2).toFloat()
     }
 
     private fun cinematicButton(label: String, primary: Boolean, onClick: () -> Unit): Button = Button(this).apply {

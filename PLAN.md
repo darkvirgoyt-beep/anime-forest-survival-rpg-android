@@ -25,3 +25,22 @@ The player controls a third-person hero in the forest clearing. A dynamic HUD ex
 - Level-up state is deterministic and surfaced in the HUD.
 - Native regression tests continue to pass; Android build is attempted when tooling is available.
 - No copyrighted or ripped game assets are included.
+
+## Visual enhancement iteration
+
+### Visual target
+The target is an original anime-fantasy forest screenshot with a clear focal hierarchy: Aurora and Emberling in the foreground, Heartfire and camp on the left, a reflective stream through the center, and a luminous Forest Warden framed by layered foliage. The palette is midnight teal and wisteria violet with warm amber practical lights and cyan-green emissive accents.
+
+### Implementation slices
+
+1. Upgrade the GLES 3D shader with procedural face orientation, stronger top/side separation, a subtle animated rim, emissive response, and distance fog that remains stable on mobile.
+2. Add a reusable procedural VFX vocabulary: soft ground halos, pulsing rune rings, drifting motes, impact sparks, and stronger campfire/tower/Heartfire feedback. All effects scale from the existing quality profile.
+3. Add layered canopy and foreground foliage landmarks, moss bands, stones, path accents, and richer water highlights so the world reads as authored rather than as three flat biome planes.
+4. Polish the native HUD palette and button hierarchy toward a compact dark translucent anime-fantasy interface while preserving every existing control and serialized state.
+
+### Verification criteria
+
+- C++ remains GLES 3 / C++17 compatible and the JNI surface is unchanged.
+- Low/performance profiles keep effect counts bounded; high profiles unlock extra accents only when content is ready.
+- Attack, dodge, gather, craft, teleport, Heartfire, weather, and Forest Warden states produce visible feedback.
+- Android source formatting and native regression tests pass where the sandbox toolchain permits; Android APK compilation is reported honestly if SDK tooling is unavailable.

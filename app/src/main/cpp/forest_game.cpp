@@ -37,6 +37,7 @@ GLint g3DFogColor = -1;
 GLint g3DFogAmount = -1;
 GLint g3DTime = -1;
 GLint g3DQuality = -1;
+GLint g3DEmissive = -1;
 GLuint gBillboardProgram = 0;
 GLint gBillboardPosition = -1;
 GLint gBillboardUv = -1;
@@ -417,11 +418,13 @@ uniform mat4 uMvp;
 uniform vec4 uColor;
 out vec4 vColor;
 out float vHeightShade;
+out vec3 vLocalPosition;
 void main() {
     gl_Position = uMvp * vec4(aPosition, 1.0);
     vColor = uColor;
-    // Procedural meshes carry no normal stream, so their local height gives us
-    // a stable stylized top-light gradient on every low-poly primitive.
+    vLocalPosition = aPosition;
+    // Procedural meshes carry no normal stream, so local height and face position
+    // provide a stable stylized light response on every low-poly primitive.
     vHeightShade = clamp(aPosition.y * 0.72 + 0.5, 0.0, 1.0);
 }
 )GLSL";
@@ -431,19 +434,28 @@ const char* k3DFragmentShader = R"GLSL(
 precision mediump float;
 in vec4 vColor;
 in float vHeightShade;
+in vec3 vLocalPosition;
 uniform float uLightLevel;
 uniform vec3 uFogColor;
 uniform float uFogAmount;
 uniform float uTime;
 uniform float uQuality;
+uniform float uEmissive;
 out vec4 fragColor;
 void main() {
-    float topLight = mix(0.78, 1.16, vHeightShade);
-    float microLight = 1.0 + (uQuality * 0.018) * sin(gl_FragCoord.x * 0.17 + gl_FragCoord.y * 0.11 + uTime * 0.35);
-    float rim = pow(clamp(1.0 - abs(vHeightShade * 2.0 - 1.0), 0.0, 1.0), 3.0) * (0.035 + uQuality * 0.012);
-    vec3 litColor = vColor.rgb * (uLightLevel * topLight * microLight + 0.12) + vec3(rim * 0.16, rim * 0.20, rim * 0.24);
+    const vec3 sunDirection = normalize(vec3(-0.42, 0.78, 0.36));
+    vec3 pseudoNormal = normalize(vec3(vLocalPosition.x * 0.85 + 0.14,
+                                       vLocalPosition.y * 0.90 + 0.72,
+                                       vLocalPosition.z * 0.72 - 0.18));
+    float faceLight = 0.72 + max(dot(pseudoNormal, sunDirection), 0.0) * 0.38;
+    float topLight = mix(0.76, 1.18, vHeightShade);
+    float microLight = 1.0 + (uQuality * 0.014) * sin(gl_FragCoord.x * 0.17 + gl_FragCoord.y * 0.11 + uTime * 0.35);
+    float rim = pow(clamp(1.0 - abs(vHeightShade * 2.0 - 1.0), 0.0, 1.0), 3.0) * (0.045 + uQuality * 0.012);
+    vec3 litColor = vColor.rgb * (uLightLevel * topLight * faceLight * microLight + 0.11);
+    litColor += vec3(rim * 0.20, rim * 0.25, rim * 0.30);
+    litColor += vColor.rgb * uEmissive * (0.70 + 0.20 * sin(uTime * 3.4 + vLocalPosition.y * 4.0));
     // Depth fog adds the soft atmospheric separation seen in stylized open worlds.
-    float depthFog = clamp(pow(gl_FragCoord.z, 2.2) * uFogAmount, 0.0, 0.86);
+    float depthFog = clamp(pow(gl_FragCoord.z, 2.15) * uFogAmount, 0.0, 0.88);
     fragColor = vec4(mix(litColor, uFogColor, depthFog), vColor.a);
 }
 )GLSL";
@@ -577,10 +589,11 @@ void create3DProgram() {
     g3DFogAmount = glGetUniformLocation(g3DProgram, "uFogAmount");
     g3DTime = glGetUniformLocation(g3DProgram, "uTime");
     g3DQuality = glGetUniformLocation(g3DProgram, "uQuality");
+    g3DEmissive = glGetUniformLocation(g3DProgram, "uEmissive");
 }
 
 void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float width, float height, float depth,
-              float r, float g, float b, float a = 1.0f) {
+              float r, float g, float b, float a = 1.0f, float emissive = 0.0f) {
     static const GLfloat cube[] = {
         -0.5f,-0.5f, 0.5f,  0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f,
         -0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
@@ -604,6 +617,7 @@ void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float widt
     glUniform1f(g3DFogAmount, gSceneFogAmount);
     glUniform1f(g3DTime, gTime);
     glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
+    glUniform1f(g3DEmissive, emissive);
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, cube);
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -611,7 +625,8 @@ void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float widt
 
 void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices,
                  float x, float y, float z, float width, float height, float depth,
-                 float r, float g, float b, float a = 1.0f, GLenum primitive = GL_TRIANGLES) {
+                 float r, float g, float b, float a = 1.0f, GLenum primitive = GL_TRIANGLES,
+                 float emissive = 0.0f) {
     if (vertices.empty()) return;
     glUseProgram(g3DProgram);
     const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
@@ -622,6 +637,7 @@ void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices
     glUniform1f(g3DFogAmount, gSceneFogAmount);
     glUniform1f(g3DTime, gTime);
     glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
+    glUniform1f(g3DEmissive, emissive);
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, vertices.data());
     glEnableVertexAttribArray(g3DPosition);
     glDrawArrays(primitive, 0, static_cast<GLsizei>(vertices.size() / 3));
@@ -692,7 +708,8 @@ void draw3DCylinder(const Mat4& viewProjection, float x, float y, float z,
 }
 
 void draw3DSphere(const Mat4& viewProjection, float x, float y, float z,
-                  float radius, float r, float g, float b, float a = 1.0f) {
+                  float radius, float r, float g, float b, float a = 1.0f,
+                  float emissive = 0.0f) {
     constexpr int slices = 14;
     constexpr int stacks = 8;
     std::vector<GLfloat> vertices;
@@ -716,16 +733,16 @@ void draw3DSphere(const Mat4& viewProjection, float x, float y, float z,
             });
         }
     }
-    draw3DMesh(viewProjection, vertices, x, y, z, radius, radius, radius, r, g, b, a);
+    draw3DMesh(viewProjection, vertices, x, y, z, radius, radius, radius, r, g, b, a, GL_TRIANGLES, emissive);
 }
 
 void draw3DGlowOrb(const Mat4& viewProjection, float x, float y, float z, float radius,
                    float r, float g, float b, float intensity) {
     const float pulse = 0.90f + 0.10f * std::sin(gTime * 4.0f + x * 0.4f);
     draw3DSphere(viewProjection, x, y, z, radius * (1.75f + 0.10f * pulse), r, g, b,
-                 std::clamp(intensity * 0.12f, 0.02f, 0.26f));
+                 std::clamp(intensity * 0.12f, 0.02f, 0.26f), 0.20f);
     draw3DSphere(viewProjection, x, y, z, radius, std::min(1.0f, r * 1.35f),
-                 std::min(1.0f, g * 1.25f), std::min(1.0f, b * 1.18f), std::clamp(intensity, 0.16f, 1.0f));
+                 std::min(1.0f, g * 1.25f), std::min(1.0f, b * 1.18f), std::clamp(intensity, 0.16f, 1.0f), 0.42f);
 }
 
 void draw3DTree(const Mat4& viewProjection, float x, float z, float scale, float tint) {
@@ -1384,6 +1401,142 @@ void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
     draw3DGlowOrb(viewProjection, 3.8f, 0.42f, -1.2f, 0.12f, 1.0f, 0.28f, 0.06f, firePulse);
 }
 
+void draw3DVfxRing(const Mat4& viewProjection, float x, float y, float z, float radius,
+                   float r, float g, float b, float alpha, int segments = 24) {
+    if (radius <= 0.0f || alpha <= 0.0f) return;
+    std::vector<GLfloat> vertices;
+    vertices.reserve(static_cast<size_t>(segments + 1) * 3u);
+    for (int i = 0; i <= segments; ++i) {
+        const float angle = (static_cast<float>(i) / static_cast<float>(segments)) * 2.0f * PI;
+        vertices.insert(vertices.end(), {std::cos(angle), 0.0f, std::sin(angle)});
+    }
+    draw3DMesh(viewProjection, vertices, x, y, z, radius, 1.0f, radius,
+               r, g, b, alpha, GL_LINE_STRIP, 0.62f);
+}
+
+void draw3DCanopyDetails(const Mat4& viewProjection, float daylight) {
+    const int quality = effectiveGraphicsQuality();
+    if (quality < 1) return;
+    constexpr float vines[][4] = {
+        {-5.45f, 2.10f, -1.95f, 0.54f}, {-4.25f, 2.35f, 2.45f, 0.42f},
+        {-2.55f, 2.02f, 3.25f, 0.36f}, {2.95f, 2.16f, 2.62f, 0.48f},
+        {5.38f, 2.42f, 1.32f, 0.58f}, {5.90f, 1.88f, -2.14f, 0.32f}
+    };
+    const int visible = quality >= 3 ? 6 : 3;
+    for (int i = 0; i < visible; ++i) {
+        const float x = vines[i][0];
+        const float topY = vines[i][1];
+        const float z = vines[i][2];
+        const float length = vines[i][3];
+        const float sway = std::sin(gTime * 1.5f + static_cast<float>(i) * 0.8f) * 0.08f;
+        draw3DCylinder(viewProjection, x + sway, topY - length * 0.5f, z,
+                       0.018f, length, 0.24f * daylight, 0.10f * daylight, 0.30f * daylight, 0.76f);
+        draw3DGlowOrb(viewProjection, x + sway, topY - length + 0.045f, z - 0.02f,
+                      0.032f, 0.34f, 0.78f, 0.70f, 0.30f + daylight * 0.22f);
+    }
+
+    // A few broad foreground leaves frame the scene and hide the hard edge of the
+    // procedural tile field without adding a texture dependency.
+    constexpr float leafPositions[][3] = {
+        {-6.25f, 0.36f, -2.05f}, {-5.86f, 0.22f, -1.78f},
+        {5.95f, 0.27f, -1.92f}, {6.32f, 0.18f, -1.62f}
+    };
+    for (int i = 0; i < (quality >= 3 ? 4 : 2); ++i) {
+        const float pulse = 0.96f + 0.04f * std::sin(gTime * 1.8f + static_cast<float>(i));
+        draw3DBox(viewProjection, leafPositions[i][0], leafPositions[i][1] * pulse, leafPositions[i][2],
+                  0.34f, 0.05f, 0.62f, 0.04f * daylight, 0.18f * daylight, 0.13f * daylight, 0.86f);
+        draw3DBox(viewProjection, leafPositions[i][0] + 0.12f, leafPositions[i][1] * pulse + 0.05f,
+                  leafPositions[i][2] - 0.08f, 0.18f, 0.035f, 0.42f,
+                  0.12f * daylight, 0.34f * daylight, 0.24f * daylight, 0.82f);
+    }
+}
+
+void draw3DVisualEffects(const Mat4& viewProjection) {
+    const int quality = effectiveGraphicsQuality();
+    const auto& profile = forest::rpg::qualityProfileFor(gGraphicsQuality, gContentTierReady);
+    const float effectScale = static_cast<float>(profile.effectScalePercent) / 100.0f;
+    const float px = gPlayerX * 4.3f;
+    const float pz = -gPlayerY * 4.0f;
+
+    if (gDodgePulse > 0) {
+        const float fade = std::clamp(static_cast<float>(gDodgePulse) / 8.0f, 0.0f, 1.0f);
+        draw3DVfxRing(viewProjection, px, 0.055f, pz, 0.34f + (1.0f - fade) * 0.24f,
+                      0.22f, 0.86f, 0.96f, 0.42f * fade);
+        draw3DGlowOrb(viewProjection, px, 0.36f, pz, 0.065f, 0.28f, 0.86f, 1.0f, 0.42f * fade);
+    }
+    if (gAttackPulse > 0) {
+        const float progress = std::clamp(static_cast<float>(gAttackPulse) / 18.0f, 0.0f, 1.0f);
+        const float slash = 0.18f + (1.0f - progress) * 0.20f;
+        draw3DVfxRing(viewProjection, px + 0.16f, 0.48f, pz - 0.24f, slash,
+                      1.0f, 0.58f, 0.18f, 0.26f + (1.0f - progress) * 0.30f, 18);
+        draw3DGlowOrb(viewProjection, px + 0.34f, 0.76f, pz - 0.42f, 0.045f,
+                      1.0f, 0.72f, 0.30f, 0.38f + (1.0f - progress) * 0.34f);
+    }
+
+    if (gEnemyHitFlash > 0.0f) {
+        const float fade = std::clamp(gEnemyHitFlash / 0.12f, 0.0f, 1.0f);
+        const float ex = gEnemyX * 4.3f;
+        const float ez = -gEnemyY * 4.0f;
+        draw3DVfxRing(viewProjection, ex, 0.08f, ez, 0.62f + (1.0f - fade) * 0.30f,
+                      1.0f, 0.78f, 0.30f, 0.55f * fade);
+        const int sparks = std::max(3, static_cast<int>(std::round(6.0f * effectScale)));
+        for (int i = 0; i < sparks; ++i) {
+            const float seed = static_cast<float>(i) * 1.91f;
+            const float sparkTime = (1.0f - fade) * 0.40f;
+            draw3DGlowOrb(viewProjection,
+                          ex + std::sin(seed) * sparkTime,
+                          1.22f + std::fmod(seed * 0.07f + sparkTime, 0.34f),
+                          ez + std::cos(seed) * sparkTime,
+                          0.026f, 1.0f, 0.66f, 0.22f, 0.66f * fade);
+        }
+    }
+
+    for (int i = 0; i < forest::mobs::kProfileCount; ++i) {
+        const MobState& mob = gMobs[i];
+        if (mob.hitFlash <= 0.0f || mob.health <= 0.0f) continue;
+        const float mx = mob.position.x * 4.3f;
+        const float mz = -mob.position.y * 4.0f;
+        const float fade = std::clamp(mob.hitFlash / 0.15f, 0.0f, 1.0f);
+        draw3DVfxRing(viewProjection, mx, 0.055f, mz, 0.23f, 1.0f, 0.48f, 0.26f, 0.38f * fade, 16);
+        draw3DGlowOrb(viewProjection, mx, 0.80f, mz - 0.10f, 0.032f, 1.0f, 0.74f, 0.30f, 0.52f * fade);
+    }
+
+    if (gTowerGlow > 0.0f) {
+        const float fade = std::clamp(gTowerGlow / 1.8f, 0.0f, 1.0f);
+        draw3DVfxRing(viewProjection, 0.0f, 0.11f, -1.15f, 0.82f + (1.0f - fade) * 0.40f,
+                      1.0f, 0.70f, 0.24f, 0.48f * fade);
+        draw3DGlowOrb(viewProjection, 0.0f, 2.94f, -1.15f, 0.18f, 1.0f, 0.70f, 0.26f, 0.70f * fade);
+    }
+
+    if (gCampBuilt || gProgression.emberKitCrafted) {
+        const float campX = gCampX * 4.3f;
+        const float campZ = -gCampY * 4.0f;
+        const float pulse = 0.70f + 0.20f * std::sin(gTime * 4.0f);
+        draw3DVfxRing(viewProjection, campX, 0.065f, campZ, 0.72f + pulse * 0.12f,
+                      1.0f, 0.36f, 0.08f, 0.20f + pulse * 0.16f);
+        const int embers = quality >= 3 ? 8 : 4;
+        for (int i = 0; i < embers; ++i) {
+            const float seed = static_cast<float>(i) * 1.41f;
+            const float rise = std::fmod(gTime * (0.24f + 0.03f * i) + seed, 0.72f);
+            draw3DGlowOrb(viewProjection, campX + std::sin(seed + gTime) * 0.18f,
+                          0.50f + rise, campZ + std::cos(seed) * 0.18f,
+                          0.018f, 1.0f, 0.42f, 0.08f, 0.38f + pulse * 0.24f);
+        }
+    }
+
+    if (quality >= 2) {
+        const int motes = quality >= 3 ? 18 : 8;
+        for (int i = 0; i < motes; ++i) {
+            const float seed = static_cast<float>(i) * 1.37f;
+            const float x = -5.6f + std::fmod(seed * 2.1f + gTime * 0.11f, 11.2f);
+            const float z = -2.3f + std::fmod(seed * 1.6f + gTime * 0.06f, 5.4f);
+            const float y = 0.24f + 0.24f * std::sin(gTime * 1.3f + seed);
+            const float alpha = 0.22f + 0.16f * std::max(0.0f, std::sin(gTime * 2.0f + seed));
+            draw3DGlowOrb(viewProjection, x, y, z, 0.018f, 0.38f, 0.90f, 0.82f, alpha);
+        }
+    }
+}
+
 void draw3DWeather(const Mat4& viewProjection) {
     const float intensity = rainIntensity();
     if (intensity <= 0.0f) return;
@@ -1591,6 +1744,7 @@ void draw3DWorld() {
     }
     draw3DVegetationDetails(viewProjection, daylight);
     draw3DHighQualityDetails(viewProjection, daylight);
+    draw3DCanopyDetails(viewProjection, daylight);
     draw3DBox(viewProjection, 3.8f, 0.10f, -1.2f, 1.2f, 0.20f, 0.8f, 0.78f, 0.48f, 0.16f);
     draw3DBox(viewProjection, 3.8f, 0.28f, -1.2f, 0.75f, 0.18f, 0.52f, 0.92f, 0.65f, 0.22f);
     drawTeleportationTower(viewProjection);
@@ -1604,6 +1758,7 @@ void draw3DWorld() {
     for (const CoOpPeer& peer : gCoOpPeers) draw3DPeer(viewProjection, peer, static_cast<int>(&peer - gCoOpPeers));
     draw3DEmberling(viewProjection);
     draw3DWaterSurface(viewProjection);
+    draw3DVisualEffects(viewProjection);
     draw3DPlayer(viewProjection, firstPerson);
     draw3DWeather(viewProjection);
     glDisable(GL_CULL_FACE);

@@ -60,3 +60,15 @@ The Unreal presentation layer is implemented in `Unreal/Source/ForestSlice/Publi
 | Sword hit | `/Game/Audio/SFX/sfx_aurora_sword_hit` | Original or licensed impact cue for confirmed hit presentation |
 
 The runtime component intentionally uses `TSoftObjectPtr` references and does not embed third-party or copied game assets. Asset import, socket verification, animation-notify authoring, Niagara parameter binding, LOD setup, and device profiling remain required content steps before a production release.
+
+## 2026 visual enhancement target
+
+| Asset | Intended use | Status |
+|---|---|---|
+| [`assets/aethelgard_visual_upgrade_target.png`](assets/aethelgard_visual_upgrade_target.png) | In-game screenshot target for the Android GLES visual pass: teal moonlit forest, warm Heartfire camp, reflective stream, readable Forest Warden silhouette, premium mobile HUD hierarchy, emissive VFX, and atmospheric depth | Generated original reference; used as art-direction guidance and not loaded as a runtime texture |
+
+## Scoped runtime visual pass
+
+The Android slice will stay dependency-free and GLES 3 compatible. The implementation focuses on procedural upgrades that are visible on-device: per-face stylized lighting with rim response and biome-tinted fog, layered terrain and canopy silhouettes, emissive ground rings and motes for camp/teleport/combat feedback, richer rain and lightning response, and a compact HUD color hierarchy. Existing JNI names, gameplay state serialization, touch controls, and graphics-tier contracts remain unchanged.
+
+All new visual forms are original procedural geometry and shader logic. The generated screenshot is a target reference only; it is not copied into the runtime scene.

@@ -118,11 +118,11 @@ class CircularMiniMapView(context: Context) : View(context) {
         canvas.drawCircle(cx, cy, radius, paint)
         canvas.save()
         canvas.clipPath(android.graphics.Path().apply { addCircle(cx, cy, radius * 0.90f, android.graphics.Path.Direction.CW) })
-        paint.color = Color.rgb(20, 77, 65)
+        paint.color = Color.rgb(18, 83, 74)
         canvas.drawRect(cx - radius, cy - radius, cx, cy + radius, paint)
-        paint.color = Color.rgb(102, 66, 35)
+        paint.color = Color.rgb(96, 59, 46)
         canvas.drawRect(cx, cy - radius, cx + radius, cy + radius, paint)
-        paint.color = Color.rgb(46, 92, 122)
+        paint.color = Color.rgb(47, 91, 132)
         canvas.drawRect(cx - radius * 0.18f, cy - radius, cx + radius * 0.10f, cy + radius, paint)
         paint.color = Color.rgb(221, 183, 91)
         canvas.drawRect(cx - radius * 0.78f, cy - radius * 0.06f, cx + radius * 0.78f, cy + radius * 0.06f, paint)
@@ -167,11 +167,11 @@ class VitalMeterView(context: Context) : View(context) {
         canvas.drawRoundRect(RectF(0f, 0f, widthF, height.toFloat()), height * 0.18f, height * 0.18f, paint)
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = height * 0.025f
-        paint.color = Color.rgb(184, 145, 76)
+        paint.color = Color.rgb(106, 193, 181)
         canvas.drawRoundRect(RectF(0f, 0f, widthF, height.toFloat()), height * 0.18f, height * 0.18f, paint)
 
         drawMeter(canvas, "HP", health, topHealth, barHeight, trackLeft, trackWidth, if (health <= 30) Color.rgb(255, 130, 94) else Color.rgb(218, 70, 72))
-        drawMeter(canvas, "STA", stamina, topStamina, barHeight, trackLeft, trackWidth, Color.rgb(74, 204, 164))
+        drawMeter(canvas, "STA", stamina, topStamina, barHeight, trackLeft, trackWidth, Color.rgb(92, 218, 190))
     }
 
     private fun drawMeter(canvas: Canvas, label: String, value: Int, top: Float, heightF: Float, left: Float, trackWidth: Float, fillColor: Int) {
