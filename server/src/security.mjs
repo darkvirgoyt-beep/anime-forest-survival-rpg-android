@@ -20,6 +20,7 @@ export function loadRuntimeConfig(env = process.env) {
   return {
     databaseUrl: env.DATABASE_URL,
     databaseSsl: env.DATABASE_SSL === "true",
+    databaseSslRejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED === "true",
     googleIdTokenAudience: env.GOOGLE_ID_TOKEN_AUDIENCE,
     googlePlayGamesClientId: optionalConfigValue(env.GOOGLE_GAME_SERVER_CLIENT_ID),
     googlePlayGamesClientSecret: optionalConfigValue(env.GOOGLE_GAME_SERVER_CLIENT_SECRET),

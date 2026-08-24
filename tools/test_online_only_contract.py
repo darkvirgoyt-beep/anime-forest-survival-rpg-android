@@ -18,6 +18,8 @@ REQUIRED = (
     ("app/src/main/res/values/strings.xml", "https://aethelservs-g7pzbnwp.manus.space/api/game-auth", "managed game-auth endpoint"),
     ("render.yaml", "name: aethelgard-api-v2", "deployed v2 Render service"),
     ("render.yaml", "dockerContext: ./server", "server Docker build context"),
+    ("render.yaml", "DATABASE_SSL_REJECT_UNAUTHORIZED", "Render PostgreSQL certificate setting"),
+    ("server/src/security.mjs", "databaseSslRejectUnauthorized", "shared PostgreSQL TLS configuration"),
     ("render.yaml", "healthCheckPath: /healthz", "Render health check"),
     ("server/Dockerfile", "CMD [\"node\", \"scripts/start.mjs\"]", "migration-aware container startup"),
     ("server/scripts/start.mjs", "await import(\"./migrate.mjs\")", "startup database migration"),

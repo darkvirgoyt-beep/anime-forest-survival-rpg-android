@@ -11,7 +11,7 @@ const config = loadRuntimeConfig();
 const pool = new Pool({
   connectionString: config.databaseUrl,
   max: 1,
-  ssl: config.databaseSsl ? { rejectUnauthorized: true } : undefined
+  ssl: config.databaseSsl ? { rejectUnauthorized: config.databaseSslRejectUnauthorized } : undefined
 });
 
 try {

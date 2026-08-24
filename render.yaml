@@ -16,6 +16,8 @@ services:
         sync: false
       - key: DATABASE_SSL
         value: "true"
+      - key: DATABASE_SSL_REJECT_UNAUTHORIZED
+        value: "false"
       - key: GOOGLE_ID_TOKEN_AUDIENCE
         value: 1062428369173-q4thoceukcd15r0cni75gfct25j1fk04.apps.googleusercontent.com
       - key: GAME_SESSION_JWT_SECRET
