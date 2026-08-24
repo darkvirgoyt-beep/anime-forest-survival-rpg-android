@@ -1,4 +1,4 @@
-package com.darkvirgoyt.aethelgrad
+package com.darvirgoyt.aethelgrad
 
 import android.Manifest
 import android.animation.ValueAnimator
@@ -390,11 +390,8 @@ class MainActivity : Activity(), SensorEventListener {
     }
     private val cloudSaveUpdater = object : Runnable {
         override fun run() {
-            if (accountSession.snapshot.isGuest && worldStateReadyForWorld) {
-                saveGuestWorldState()
-            }
             val world = activeCloudWorld
-            if (!accountSession.snapshot.isGuest && world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
+            if (world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
                 cloudSaveInFlight = true
                 gameView.queueEvent {
                     val nativeState = NativeGameBridge.getCloudState()
@@ -695,19 +692,6 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
-    private fun requestGuestEntry() {
-        if (googleLoginInFlight) return
-        authenticationTransitionStarted = false
-        val immediate = accountSession.requestGuestSignIn()
-        if (immediate.state == SessionState.AUTHENTICATED && immediate.isGuest) {
-            if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "GUEST MODE READY  •  LOCAL WORLD ONLY  •  HOSTED MULTIPLAYER REQUIRES GOOGLE"
-                onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
-            }
-            applyAccountSnapshot(immediate)
-        }
-    }
-
     private fun requestGoogleAccountLink() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) onboardingStatus.text = "ACCOUNT LINK  •  CONNECTION RESTORING"
@@ -933,7 +917,6 @@ class MainActivity : Activity(), SensorEventListener {
         }
         // Keep the hosted room reference for resume; onDestroy performs the explicit leave.
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
-        if (accountSession.snapshot.isGuest && worldStateReadyForWorld) saveGuestWorldState()
         val world = activeCloudWorld
         if (world != null && networkOnline && !cloudSaveInFlight) {
             cloudSaveInFlight = true
@@ -1144,14 +1127,14 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "CHOOSE YOUR PATH  •  Google unlocks cloud worlds and hosted co-op; Guest starts local worlds without Gmail or a server login."
+            text = "REQUIRED ACCOUNT LINK  •  Google confirms your identity; cloud saves stay in Aethelgard’s game service."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "CHOOSE GOOGLE FOR ONLINE PLAY  OR  GUEST FOR LOCAL PLAY"
+            text = "SIGN IN WITH GOOGLE TO PROTECT YOUR CLOUD WORLD AND CONTINUE ONLINE"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
@@ -1181,9 +1164,6 @@ class MainActivity : Activity(), SensorEventListener {
             if (!checked && ::onboardingStatus.isInitialized) {
                 onboardingStatus.text = "ACCOUNT-LINK CONSENT IS REQUIRED TO CONTINUE ONLINE"
             }
-        }
-        val guest = cinematicButton("CONTINUE AS GUEST  •  LOCAL PLAY", false) {
-            requestGuestEntry()
         }
         val trustRow = LinearLayout(this).apply {
             gravity = Gravity.CENTER
@@ -1215,7 +1195,6 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(42)))
         panel.addView(consent, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
         panel.addView(google, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(2) })
-        panel.addView(guest, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
         panel.addView(trustRow, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(12) })
 
         val scroll = ScrollView(this).apply {

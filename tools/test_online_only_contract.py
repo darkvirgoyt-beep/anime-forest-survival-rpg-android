@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the Android release’s dual-entry Google-hosted and guest-local launch paths."""
+"""Validate that the Android release has one production online launch path."""
 from __future__ import annotations
 
 import configparser
@@ -10,12 +10,6 @@ REQUIRED = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "beginOnlineStartup", "automatic online startup"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGoogleSignIn", "Google production login"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "SIGN IN WITH GOOGLE", "visible Google login control"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGuestEntry", "guest local entry action"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "CONTINUE AS GUEST", "visible guest login control"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "HOSTED CO-OP UNAVAILABLE", "guest multiplayer restriction"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "saveGuestWorldState", "guest local world persistence"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "requestGuestSignIn", "local guest session"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "without Gmail, a backend request, or a hosted session", "guest authority boundary"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestProductionContent", "production content request"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "ENTER CORE ONLINE WORLD", "safe core-world entry when optional high graphics are unavailable"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "markCoreOnlineContentReady", "core-world content readiness boundary"),
@@ -70,6 +64,9 @@ FORBIDDEN = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "offlinePrototypeMode", "offline prototype runtime mode"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "PLAY OFFLINE PROTOTYPE", "offline prototype entry button"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "canUseBundledFreeFallback", "bundled graphics bypass"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGuestSignIn", "automatic guest login"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "GUEST SESSION", "guest login UI"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "OPTIONAL GOOGLE LINK", "optional login copy"),
 
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "FREE LOCAL GRAPHICS MODE READY", "bundled graphics mode"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "activateOfflinePrototype", "offline prototype entry"),
@@ -97,14 +94,14 @@ def main() -> None:
         lock.read(release_lock)
         expected_lock = {
             ("Manifest", "Version"): "1",
-            ("Identity", "AndroidPackage"): "com.darkvirgoyt.aethelgrad",
-            ("Identity", "JniPrefix"): "Java_com_darkvirgoyt_aethelgrad_",
+            ("Identity", "AndroidPackage"): "com.darvirgoyt.aethelgrad",
+            ("Identity", "JniPrefix"): "Java_com_darvirgoyt_aethelgrad_",
             ("Identity", "LauncherLabel"): "AETHELGARD: Wild Horizons",
             ("Platform", "MinSdk"): "30",
-            ("Online", "Mode"): "dual-entry",
-            ("Online", "GameAuthBase"): "https://aethelgard-api-v2.onrender.com/v1",
-            ("Online", "GameAuthExchange"): "/auth/google-id-token/exchange",
-            ("Online", "GameAuthRefresh"): "/auth/refresh",
+            ("Online", "Mode"): "online-only",
+            ("Online", "GameAuthBase"): "https://aethelservs-g7pzbnwp.manus.space/api/game-auth",
+            ("Online", "GameAuthExchange"): "/exchange",
+            ("Online", "GameAuthRefresh"): "/refresh",
             ("Content", "HighGraphicsPublished"): "false",
             ("Engine", "UnrealSource"): "external-private-only",
         }

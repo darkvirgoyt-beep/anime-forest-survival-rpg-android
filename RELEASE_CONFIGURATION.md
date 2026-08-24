@@ -4,7 +4,7 @@
 
 | Lock | Current value | Why it must not be changed casually |
 |---|---|---|
-| Android package and JNI prefix | `com.darkvirgoyt.aethelgrad` / `Java_com_darkvirgoyt_aethelgrad_` | Google Android OAuth registration, APK identity, native bridge exports, CI, and OBB naming depend on the exact identity. |
+| Android package and JNI prefix | `com.darvirgoyt.aethelgrad` / `Java_com_darvirgoyt_aethelgrad_` | Google Android OAuth registration, APK identity, native bridge exports, CI, and OBB naming depend on the exact identity. |
 | Current launcher label | `AETHELGARD: Wild Horizons` | It identifies the current locked-package build; an older icon with the former short label is a separately installed historical package and must be removed once from Android settings. |
 | Android minimum version | Android 11 / API 30 | The downloadable release is deliberately Android 11+; app-scoped OBB download storage needs no broad shared-storage permission. |
 | Android game category | `android:appCategory="game"` | Helps Android and compatible launchers identify the package as a game. OEM Game Space enrollment remains controlled by the device/user and cannot be forced by the app. |
