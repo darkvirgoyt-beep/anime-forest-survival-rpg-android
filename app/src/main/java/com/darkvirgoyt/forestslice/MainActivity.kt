@@ -20,6 +20,7 @@ import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.content.Context
 import android.widget.Button
+import java.io.File
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
@@ -32,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import com.darkvirgoyt.forestslice.ui.AssetPreparationOverlay
+import com.darkvirgoyt.forestslice.ui.AssetPreparationState
 import com.darkvirgoyt.forestslice.ui.inventory.AethelgardInventoryScreen
 import com.darkvirgoyt.forestslice.ui.inventory.EquipmentSlot
 import com.darkvirgoyt.forestslice.ui.inventory.EquipmentState
@@ -66,6 +69,9 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var gameView: GameSurfaceView
     private lateinit var rootContainer: FrameLayout
     private var inventoryOverlay: ComposeView? = null
+    private var assetPreparationOverlay: ComposeView? = null
+    private lateinit var assetPreparation: AssetPreparationManager
+    private val assetPreparationState = mutableStateOf<AssetPreparationState>(AssetPreparationState.Idle)
     private lateinit var gyroButton: Button
     private var sensorManager: SensorManager? = null
     private var gyroSensor: Sensor? = null
@@ -98,6 +104,12 @@ class MainActivity : Activity(), SensorEventListener {
         gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         audio = GameAudio(this)
         audio.playMusic()
+        assetPreparation = AssetPreparationManager(
+            cacheDir = File(filesDir, "content-cache"),
+            manifestUrl = getString(R.string.high_end_manifest_url),
+            onStateChanged = { assetPreparationState.value = it },
+        )
+        assetPreparation.start()
 
         rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
         gameView = GameSurfaceView(this)
@@ -175,6 +187,8 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onDestroy() {
         hudHandler.removeCallbacks(hudUpdater)
         closeInventoryOverlay(resumeGame = false)
+        closeAssetPreparationOverlay()
+        assetPreparation.close()
         audio.release()
         super.onDestroy()
     }
@@ -183,6 +197,8 @@ class MainActivity : Activity(), SensorEventListener {
     override fun onBackPressed() {
         if (inventoryOverlay != null) {
             closeInventoryOverlay()
+        } else if (assetPreparationOverlay != null) {
+            closeAssetPreparationOverlay()
         } else {
             super.onBackPressed()
         }
@@ -264,6 +280,32 @@ class MainActivity : Activity(), SensorEventListener {
         if (resumeGame && !isFinishing) gameView.onResume()
     }
 
+    private fun showAssetPreparationOverlay() {
+        if (assetPreparationOverlay != null) return
+        val overlay = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                val state by assetPreparationState
+                MaterialTheme {
+                    AssetPreparationOverlay(
+                        state = state,
+                        onRetry = { assetPreparation.retry() },
+                        onEnterWorld = { closeAssetPreparationOverlay() },
+                    )
+                }
+            }
+        }
+        assetPreparationOverlay = overlay
+        rootContainer.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    private fun closeAssetPreparationOverlay() {
+        val overlay = assetPreparationOverlay ?: return
+        rootContainer.removeView(overlay)
+        overlay.disposeComposition()
+        assetPreparationOverlay = null
+    }
+
     private fun hudNumber(index: Int, fallback: Int): Int = lastHudSnapshot.split('|').getOrNull(index)?.toIntOrNull() ?: fallback
 
     private var lastHudSnapshot = "1|0|100|100|100|82|12|8|4|100|0|0|THE FIRST EMBER"
@@ -317,6 +359,11 @@ class MainActivity : Activity(), SensorEventListener {
         top.addView(title)
         top.addView(stateLabel)
         top.addView(gyroButton, LinearLayout.LayoutParams(142, 44).apply { leftMargin = 18 })
+        val graphicsButton = actionButton("HIGH GRAPHICS") {
+            audio.playEffect("ui")
+            showAssetPreparationOverlay()
+        }
+        top.addView(graphicsButton, LinearLayout.LayoutParams(180, 44).apply { leftMargin = 14 })
         overlay.addView(top, FrameLayout.LayoutParams(-1, 54, Gravity.TOP))
         overlay.addView(questLabel, FrameLayout.LayoutParams(-1, 42, Gravity.TOP).apply { topMargin = 54 })
 

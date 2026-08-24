@@ -7,4 +7,5 @@
     <string name="ambience_volume">Ambience Volume</string>
     <string name="voice_volume">Voice Volume</string>
     <string name="gyro_unsupported">GYRO: UNSUPPORTED</string>
+    <string name="high_end_manifest_url" translatable="false"></string>
 </resources>
