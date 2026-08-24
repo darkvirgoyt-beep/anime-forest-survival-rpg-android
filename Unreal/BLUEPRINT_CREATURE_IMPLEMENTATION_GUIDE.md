@@ -30,6 +30,19 @@ Create both creature Blueprints by right-clicking `AForestSliceWildCreature` and
 
 In both creatures, configure the inherited **Capsule Component** for `Pawn` collision and the inherited **Mesh** component with an original skeletal mesh, correct Anim Class, and a shadow/collision setup appropriate to the asset. Keep **Replicates** and **Replicate Movement** enabled on the class defaults. Unreal replication synchronizes state and procedure calls between clients and the server; gameplay mutations must therefore originate on authority.[3]
 
+## Movement axes, speeds, sprint, and jump length
+
+Unreal game space uses **X forward**, **Y right**, and **Z up**, all in centimeters. These creatures are AI-controlled `ACharacter` instances: their Behavior Tree uses `Move To` or a server-owned navigation task, rather than player input axes. The movement component translates the reachable path direction into X/Y movement; Z is reserved for floor height, gravity, falling, and explicit jumps. Do not use a Blueprint `Event Tick` to add forward/right movement and do not drive a creature with the mobile player's joystick axes.
+
+`AForestSliceWildCreature` now exposes a `Locomotion` block in each Blueprint's Class Defaults and a server-only `Set Wild Creature Locomotion Mode` node. The server controller must set `Roam`, `Alert`, or `Sprint` before the corresponding Behavior Tree `Move To` branch. The mode is replicated, while character movement itself uses Unreal's replicated character movement. The `Get Expected Jump Distance Meters` and `Get Expected Jump Apex Meters` nodes calculate estimates from current `JumpZVelocity`, gravity scale, and a supplied horizontal speed; level geometry, collisions, slopes, and animation root motion can shorten a real jump.
+
+| Blueprint | Roam | Alert | Sprint/flee | Acceleration / braking | Rotation rate | Jump Z / gravity | Estimated apex | Estimated sprint jump travel |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `BP_RootbackGrazer` | 260 cm/s | 420 cm/s | 520 cm/s | 1,800 / 2,000 cm/s² | 520°/s | 300 cm/s / 1.15 | about 0.40 m | about 2.77 m |
+| `BP_DuskmawProwler` | 330 cm/s | 520 cm/s | 720 cm/s | 2,600 / 2,300 cm/s² | 680°/s | 460 cm/s / 1.10 | about 0.98 m | about 6.15 m |
+
+The Rootback values are for ground-bound fleeing. Do not put a regular `Jump` task in its roam or flee Behavior Tree; it should traverse curbs through navmesh/step height and only jump later if a specifically authored server-validated escape ability requires it. Duskmaw's sprint-jump estimate is the design envelope for a later **server-validated pounce**, not permission to call `Jump` from a client or raw animation notify. Until the combat pounce contract exists, use chase/attack range only.
+
 ## 3. BP_RootbackGrazer — skittish herd animal
 
 Create `BP_RootbackGrazer` from `AForestSliceWildCreature`. Rootback is a non-hostile wildlife animal for the Verdant Veil. Its purpose in the first playable slice is to make the forest feel alive, react to nearby danger, and demonstrate stable herd spawning without becoming a combat or capture system implementation.
@@ -45,7 +58,7 @@ Create `BP_RootbackGrazer` from `AForestSliceWildCreature`. Rootback is a non-ho
 | AI controller class | `BP_RootbackGrazerAI` |
 | Auto Possess AI | Inherited **Placed in World or Spawned**; leave it enabled. |
 
-Add these Blueprint variables to the creature: `HomeAnchor` (`Vector`), `RoamRadius` (`Float`, editor exposed), `FleeDistance` (`Float`, editor exposed), and `bIsFleeing` (`Boolean`, read-only to AnimBP). Do not treat these as cloud-save values. The spawn director gives the actor its valid spawn transform; `HomeAnchor` becomes the local, server-owned return point for the current loaded creature instance.
+Set the inherited `Locomotion` block to the Rootback row above. Add these Blueprint variables to the creature: `HomeAnchor` (`Vector`), `RoamRadius` (`Float`, editor exposed), `FleeDistance` (`Float`, editor exposed), and `bIsFleeing` (`Boolean`, read-only to AnimBP). Do not treat these as cloud-save values. The spawn director gives the actor its valid spawn transform; `HomeAnchor` becomes the local, server-owned return point for the current loaded creature instance.
 
 ### Rootback initialization graph
 
@@ -75,9 +88,9 @@ In `BP_RootbackGrazerAI`, use **Event On Possess** to cast the pawn to `BP_Rootb
 
 Set the `BT_RootbackGrazer` root selector in this priority order:
 
-1. **Flee sequence**: decorator `IsThreatened=true`; calculate a reachable point away from `LastThreatLocation`; `Move To` that point; set `bIsFleeing=true`; wait briefly.
-2. **Recover sequence**: after the threat cooldown, move toward a random reachable point around `HomeAnchor`; set `bIsFleeing=false`.
-3. **Roam sequence**: choose a random reachable point inside `RoamRadius`; `Move To`; wait for a short random period; repeat.
+1. **Flee sequence**: decorator `IsThreatened=true`; call `Set Wild Creature Locomotion Mode(Sprint)` on authority; calculate a reachable point away from `LastThreatLocation`; `Move To` that point; set `bIsFleeing=true`; wait briefly.
+2. **Recover sequence**: after the threat cooldown, call `Set Wild Creature Locomotion Mode(Alert)`; move toward a random reachable point around `HomeAnchor`; set `bIsFleeing=false`.
+3. **Roam sequence**: call `Set Wild Creature Locomotion Mode(Roam)`; choose a random reachable point inside `RoamRadius`; `Move To`; wait for a short random period; repeat.
 
 Use **Move To** against Blackboard vectors and calculate reachable positions through Navigation System nodes or a small original Blueprint task. Avoid per-frame `Event Tick` roaming logic. Behavior Trees are designed to select behavior branches using Blackboard-held values, including simple flee-versus-roam decisions.[1]
 
@@ -96,7 +109,7 @@ Create `BP_DuskmawProwler` from `AForestSliceWildCreature`. Duskmaw is an origin
 | AI controller class | `BP_DuskmawProwlerAI` |
 | Auto Possess AI | Inherited **Placed in World or Spawned**; leave it enabled. |
 
-Add `HomeAnchor` (`Vector`), `CombatTarget` (`Actor` reference), `AttackRange` (`Float`, editor exposed), `ChaseLeashDistance` (`Float`, editor exposed), `bIsAlert` (`Boolean`), and `bIsAttacking` (`Boolean`). The two booleans may drive animation presentation on clients; target acquisition and attack requests remain server decisions.
+Set the inherited `Locomotion` block to the Duskmaw row above. Add `HomeAnchor` (`Vector`), `CombatTarget` (`Actor` reference), `AttackRange` (`Float`, editor exposed), `ChaseLeashDistance` (`Float`, editor exposed), `bIsAlert` (`Boolean`), and `bIsAttacking` (`Boolean`). The two booleans may drive animation presentation on clients; target acquisition and attack requests remain server decisions.
 
 ### Duskmaw initialization graph
 
@@ -122,10 +135,10 @@ In `BP_DuskmawProwlerAI`, **On Possess** runs `BT_DuskmawProwler`. **On Target P
 Set the `BT_DuskmawProwler` root selector in this priority order:
 
 1. **Attack sequence**: `HasTarget=true` and `InAttackRange=true`; stop movement; face target; invoke a Blueprint event such as `RequestAuthoritativeProwlerAttack(TargetActor)`; wait for the replicated combat result or cooldown.
-2. **Chase sequence**: `HasTarget=true`; `Move To` `TargetActor` with an acceptance radius smaller than `AttackRange`; update alert presentation.
-3. **Investigate sequence**: recent `LastKnownTargetLocation`; `Move To` it; wait; clear the temporary investigation state.
-4. **Return sequence**: `ReturnHome=true`; `Move To` `HomeAnchor`; clear alert/return state on arrival.
-5. **Idle patrol sequence**: select reachable points near `HomeAnchor`; move and wait.
+2. **Chase sequence**: `HasTarget=true`; call `Set Wild Creature Locomotion Mode(Sprint)` on authority; `Move To` `TargetActor` with an acceptance radius smaller than `AttackRange`; update alert presentation.
+3. **Investigate sequence**: recent `LastKnownTargetLocation`; call `Set Wild Creature Locomotion Mode(Alert)`; `Move To` it; wait; clear the temporary investigation state.
+4. **Return sequence**: `ReturnHome=true`; call `Set Wild Creature Locomotion Mode(Alert)`; `Move To` `HomeAnchor`; clear alert/return state on arrival.
+5. **Idle patrol sequence**: call `Set Wild Creature Locomotion Mode(Roam)`; select reachable points near `HomeAnchor`; move and wait.
 
 `RequestAuthoritativeProwlerAttack` is a deliberately named integration boundary, not a completed damage implementation. Connect it later to the existing C++ combat/health path so that hit validation, health changes, rewards, and effects are resolved once by authority and replicated as compact outcomes. Do not use an Anim Notify alone to subtract player health in a client Blueprint.
 
