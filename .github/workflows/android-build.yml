@@ -81,10 +81,11 @@ jobs:
           test -f tools/test_forest_prop_kit.py
           test -f tools/test_dual_login_contract.py
           test -f tools/test_forest_warden_asset.py
+          test -f tools/test_hud_contract.py
           test -f tools/author_launch_slice_assets.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/test_dual_login_contract.py tools/test_forest_warden_asset.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/test_dual_login_contract.py tools/test_forest_warden_asset.py tools/test_hud_contract.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
@@ -141,6 +142,8 @@ jobs:
           python3 tools/test_forest_prop_kit.py || { echo 'FAIL forest prop kit'; exit 1; }
           echo 'CHECK Forest Warden asset'
           python3 tools/test_forest_warden_asset.py || { echo 'FAIL Forest Warden asset'; exit 1; }
+          echo 'CHECK HUD contract'
+          python3 tools/test_hud_contract.py || { echo 'FAIL HUD contract'; exit 1; }
           echo 'CHECK resource center'
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject || { echo 'FAIL resource center'; exit 1; }
           echo 'CHECK graphics tier contract'

@@ -145,10 +145,12 @@ class VitalMeterView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var health = 100
     private var stamina = 100
+    private var hunger = 100
 
-    fun updateVitals(nextHealth: Int, nextStamina: Int) {
+    fun updateVitals(nextHealth: Int, nextStamina: Int, nextHunger: Int = 100) {
         health = nextHealth.coerceIn(0, 100)
         stamina = nextStamina.coerceIn(0, 100)
+        hunger = nextHunger.coerceIn(0, 100)
         invalidate()
     }
 
@@ -159,9 +161,10 @@ class VitalMeterView(context: Context) : View(context) {
         val trackLeft = labelWidth + pad
         val trackRight = widthF - pad
         val trackWidth = trackRight - trackLeft
-        val barHeight = height * 0.22f
-        val topHealth = height * 0.16f
-        val topStamina = height * 0.59f
+        val barHeight = height * 0.17f
+        val topHealth = height * 0.08f
+        val topStamina = height * 0.41f
+        val topHunger = height * 0.74f
         paint.style = Paint.Style.FILL
         paint.color = Color.argb(205, 8, 19, 25)
         canvas.drawRoundRect(RectF(0f, 0f, widthF, height.toFloat()), height * 0.18f, height * 0.18f, paint)
@@ -172,6 +175,7 @@ class VitalMeterView(context: Context) : View(context) {
 
         drawMeter(canvas, "HP", health, topHealth, barHeight, trackLeft, trackWidth, if (health <= 30) Color.rgb(255, 130, 94) else Color.rgb(218, 70, 72))
         drawMeter(canvas, "STA", stamina, topStamina, barHeight, trackLeft, trackWidth, Color.rgb(92, 218, 190))
+        drawMeter(canvas, "HUN", hunger, topHunger, barHeight, trackLeft, trackWidth, Color.rgb(78, 166, 220))
     }
 
     private fun drawMeter(canvas: Canvas, label: String, value: Int, top: Float, heightF: Float, left: Float, trackWidth: Float, fillColor: Int) {

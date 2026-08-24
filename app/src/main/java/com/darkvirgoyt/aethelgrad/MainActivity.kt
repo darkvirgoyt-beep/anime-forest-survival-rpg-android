@@ -2446,7 +2446,7 @@ class MainActivity : Activity(), SensorEventListener {
     private fun setPlayerName(name: String?) {
         val normalized = name?.trim()?.replace(Regex("\\s+"), " ")?.take(24).orEmpty()
         if (normalized.isNotBlank()) currentPlayerName = normalized
-        hudPlayerTitle?.text = currentPlayerName
+        hudPlayerTitle?.text = "AETHELGRAD  •  $currentPlayerName"
     }
 
     private fun buildHud(): View {
@@ -2454,7 +2454,7 @@ class MainActivity : Activity(), SensorEventListener {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(126), dp(9), dp(356), dp(0))
+            setPadding(dp(16), dp(8), dp(10), dp(0))
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 intArrayOf(Color.argb(188, 8, 18, 23), Color.argb(132, 10, 22, 26), Color.argb(22, 8, 18, 23))
@@ -2464,7 +2464,7 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         val title = TextView(this).apply {
-            text = currentPlayerName
+            text = "AETHELGRAD"
             textSize = 15f
             letterSpacing = 0.10f
             setTextColor(Color.rgb(255, 226, 151))
@@ -2505,16 +2505,18 @@ class MainActivity : Activity(), SensorEventListener {
         setPlayerName(currentPlayerName)
         top.addView(title, LinearLayout.LayoutParams(-2, -1))
         top.addView(stateLabel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = dp(16); rightMargin = dp(10) })
-        overlay.addView(top, FrameLayout.LayoutParams(-1, dp(54), Gravity.TOP))
-        overlay.addView(gyroButton, FrameLayout.LayoutParams(dp(118), dp(38), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(72)
-            rightMargin = dp(18)
+        overlay.addView(top, FrameLayout.LayoutParams(dp(438), dp(54), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(10)
+            leftMargin = dp(16)
+        })
+        overlay.addView(gyroButton, FrameLayout.LayoutParams(dp(118), dp(34), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(136)
+            leftMargin = dp(18)
         })
         overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(62), dp(62), Gravity.CENTER))
-        overlay.addView(questLabel, FrameLayout.LayoutParams(-1, dp(42), Gravity.TOP).apply {
-            topMargin = dp(54)
-            leftMargin = dp(126)
-            rightMargin = dp(210)
+        overlay.addView(questLabel, FrameLayout.LayoutParams(dp(370), dp(48), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(72)
+            leftMargin = dp(16)
         })
 
         val profileBadge = ImageView(this).apply {
@@ -2529,14 +2531,14 @@ class MainActivity : Activity(), SensorEventListener {
             clipToOutline = true
             setOnClickListener { showCharacterInventoryPanel() }
         }
-        overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(58), dp(58), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(10)
-            rightMargin = dp(18)
+        overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(88)
+            rightMargin = dp(154)
         })
         vitalMeter = VitalMeterView(this)
-        overlay.addView(vitalMeter, FrameLayout.LayoutParams(dp(206), dp(58), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(10)
-            rightMargin = dp(84)
+        overlay.addView(vitalMeter, FrameLayout.LayoutParams(dp(272), dp(78), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(18)
+            rightMargin = dp(132)
         })
 
         var firstPerson = false
@@ -2545,22 +2547,22 @@ class MainActivity : Activity(), SensorEventListener {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val viewModeButton = actionButton("VIEW: THIRD PERSON") { }
+        val viewModeButton = circularControlButton("◌", "VIEW") { }
         viewModeButton.setOnClickListener {
             firstPerson = !firstPerson
-            viewModeButton.text = if (firstPerson) "VIEW: FIRST PERSON" else "VIEW: THIRD PERSON"
+            viewModeButton.text = if (firstPerson) "◌\nFIRST" else "◌\nTHIRD"
             gameView.queueEvent { NativeGameBridge.toggleViewMode() }
         }
-        val mapButton = actionButton("WORLD MAP") { }
+        val mapButton = circularControlButton("◉", "MAP") { }
         mapButton.setOnClickListener {
             val openDialog = worldMapDialog
             if (openDialog?.isShowing == true) {
                 openDialog.dismiss()
             } else {
-                mapButton.text = "MAP: CLOSE"
+                mapButton.text = "◉\nCLOSE"
                 gameView.queueEvent { NativeGameBridge.setWorldMapVisible(true) }
                     worldMapDialog = showWorldMapDialog {
-                    mapButton.text = "WORLD MAP"
+                    mapButton.text = "◉\nMAP"
                     worldMapDialog = null
                     gameView.queueEvent { NativeGameBridge.setWorldMapVisible(false) }
                 }
@@ -2571,23 +2573,30 @@ class MainActivity : Activity(), SensorEventListener {
             contentDescription = "Open world map"
             setOnClickListener { mapButton.performClick() }
         }
-        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(94), dp(94), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(10)
-            leftMargin = dp(16)
+        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(112), dp(112), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(86)
+            rightMargin = dp(18)
         })
-        val towerButton = actionButton("TOWER / TELEPORT") {
+        val towerButton = circularControlButton("♜", "TOWER") {
+            audio.playEffect("ui")
+            stateLabel.text = "TOWER LANDMARK READY  •  USE TELEPORT TO RETURN"
+        }
+        val teleportButton = circularControlButton("✦", "TELEPORT") {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.teleportToTower() }
         }
-        val controlsButton = actionButton("CONTROLS") { showControlSettings() }
-        navigation.addView(viewModeButton, LinearLayout.LayoutParams(dp(122), dp(42)).apply { rightMargin = dp(4) })
-        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(96), dp(42)).apply { rightMargin = dp(4) })
-        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(124), dp(42)).apply { rightMargin = dp(4) })
-        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(90), dp(42)))
-        overlay.addView(navigation, FrameLayout.LayoutParams(-1, dp(46), Gravity.TOP).apply {
-            topMargin = dp(96)
-            leftMargin = dp(20)
-            rightMargin = dp(210)
+        val controlsButton = circularControlButton("☰", "MENU") { showControlSettings() }
+        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(62), dp(62)).apply { rightMargin = dp(4) })
+        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(62), dp(62)).apply { rightMargin = dp(4) })
+        navigation.addView(teleportButton, LinearLayout.LayoutParams(dp(62), dp(62)).apply { rightMargin = dp(4) })
+        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(62), dp(62)))
+        overlay.addView(navigation, FrameLayout.LayoutParams(-2, dp(66), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(12)
+            rightMargin = dp(16)
+        })
+        overlay.addView(viewModeButton, FrameLayout.LayoutParams(dp(62), dp(62), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(136)
+            leftMargin = dp(144)
         })
         val orbitHint = TextView(this).apply {
             text = "DRAG LOOK PAD TO ORBIT 540°  •  FULL HORIZONTAL + VERTICAL LOOK  •  GYRO OPTIONAL"
@@ -2638,29 +2647,22 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(214)
         })
         val coOpButton = actionButton("CO-OP ROOM") { showCoOpDialog() }
-        overlay.addView(coOpButton, FrameLayout.LayoutParams(dp(160), dp(42), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(146)
-            rightMargin = dp(28)
+        overlay.addView(coOpButton, FrameLayout.LayoutParams(dp(138), dp(38), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(204)
+            rightMargin = dp(24)
         })
         val logoutButton = actionButton("LOG OUT") { confirmLogout() }
-        overlay.addView(logoutButton, FrameLayout.LayoutParams(dp(112), dp(38), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(96)
-            rightMargin = dp(28)
+        overlay.addView(logoutButton, FrameLayout.LayoutParams(dp(108), dp(34), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(142)
+            rightMargin = dp(154)
         })
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(7), dp(7), dp(7), dp(7))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.argb(205, 7, 18, 23), Color.argb(150, 8, 14, 18))
-            ).apply {
-                cornerRadius = dp(18).toFloat()
-                setStroke(dp(1), Color.argb(180, 214, 171, 91))
-            }
+            gravity = Gravity.END
+            setPadding(dp(3), dp(3), dp(3), dp(3))
         }
-        val sprintSlide = roundControlButton("SPRINT") { }
+        val sprintSlide = circularControlButton("♞", "SPRINT") { }
         sprintSlide.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> gameView.queueEvent { NativeGameBridge.setSprintHeld(true) }
@@ -2669,39 +2671,89 @@ class MainActivity : Activity(), SensorEventListener {
             }
             true
         }
-        val attack = gameplayButton("⚔  ATTACK") { submitAuthoritativeCombat("attack") }
-        val heavy = gameplayButton("✦  HEAVY") { submitAuthoritativeCombat("heavy_attack") }
-        val jump = gameplayButton("⬆  JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
-        val dodge = gameplayButton("◆  DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
-        val gather = gameplayButton("✧  GATHER") { submitAuthoritativeInventory("gather") }
-        val craft = gameplayButton("⌂  CRAFT") { submitAuthoritativeInventory("craft") }
-        val companion = gameplayButton("✦  COMMAND") {
+        val attack = circularControlButton("⚔", "ATTACK") { submitAuthoritativeCombat("attack") }
+        val heavy = circularControlButton("✦", "HEAVY") { submitAuthoritativeCombat("heavy_attack") }
+        val jump = circularControlButton("↟", "JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
+        val dodge = circularControlButton("◆", "DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
+        val gather = circularControlButton("✧", "GATHER") { submitAuthoritativeInventory("gather") }
+        val craft = circularControlButton("⌂", "CRAFT") { submitAuthoritativeInventory("craft") }
+        val companion = circularControlButton("✦", "COMMAND") {
             audio.playEffect("ui")
             submitAuthoritativeCompanionCommand()
         }
-        val capture = gameplayButton("◎  TAME ANIMAL") {
+        val capture = circularControlButton("◎", "TAME") {
             audio.playEffect("ui")
             submitAuthoritativeCapture()
         }
-        val camp = gameplayButton("⌂  BUILD CAMP") {
+        val camp = circularControlButton("⌂", "CAMP") {
             audio.playEffect("craft")
             submitAuthoritativeCamp()
         }
-        fun controlRow(first: View, second: View): LinearLayout = LinearLayout(this).apply {
+        fun controlRow(vararg controls: View): LinearLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            controls.forEach { control ->
+                addView(control, LinearLayout.LayoutParams(dp(72), dp(72)).apply {
+                    leftMargin = dp(3)
+                    rightMargin = dp(3)
+                })
+            }
+        }
+        fun rowParams(): LinearLayout.LayoutParams = LinearLayout.LayoutParams(-1, dp(78)).apply { bottomMargin = dp(3) }
+        actions.addView(controlRow(sprintSlide, attack), rowParams())
+        actions.addView(controlRow(jump, dodge, heavy), rowParams())
+        actions.addView(controlRow(craft, gather, companion), rowParams())
+        actions.addView(controlRow(capture, camp), LinearLayout.LayoutParams(-1, dp(78)))
+        overlay.addView(actions, FrameLayout.LayoutParams(dp(252), -2, Gravity.BOTTOM or Gravity.END).apply {
+            rightMargin = dp(8)
+            bottomMargin = dp(12)
+        })
+
+        val quickSlots = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            addView(first, LinearLayout.LayoutParams(0, dp(50), 1f).apply { rightMargin = dp(4) })
-            addView(second, LinearLayout.LayoutParams(0, dp(50), 1f).apply { leftMargin = dp(4) })
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(160, 5, 12, 16))
+                setStroke(dp(1), Color.argb(190, 206, 174, 105))
+            }
         }
-        fun rowParams(): LinearLayout.LayoutParams = LinearLayout.LayoutParams(-1, dp(50)).apply { bottomMargin = dp(6) }
-        actions.addView(controlRow(sprintSlide, attack), rowParams())
-        actions.addView(controlRow(heavy, jump), rowParams())
-        actions.addView(controlRow(dodge, gather), rowParams())
-        actions.addView(controlRow(craft, companion), rowParams())
-        actions.addView(controlRow(capture, camp), LinearLayout.LayoutParams(-1, dp(50)))
-        overlay.addView(actions, FrameLayout.LayoutParams(dp(360), -2, Gravity.BOTTOM or Gravity.END).apply {
-            rightMargin = dp(16)
-            bottomMargin = dp(16)
+        val selectedSlot = intArrayOf(0)
+        val slotButtons = mutableListOf<Button>()
+        val slotSymbols = listOf("⚔", "⛏", "⌁", "♨", "▣", "◈", "◇", "✦")
+        slotSymbols.forEachIndexed { index, symbol ->
+            val slot = Button(this).apply {
+                text = "${index + 1}\n$symbol"
+                textSize = 10f
+                gravity = Gravity.CENTER
+                isAllCaps = false
+                minHeight = 0
+                minimumHeight = 0
+                minWidth = 0
+                minimumWidth = 0
+                includeFontPadding = false
+                setPadding(0, dp(3), 0, 0)
+                setTextColor(Color.rgb(246, 235, 204))
+                contentDescription = "Quick slot ${index + 1}"
+                setOnClickListener {
+                    selectedSlot[0] = index
+                    slotButtons.forEachIndexed { selectedIndex, button ->
+                        button.background = quickSlotBackground(selectedIndex == index)
+                    }
+                    audio.playEffect("ui")
+                }
+                background = quickSlotBackground(index == 0)
+            }
+            slotButtons += slot
+            quickSlots.addView(slot, LinearLayout.LayoutParams(dp(48), dp(54)).apply {
+                leftMargin = dp(2)
+                rightMargin = dp(2)
+            })
+        }
+        overlay.addView(quickSlots, FrameLayout.LayoutParams(dp(420), dp(62), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(14)
+            rightMargin = dp(126)
         })
         return overlay
     }
@@ -2739,7 +2791,7 @@ class MainActivity : Activity(), SensorEventListener {
         val campState = values.getOrNull(25)?.replace('_', ' ')?.ifBlank { "NO CAMP" } ?: "NO CAMP"
         val discoveredSectors = number(26)
         requestDiscoveredSectorContent(discoveredSectors)
-        if (::vitalMeter.isInitialized) vitalMeter.updateVitals(health, stamina)
+        if (::vitalMeter.isInitialized) vitalMeter.updateVitals(health, stamina, hunger)
         stateLabel.text = "$biome  •  DAY $daysPlayed  •  $phase  •  $weather  •  $viewMode  •  TARGET $target  •  HP $health  •  STA $stamina  •  LV $level"
         stateLabel.setTextColor(
             when {
@@ -3312,6 +3364,45 @@ class MainActivity : Activity(), SensorEventListener {
             .setView(panel)
             .setNegativeButton("‹ BACK", null)
             .show()
+    }
+
+    private fun quickSlotBackground(selected: Boolean): GradientDrawable = GradientDrawable(
+        GradientDrawable.Orientation.TOP_BOTTOM,
+        if (selected) intArrayOf(Color.argb(225, 194, 143, 76), Color.argb(205, 108, 66, 43))
+        else intArrayOf(Color.argb(165, 16, 27, 31), Color.argb(150, 7, 13, 17))
+    ).apply {
+        cornerRadius = dp(6).toFloat()
+        setStroke(dp(if (selected) 2 else 1), if (selected) Color.rgb(255, 237, 170) else Color.argb(180, 187, 164, 119))
+    }
+
+    private fun circularControlButton(symbol: String, label: String, onClick: () -> Unit): Button = Button(this).apply {
+        text = "$symbol\n$label"
+        textSize = 10f
+        gravity = Gravity.CENTER
+        isAllCaps = false
+        minHeight = 0
+        minimumHeight = 0
+        minWidth = 0
+        minimumWidth = 0
+        includeFontPadding = false
+        setPadding(dp(2), dp(5), dp(2), dp(2))
+        setTextColor(Color.rgb(249, 239, 211))
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        contentDescription = label
+        setOnClickListener { onClick() }
+        background = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(225, 194, 143, 76))
+                setStroke(dp(2), Color.rgb(255, 239, 177))
+            })
+            addState(intArrayOf(), GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(150, 7, 14, 18))
+                setStroke(dp(1), Color.argb(220, 226, 193, 121))
+            })
+        }
+        elevation = dp(3).toFloat()
     }
 
     private fun gameplayButton(label: String, onClick: () -> Unit): Button = Button(this).apply {

@@ -4,6 +4,12 @@
 
 Install the matching AETHELGRAD AAB through Play internal testing, or install the complete bundletool local-testing APK set from a successful GitHub Actions run. Validate both launch paths: Google requires network access for the hosted account/cloud/co-op path, while Guest must enter the bundled Stage 1 local world without Gmail or server login. The direct APK can prove the guest-local path from its bundled Stage 1 content; hosted Google features require the configured backend and matching OAuth certificate.
 
+## Reference-inspired HUD acceptance
+
+The in-game HUD should present a branded top-left status panel and quest card, four circular top-right navigation buttons for map, tower, teleport, and menu, a circular minimap below them, a left analog joystick, a translucent circular action cluster on the right, eight bottom quick slots, and three readable HP/STA/HUN bars. The visual treatment uses dark translucent surfaces, restrained gold outlines, white/gold symbols, and pressed-state highlighting. Button geometry must remain readable on landscape phones and must not block the independent look pad or joystick pointer.
+
+The circular actions must retain the existing bindings: Sprint is hold-to-run and clears on release/cancel; Attack and Heavy submit their combat commands; Jump and Dodge trigger native movement commands; Gather and Craft submit their inventory commands; Command, Tame, and Camp retain their current companion, capture, and camp actions. The top navigation must retain map, tower/teleport, view, and settings behavior even though the labels are now compact symbols.
+
 ## Control acceptance matrix
 
 | Test | Action | Expected result |
