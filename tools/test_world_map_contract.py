@@ -50,7 +50,7 @@ def main() -> None:
         require(needle in views, f"missing map view marker: {needle}")
 
     for needle in (
-        "Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_getWorldMapState",
+        "Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getWorldMapState",
         "worldXFromSimulation(gPlayerX)",
         "worldYFromSimulation(gPlayerY)",
         "gController.camera.yaw",

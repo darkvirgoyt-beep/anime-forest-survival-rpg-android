@@ -2599,7 +2599,7 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setWorldMapVisible(JNIEnv*, jobj
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_getWorldMapState(JNIEnv* env, jobject) {
+Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getWorldMapState(JNIEnv* env, jobject) {
     std::ostringstream state;
     state << worldXFromSimulation(gPlayerX) << '|'
           << worldYFromSimulation(gPlayerY) << '|'
