@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrand
 
 data class CharacterCreationState(
     var name: String = "",

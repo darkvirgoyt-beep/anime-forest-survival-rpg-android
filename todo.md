@@ -31,7 +31,7 @@
 - [x] Separate the offline `.prototype` harness from the online release at launch and document the matching Google OAuth package/artifact path; physical release-device sign-in validation remains required.
 - [ ] Update the Android release authentication base URL and exchange/refresh endpoints to the live `/api/game-auth` contract, then verify the real Google token exchange.
 - [ ] Verify the downloaded release APK embeds the corrected live game-auth host and diagnose any remaining post-Google exchange failure without relying on stale build artifacts.
-- [x] Restore the required Android namespace and application ID `com.darvirgoyt.aethelgrad` after the source drifted to a different package, then rebuild and revalidate Google OAuth.
+- [x] Restore the required Android namespace and application ID `com.darkvirgoyt.aethelgrand` after the source drifted to a different package, then rebuild and revalidate Google OAuth.
 - [x] Add authenticated logout and character/inventory access controls, and repair reversed horizontal joystick direction in the mobile gameplay HUD.
 - [x] Add a centered aim crosshair, repair jump activation, replace the sprint box with a touch-first hold control, move the profile to the top-right, and add a circular top-left mini-map.
 - [x] Add a premium top-right health bar and stamina meter beside the profile icon, driven by the existing live native HUD state.

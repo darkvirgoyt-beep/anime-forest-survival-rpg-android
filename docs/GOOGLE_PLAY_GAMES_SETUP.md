@@ -8,7 +8,7 @@ In [Google Play Console](https://play.google.com/console/), create or open the g
 
 | Setting | Value |
 |---|---|
-| Android package name | `com.darvirgoyt.aethelgrad` |
+| Android package name | `com.darkvirgoyt.aethelgrand` |
 | Game services project ID | The numeric ID shown by Play Console |
 | Minimum Android version | API 26 |
 | Supported architectures | `arm64-v8a`, `x86_64` |
@@ -34,7 +34,7 @@ For the already delivered **test APK** inspected for this milestone, enter the f
 
 | Field | Copyable value |
 |---|---|
-| Package name | `com.darvirgoyt.aethelgrad` |
+| Package name | `com.darkvirgoyt.aethelgrand` |
 | SHA-1 | `4B:D4:D6:94:1A:B9:9B:56:60:3F:37:7C:B2:8B:B7:67:E6:94:FE:CB` |
 | SHA-256 | `86989113250DB7CDDD1BCCAB3A3B7248B5BA5C981673D0B7607E32F22132E9D` |
 

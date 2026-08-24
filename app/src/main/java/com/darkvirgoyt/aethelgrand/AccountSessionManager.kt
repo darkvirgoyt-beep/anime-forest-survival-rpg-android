@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrand
 
 import android.app.Activity
 import android.os.Handler
