@@ -27,7 +27,9 @@ def main() -> None:
     require(set(tiers) == {"high"}, "manifest must define only the high-end tier")
     declared_packs = {pack["name"] for pack in manifest["packs"]}
     require(declared_packs == set(tiers["high"]["packs"]), "high-end tier must cover every manifest pack exactly once")
-    require(tiers["high"]["targetMiB"] == 6750, "high-end package must retain the 6750 MiB envelope")
+    require(tiers["high"]["plannedBudgetMiB"] == 6750, "high-end package must retain the 6750 MiB planning envelope")
+    require(tiers["high"]["measuredBytes"] == 0, "unpublished high-end content must report zero measured payload bytes")
+    require(tiers["high"]["graphicsQuality"] == "unavailable-until-cooked", "unpublished high-end content must not claim runtime quality")
     for pack_name in sorted(declared_packs):
         pack_root = root / pack_name
         require((pack_root / "build.gradle.kts").is_file(), f"asset pack module is missing build.gradle.kts: {pack_name}")
@@ -41,9 +43,10 @@ def main() -> None:
     require("graphicsTierIndex = 4" in content_plan, "high-end content must map to the richest native tier")
     require("foliageDensity = 100" in content_plan and "effectScalePercent = 140" in content_plan, "high-end envelope must retain richer effects")
     require("setContentTierReady" in activity, "Android must notify native rendering when content is ready")
-    require('"requiredBeforeStart": true' in manifest_text, "high-end content must block gameplay until verified")
+    require('"requiredBeforeStart": false' in manifest_text, "unpublished high-end content must not block the safe core world")
+    require('"published": false' in manifest_text and '"mode": "not-published"' in manifest_text, "high-end content must remain explicitly unpublished")
     require('"automaticExpansion": false' in manifest_text, "content must not be silently substituted")
-    require('"mode": "private-https-archive"' in manifest_text, "manifest must declare private HTTPS distribution")
+    require('"mode": "not-published"' in manifest_text, "manifest must declare that high-end content is not published")
     require("PrivateContentDownloader" in catalog and "standaloneExpansionFile" in catalog, "catalog must support private OBB content")
     require("https://" in downloader and "Range" in downloader and "SHA-256" in downloader, "private downloader must enforce HTTPS, resume, and verification")
     require("archiveBytes" in downloader and "archiveSha256" in downloader, "private downloader must validate the signed manifest")
@@ -61,7 +64,8 @@ def main() -> None:
     print("GRAPHICS_TIER_CONTRACT_PASS=1")
     print("RESOURCE_TIERS=high")
     print(f"HIGH_PACKS={len(tiers['high']['packs'])}")
-    print(f"HIGH_TARGET_MIB={tiers['high']['targetMiB']}")
+    print(f"HIGH_PLANNED_BUDGET_MIB={tiers['high']['plannedBudgetMiB']}")
+    print(f"HIGH_MEASURED_BYTES={tiers['high']['measuredBytes']}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.content.Context
@@ -63,7 +63,7 @@ class AssetPackCatalog(context: Context) {
         appContext.getString(R.string.private_content_manifest_url),
         appContext.getString(R.string.private_content_archive_url)
     )
-    private val listener: AssetPackStateUpdateListener? = null
+    private var listener: AssetPackStateUpdateListener? = null
 
     fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH): Preflight {
         val requiredBytes = 0L
