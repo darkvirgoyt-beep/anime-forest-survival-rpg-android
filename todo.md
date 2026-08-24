@@ -26,13 +26,14 @@
 - [x] Add native snapshot round-trip validation for the cloud-state export/import bridge
 - [x] Connect the Android login configuration to the managed backend after the Web OAuth client ID is created
 - [x] Surface actionable Android Credential Manager failure diagnostics instead of a generic cancelled-or-unavailable message.
-- [ ] Verify the release signing certificate fingerprint and Google Android OAuth registration required for device Google Sign-In.
+- [x] Verify the release signing certificate fingerprint and Google Android OAuth registration required for device Google Sign-In.
 - [x] Diagnose the reported Google Credential Manager cancellation before backend exchange and improve the device-facing remediation guidance.
 - [x] Separate the offline `.prototype` harness from the online release at launch and document the matching Google OAuth package/artifact path; physical release-device sign-in validation remains required.
-- [ ] Update the Android release authentication base URL and exchange/refresh endpoints to the live `/api/game-auth` contract, then verify the real Google token exchange.
-- [ ] Verify the downloaded release APK embeds the corrected live game-auth host and diagnose any remaining post-Google exchange failure without relying on stale build artifacts.
-- [x] Restore the required Android namespace and application ID `com.darkvirgoyt.aethelgrand` after the source drifted to a different package, then rebuild and revalidate Google OAuth.
+- [x] Update the Android release authentication base URL and exchange/refresh endpoints to the live `/api/game-auth` contract, then verify the real Google token exchange.
+- [x] Verify the downloaded release APK embeds the corrected live game-auth host and diagnose any remaining post-Google exchange failure without relying on stale build artifacts.
+- [x] Restore and lock the required Android namespace and application ID `com.darvirgoyt.aethelgrad`, including matching Kotlin declarations, JNI exports, CI checks, and Google OAuth registration.
 - [x] Add authenticated logout and character/inventory access controls, and repair reversed horizontal joystick direction in the mobile gameplay HUD.
 - [x] Add a centered aim crosshair, repair jump activation, replace the sprint box with a touch-first hold control, move the profile to the top-right, and add a circular top-left mini-map.
 - [x] Add a premium top-right health bar and stamina meter beside the profile icon, driven by the existing live native HUD state.
 - [x] Design and implement the Emberling companion-bond milestone with original creature interaction, visible follow/stay behavior, cloud-state persistence, native regression coverage, and explicit mobile/online authority boundaries.
+- [x] Confirm on a physical Android device that Google sign-in exchanges successfully with the live backend and opens the authenticated world/profile flow.
