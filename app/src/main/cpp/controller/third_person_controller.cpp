@@ -41,6 +41,7 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
     motionTime += dt;
     invulnerabilitySeconds = std::max(0.0f, invulnerabilitySeconds - dt);
     hitstunSeconds = std::max(0.0f, hitstunSeconds - dt);
+    healthRegenDelayRemaining = std::max(0.0f, healthRegenDelayRemaining - dt);
 
     if (!isAlive()) {
         state = LocomotionState::Dead;
@@ -70,6 +71,10 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
         secondaryMotion.step(body.velocity, {0.015f * std::sin(motionTime * 0.7f), 0.0f}, dt, body.water.overlapping);
         state = slideSeconds > 0.0f ? LocomotionState::Slide : LocomotionState::Idle;
         return;
+    }
+
+    if (healthRegenDelayRemaining <= 0.0f && health < maxHealth && body.grounded && !body.water.submerged) {
+        health = std::min(maxHealth, health + std::max(0.0f, healthRegenPerSecond) * dt);
     }
 
     const float inputMagnitude = std::sqrt(input.moveX * input.moveX + input.moveY * input.moveY);
@@ -139,6 +144,7 @@ bool ThirdPersonController::slide() {
 bool ThirdPersonController::takeDamage(float amount, const physics::Vec2& knockback) {
     if (!isAlive() || isInvulnerable()) return false;
     health = std::max(0.0f, health - std::max(0.0f, amount));
+    healthRegenDelayRemaining = std::max(0.0f, healthRegenDelaySeconds);
     body.applyImpulse(knockback);
     hitstunSeconds = kHitstunDuration;
     state = health > 0.0f ? LocomotionState::Hitstun : LocomotionState::Dead;

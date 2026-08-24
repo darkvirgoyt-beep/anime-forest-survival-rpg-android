@@ -8,6 +8,7 @@
 #include "ForestSliceHealthComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "ForestSliceSurvivalComponent.h"
+#include "ForestSliceWeaponComponent.h"
 
 UForestSliceCombatComponent::UForestSliceCombatComponent()
 {
@@ -31,6 +32,26 @@ void UForestSliceCombatComponent::BeginPlay()
 void UForestSliceCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    if (const UForestSliceHealthComponent* Health = GetOwner() ? GetOwner()->FindComponentByClass<UForestSliceHealthComponent>() : nullptr)
+    {
+        if (!Health->IsAlive())
+        {
+            bQueuedAttack = false;
+            CombatPhase = EForestSliceCombatPhase::Dead;
+            return;
+        }
+        if (Health->GetState().bDowned)
+        {
+            bQueuedAttack = false;
+            CombatPhase = EForestSliceCombatPhase::Downed;
+            return;
+        }
+        if (CombatPhase == EForestSliceCombatPhase::Downed || CombatPhase == EForestSliceCombatPhase::Dead)
+        {
+            CombatPhase = EForestSliceCombatPhase::None;
+        }
+    }
 
     ComboBufferTimer = FMath::Max(0.0f, ComboBufferTimer - DeltaTime);
     if (CombatPhase == EForestSliceCombatPhase::None) {
@@ -96,6 +117,16 @@ void UForestSliceCombatComponent::SwitchWeapon(int32 NewWeaponIndex)
     ComboBufferTimer = 0.0f;
     ComboIndex = 0;
     CurrentAttackId = NAME_None;
+
+    if (UForestSliceWeaponComponent* Weapon = GetOwner()->FindComponentByClass<UForestSliceWeaponComponent>())
+    {
+        Weapon->RequestSwitchToSlot(NewWeaponIndex);
+        if (Weapon->GetEquippedSlot() != NewWeaponIndex)
+        {
+            return;
+        }
+    }
+
     EquippedWeaponIndex = NewWeaponIndex;
     CombatEvent.Broadcast(TEXT("WeaponSwitched"), ComboIndex, 0.0f, EquippedWeaponIndex);
 }
@@ -113,6 +144,14 @@ void UForestSliceCombatComponent::ServerSwitchWeapon_Implementation(int32 NewWea
 
 void UForestSliceCombatComponent::BeginAttack(bool bHeavy)
 {
+    if (const UForestSliceHealthComponent* Health = GetOwner() ? GetOwner()->FindComponentByClass<UForestSliceHealthComponent>() : nullptr)
+    {
+        if (!Health->IsAlive() || Health->GetState().bDowned)
+        {
+            return;
+        }
+    }
+
     const FForestSliceAttackDefinition* Attack = bHeavy ? &HeavyAttack : GetCurrentAttack();
     if (!Attack) return;
     if (GetOwner()->HasAuthority()) {
@@ -132,8 +171,12 @@ void UForestSliceCombatComponent::ResolveActiveHit()
     if (bHeavyAttack) Attack = &HeavyAttack;
     if (!Attack || bHitResolved) return;
 
-    if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 
+    const UForestSliceWeaponComponent* Weapon = GetOwner()->FindComponentByClass<UForestSliceWeaponComponent>();
+    const FForestSliceWeaponDefinition WeaponDefinition = Weapon ? Weapon->GetEquippedDefinition() : FForestSliceWeaponDefinition{};
+    const float DamageMultiplier = bHeavyAttack ? WeaponDefinition.HeavyDamageMultiplier : WeaponDefinition.LightDamageMultiplier;
+    const float ResolvedDamage = FMath::Max(0.0f, Attack->Damage * FMath::Max(0.0f, DamageMultiplier));
     const FVector Start = GetOwner()->GetActorLocation() + FVector(0.0f, 0.0f, 55.0f);
     const FVector End = Start + GetOwner()->GetActorForwardVector() * Attack->Range;
     FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ForestSliceAttack), false, GetOwner());
@@ -153,15 +196,22 @@ void UForestSliceCombatComponent::ResolveActiveHit()
             AActor* HitActor = Hit.GetActor();
             if (!IsValid(HitActor) || HitActor == GetOwner() || DamagedActors.Contains(HitActor)) continue;
             UForestSliceHealthComponent* Health = HitActor->FindComponentByClass<UForestSliceHealthComponent>();
-            if (!Health) continue;
             DamagedActors.Add(HitActor);
             const FVector Impulse = GetOwner()->GetActorForwardVector() * Attack->Knockback;
-            Health->ApplyDamage(Attack->Damage, Attack->PoiseDamage, Impulse, Attack->AttackId);
+            if (Health)
+            {
+                Health->ApplyDamage(ResolvedDamage, Attack->PoiseDamage, Impulse, Attack->AttackId);
+            }
+            else
+            {
+                FDamageEvent DamageEvent;
+                HitActor->TakeDamage(ResolvedDamage, DamageEvent, GetOwner()->GetInstigatorController(), GetOwner());
+            }
         }
     }
 
     bHitResolved = true;
-    CombatEvent.Broadcast(bAnyHit ? TEXT("HitConfirmed") : TEXT("HitWindow"), ComboIndex, Attack->Damage, EquippedWeaponIndex);
+    CombatEvent.Broadcast(bAnyHit ? TEXT("HitConfirmed") : TEXT("HitWindow"), ComboIndex, ResolvedDamage, EquippedWeaponIndex);
 }
 
 void UForestSliceCombatComponent::FinishAttack()

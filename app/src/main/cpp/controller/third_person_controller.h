@@ -48,8 +48,11 @@ public:
     float maxStamina = 1.0f;
     float health = 1.0f;
     float maxHealth = 1.0f;
+    float healthRegenPerSecond = 0.035f;
+    float healthRegenDelaySeconds = 3.0f;
     float invulnerabilitySeconds = 0.0f;
     float hitstunSeconds = 0.0f;
+    float healthRegenDelayRemaining = 0.0f;
     float groundedGraceSeconds = 0.0f;
 
     void tick(const InputFrame& input, float deltaSeconds,

@@ -38,6 +38,20 @@ int main() {
     assert(std::abs(controller.health - healthBefore) < 0.0001f);
 
     controller = {};
+    controller.body.grounded = true;
+    assert(controller.takeDamage(0.25f, {0.0f, 0.0f}));
+    const float damagedHealth = controller.health;
+    for (int i = 0; i < 60; ++i) {
+        controller.tick({}, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
+    }
+    assert(std::abs(controller.health - damagedHealth) < 0.0001f);
+    for (int i = 0; i < 150; ++i) {
+        controller.tick({}, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
+    }
+    assert(controller.health > damagedHealth);
+    assert(controller.health <= controller.maxHealth);
+
+    controller = {};
     controller.body.position = {0.0f, -0.50f};
     controller.body.grounded = true;
     assert(controller.jump());

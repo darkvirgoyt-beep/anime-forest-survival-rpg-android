@@ -154,6 +154,8 @@ jobs:
           python3 tools/test_local_multiplayer_contract.py || { echo 'FAIL hosted multiplayer contract'; exit 1; }
           echo 'CHECK Mass Avoidance contract'
           python3 tools/test_mass_avoidance_contract.py || { echo 'FAIL Mass Avoidance contract'; exit 1; }
+          echo 'CHECK combat health contract'
+          python3 tools/test_combat_health_contract.py || { echo 'FAIL combat health contract'; exit 1; }
           echo 'CHECK progressive content contract'
           python3 tools/test_progressive_content_contract.py || { echo 'FAIL progressive content contract'; exit 1; }
 
