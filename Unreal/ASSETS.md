@@ -11,6 +11,8 @@ This production tree accepts **only original or appropriately licensed** assets.
 | UMG/HUD art | Blueprint-ready C++ boundary only | Original icons, type license, safe-area test, localization and accessibility review |
 | Terrain and elevation | No heightmap approved yet; user-selected Google Earth polygon is planning-only | Independent DEM source, license/public-domain notice, boundary ID, crop/resample recipe, elevation range, landscape scale, texture/LOD budget |
 
+Private KML references supplied by the user remain outside this repository. `ORIGINAL_WORLD_REFERENCE_POLICY.md` records the approved high-level creative signals and excludes their geographic coordinates, external overlays, imagery, terrain, and dataset links from game production.
+
 ## Import gate
 
 Before importing an asset into `Content/`, record its filename, source, creator, license, intended use, target platform memory budget, texture compression, LOD policy, and replacement plan in the project asset manifest. Placeholder geometry is permitted only for local engineering tests and cannot be represented as final player-facing art.
