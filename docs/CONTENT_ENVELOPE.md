@@ -4,7 +4,7 @@ The supplied content envelope is the planning target for a full production versi
 
 | Content group | Target size | Planned contents | Prototype mapping |
 |---|---:|---|---|
-| Engine | 0.8–1.5 GB | Engine code, shaders, plugins, core UI, bootstrap maps, telemetry, and account shell | Existing C++17/GLES renderer, Kotlin shell, online-only onboarding, and native/JNI state bridge. |
+| Engine | 0.8–1.5 GB | Engine code, shaders, plugins, core UI, bootstrap maps, telemetry, and account shell | Existing C++17/GLES renderer, Kotlin shell, dual-entry Google-hosted/guest-local onboarding, and native/JNI state bridge. |
 | Forest launch region | 1.0–2.0 GB | Terrain, foliage, rocks, water, ruins, camp, cave, boss arena, materials, collision, and navigation data | Current forest and farming-village slice; procedural geometry is a temporary mobile-safe stand-in. |
 | Additional biomes | 3.0–5.0 GB | Mountain, coast, desert, snow, marsh, caves, and settlement environment packs | Current forest, sand, and snow regions establish the biome contract; future regions should be separate downloadable packs. |
 | Characters and animals | 1.5–3.0 GB | Original heroes, NPCs, enemies, bosses, animals, skins, skeletal meshes, materials, and morph targets | Procedural hero, villagers, wildlife, and snow predator establish silhouettes and gameplay roles; final models remain future work. |

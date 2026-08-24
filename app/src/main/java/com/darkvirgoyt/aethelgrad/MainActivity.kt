@@ -219,6 +219,10 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var localMultiplayer: LocalMultiplayerManager
     private companion object {
         const val LOCAL_PERMISSION_REQUEST = 4207
+        const val GUEST_PREFS = "aethelgard_guest_profile"
+        const val GUEST_WORLD_STATE = "guest_world_state"
+        const val GUEST_WORLD_NAME = "guest_world_name"
+        val GUEST_DEFAULT_WORLD_STATE = """{"schemaVersion":5,"playerX":-0.550000,"playerY":-0.080000,"health":1.000000,"stamina":1.000000,"hunger":0.820000,"wood":12,"fiber":8,"stone":4,"experience":0,"level":0,"experienceToNext":991,"totalExperience":0,"day":1,"worldTime":0.000000,"gatheringActions":0,"questStage":0,"emberKitCrafted":0,"wardenDefeated":0,"emberlingTrust":0,"emberlingBonded":0,"emberlingStay":0,"discoveredSectors":1,"capturedMobIndex":-1,"capturedCompanionStay":0,"campBuilt":0,"campX":-0.640000,"campY":0.520000,"campZ":0.000000,"campYaw":0.000000,"campScale":1.000000,"companionRevision":0,"campRevision":0}"""
     }
     private var pingProbeInFlight = false
     private var latestPingMs: Int? = null
@@ -372,8 +376,11 @@ class MainActivity : Activity(), SensorEventListener {
     }
     private val cloudSaveUpdater = object : Runnable {
         override fun run() {
+            if (accountSession.snapshot.isGuest && worldStateReadyForWorld) {
+                saveGuestWorldState()
+            }
             val world = activeCloudWorld
-            if (world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
+            if (!accountSession.snapshot.isGuest && world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
                 cloudSaveInFlight = true
                 gameView.queueEvent {
                     val nativeState = NativeGameBridge.getCloudState()
@@ -476,6 +483,18 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun beginOnlineStartup() {
+        if (accountSession.snapshot.state == SessionState.AUTHENTICATED && accountSession.snapshot.isGuest) {
+            if (!resourcePreparationComplete) {
+                if (::onboardingStatus.isInitialized) onboardingStatus.text = "GUEST MODE  •  PREPARING LOCAL FOREST WORLD"
+                return
+            }
+            if (pendingWorldEntry != null) {
+                continuePendingWorldEntry()
+            } else {
+                applyAccountSnapshot(accountSession.snapshot)
+            }
+            return
+        }
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
                 onboardingStatus.text = "NETWORK REQUIRED  •  STAGE 1 CONTENT AND ONLINE PLAY ARE LOCKED"
@@ -506,20 +525,24 @@ class MainActivity : Activity(), SensorEventListener {
         networkOnline = snapshot.isOnline
         if (!networkOnline) {
             if (::networkStatusLabel.isInitialized) {
-                networkStatusLabel.text = "NETWORK: RECONNECTING"
+                networkStatusLabel.text = if (accountSession.snapshot.isGuest) "NETWORK: OFFLINE  •  GUEST PLAY" else "NETWORK: RECONNECTING"
                 networkStatusLabel.setTextColor(Color.rgb(255, 180, 150))
             }
             if (::coOpStatusLabel.isInitialized && activeCoOpRoom == null) {
                 coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "NETWORK REQUIRED  •  STAGE 1 CONTENT AND ONLINE PLAY ARE LOCKED"
+                onboardingStatus.text = if (accountSession.snapshot.isGuest) {
+                    "GUEST MODE READY  •  LOCAL WORLD AVAILABLE  •  HOSTED CO-OP DISABLED"
+                } else {
+                    "NETWORK REQUIRED  •  STAGE 1 CONTENT AND ONLINE PLAY ARE LOCKED"
+                }
             }
             return
         }
 
         if (::networkStatusLabel.isInitialized) {
-            networkStatusLabel.text = "NETWORK: CONNECTED"
+            networkStatusLabel.text = if (accountSession.snapshot.isGuest) "NETWORK: OPTIONAL  •  GUEST PLAY" else "NETWORK: CONNECTED"
             networkStatusLabel.setTextColor(Color.rgb(164, 231, 190))
         }
         if (accountSession.snapshot.state != SessionState.AUTHENTICATED && ::onboardingStatus.isInitialized) {
@@ -530,7 +553,12 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun updateNetworkAndIdentityLabels() {
         if (::networkStatusLabel.isInitialized) {
-            networkStatusLabel.text = if (networkOnline) "NETWORK: CONNECTED" else "NETWORK: RECONNECTING"
+            networkStatusLabel.text = when {
+                accountSession.snapshot.isGuest && networkOnline -> "NETWORK: OPTIONAL  •  GUEST PLAY"
+                accountSession.snapshot.isGuest -> "NETWORK: OFFLINE  •  GUEST PLAY"
+                networkOnline -> "NETWORK: CONNECTED"
+                else -> "NETWORK: RECONNECTING"
+            }
             networkStatusLabel.setTextColor(if (networkOnline) Color.rgb(164, 231, 190) else Color.rgb(255, 180, 150))
         }
         if (::identityStatusLabel.isInitialized) {
@@ -538,7 +566,15 @@ class MainActivity : Activity(), SensorEventListener {
             val username = currentPlayerProfile?.username?.takeIf { it.isNotBlank() }
                 ?: currentPlayerName
             val safeId = accountId?.take(10)?.let { "$it…" } ?: "PENDING"
-            identityStatusLabel.text = "PLAYER: $username  •  ID: $safeId"
+            identityStatusLabel.text = if (accountSession.snapshot.isGuest) {
+                "PLAYER: $username  •  GUEST LOCAL  •  ID: $safeId"
+            } else {
+                "PLAYER: $username  •  ID: $safeId"
+            }
+        }
+        if (::coOpStatusLabel.isInitialized && accountSession.snapshot.isGuest && activeCoOpRoom == null) {
+            coOpStatusLabel.text = "CO-OP UNAVAILABLE  •  GUEST MODE IS LOCAL-ONLY  •  GOOGLE LOGIN REQUIRED"
+            coOpStatusLabel.setTextColor(Color.rgb(255, 205, 145))
         }
     }
 
@@ -643,6 +679,19 @@ class MainActivity : Activity(), SensorEventListener {
             .show()
     }
 
+    private fun requestGuestEntry() {
+        if (googleLoginInFlight) return
+        authenticationTransitionStarted = false
+        val immediate = accountSession.requestGuestSignIn()
+        if (immediate.state == SessionState.AUTHENTICATED && immediate.isGuest) {
+            if (::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "GUEST MODE READY  •  LOCAL WORLD ONLY  •  HOSTED MULTIPLAYER REQUIRES GOOGLE"
+                onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
+            }
+            applyAccountSnapshot(immediate)
+        }
+    }
+
     private fun requestGoogleAccountLink() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) onboardingStatus.text = "ACCOUNT LINK  •  CONNECTION RESTORING"
@@ -683,6 +732,7 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun requireOnline(action: String): Boolean {
+        if (accountSession.snapshot.isGuest && activeCoOpRoom == null && action != "CO-OP") return true
         if (networkOnline) return true
         if (::coOpStatusLabel.isInitialized) {
             coOpStatusLabel.text = "$action  •  CONNECTION RESTORING"
@@ -854,6 +904,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         // Keep the hosted room reference for resume; onDestroy performs the explicit leave.
         if (::gameView.isInitialized) gameView.queueEvent { NativeGameBridge.clearCoOpPeers() }
+        if (accountSession.snapshot.isGuest && worldStateReadyForWorld) saveGuestWorldState()
         val world = activeCloudWorld
         if (world != null && networkOnline && !cloudSaveInFlight) {
             cloudSaveInFlight = true
@@ -906,6 +957,23 @@ class MainActivity : Activity(), SensorEventListener {
         if (::audio.isInitialized) audio.release()
         super.onDestroy()
     }
+
+    private fun saveGuestWorldState() {
+        if (!accountSession.snapshot.isGuest || !worldStateReadyForWorld || !::gameView.isInitialized) return
+        gameView.queueEvent {
+            val state = NativeGameBridge.getCloudState()
+            runOnUiThread {
+                getSharedPreferences(GUEST_PREFS, MODE_PRIVATE).edit()
+                    .putString(GUEST_WORLD_STATE, state)
+                    .putString(GUEST_WORLD_NAME, characterCreation.name.ifBlank { "Guest Horizon" })
+                    .apply()
+            }
+        }
+    }
+
+    private fun guestWorldState(): String? = getSharedPreferences(GUEST_PREFS, MODE_PRIVATE)
+        .getString(GUEST_WORLD_STATE, null)
+        ?.takeIf { it.trimStart().startsWith("{") }
 
     private fun handleCloudSaveResult(updated: CloudWorldManifest?, error: String?) {
         if (updated != null) {
@@ -1045,14 +1113,14 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "REQUIRED ACCOUNT LINK  •  Google confirms your identity; cloud saves stay in Aethelgard’s game service."
+            text = "CHOOSE YOUR PATH  •  Google unlocks cloud worlds and hosted co-op; Guest starts local worlds without Gmail or a server login."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "SIGN IN REQUIRED  •  Connect your Google account to continue"
+            text = "CHOOSE GOOGLE FOR ONLINE PLAY  OR  GUEST FOR LOCAL PLAY"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
@@ -1082,6 +1150,9 @@ class MainActivity : Activity(), SensorEventListener {
             if (!checked && ::onboardingStatus.isInitialized) {
                 onboardingStatus.text = "ACCOUNT-LINK CONSENT IS REQUIRED TO CONTINUE ONLINE"
             }
+        }
+        val guest = cinematicButton("CONTINUE AS GUEST  •  LOCAL PLAY", false) {
+            requestGuestEntry()
         }
         val trustRow = LinearLayout(this).apply {
             gravity = Gravity.CENTER
@@ -1113,6 +1184,7 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(42)))
         panel.addView(consent, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
         panel.addView(google, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(2) })
+        panel.addView(guest, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
         panel.addView(trustRow, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(12) })
 
         val scroll = ScrollView(this).apply {
@@ -1135,16 +1207,20 @@ class MainActivity : Activity(), SensorEventListener {
         if (snapshot.state == SessionState.AUTHENTICATED && !snapshot.isGuest) {
             authenticationTransitionStarted = false
         }
-        if (!networkOnline) return
         if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest) {
-            authenticationTransitionStarted = false
-            accountSession.signOut()
-            if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "GOOGLE SIGN-IN REQUIRED  •  TEMPORARY SESSIONS ARE NOT SUPPORTED"
-                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            if (authenticationTransitionStarted) return
+            authenticationTransitionStarted = true
+            val continueToGuestSetup = {
+                showCharacterSetup(snapshot.accountId, recoveredProfile = null, recoveredWorlds = emptyList(), cloudError = null)
+            }
+            if (resourcePreparationComplete) {
+                continueToGuestSetup()
+            } else {
+                pendingWorldEntry = continueToGuestSetup
             }
             return
         }
+        if (!networkOnline) return
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -1435,6 +1511,10 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun connectToOnlineRoom() {
+        if (accountSession.snapshot.isGuest) {
+            if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP UNAVAILABLE  •  GUEST MODE IS LOCAL-ONLY  •  GOOGLE LOGIN REQUIRED"
+            return
+        }
         if (!requireOnline("CO-OP")) return
         if (roomConnectInFlight || activeCoOpRoom != null) return
         roomConnectInFlight = true
@@ -1451,7 +1531,9 @@ class MainActivity : Activity(), SensorEventListener {
     /** Restores the signed-in account’s profile and cloud-world setup after Google authentication. */
     private fun showCharacterSetup(accountId: String?, recoveredProfile: PlayerProfile? = null, recoveredWorlds: List<CloudWorldManifest> = emptyList(), cloudError: String? = null) {
         runOnUiThread {
-            setPlayerName(recoveredProfile?.username)
+            val guestMode = accountSession.snapshot.isGuest
+            val savedGuestName = getSharedPreferences(GUEST_PREFS, MODE_PRIVATE).getString(GUEST_WORLD_NAME, null)
+            setPlayerName(if (guestMode) savedGuestName else recoveredProfile?.username)
             if (characterSetupOverlay != null) return@runOnUiThread
             val availableWorlds = recoveredWorlds.take(6)
             var selectedWorld = availableWorlds.firstOrNull()
@@ -1500,7 +1582,11 @@ class MainActivity : Activity(), SensorEventListener {
                 setTextColor(Color.rgb(226, 184, 101))
             }, LinearLayout.LayoutParams(-1, dp(30)))
             panel.addView(TextView(this).apply {
-                text = if (selectedWorld == null) "CREATE YOUR WAYFARER" else "YOUR CLOUD WORLDS"
+                text = when {
+                    guestMode -> "LOCAL GUEST WORLD"
+                    selectedWorld == null -> "CREATE YOUR WAYFARER"
+                    else -> "YOUR CLOUD WORLDS"
+                }
                 textSize = 24f
                 gravity = Gravity.CENTER
                 typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
@@ -1508,6 +1594,7 @@ class MainActivity : Activity(), SensorEventListener {
             }, LinearLayout.LayoutParams(-1, dp(42)))
             val accountStatus = TextView(this).apply {
                 text = when {
+                    guestMode -> "Guest mode  •  local world and gameplay enabled  •  hosted co-op requires Google login"
                     selectedWorld != null && recoveredProfile?.username != null -> "${recoveredProfile.username}  •  ${selectedWorld?.name}  •  Revision ${selectedWorld?.saveRevision}"
                     selectedWorld != null -> "Cloud world found: ${selectedWorld?.name}  •  Revision ${selectedWorld?.saveRevision}"
                     recoveredProfile?.username != null -> "Welcome back, ${recoveredProfile.username}  •  Choose your cloud path"
@@ -1546,8 +1633,12 @@ class MainActivity : Activity(), SensorEventListener {
                 panel.addView(worldPicker, LinearLayout.LayoutParams(-1, dp(42)))
             }
             characterNameInput = EditText(this).apply {
-                hint = if (selectedWorld == null) "WAYFARER NAME" else "PROFILE NAME"
-                setText(recoveredProfile?.username.orEmpty())
+                hint = when {
+                    guestMode -> "WAYFARER NAME (LOCAL)"
+                    selectedWorld == null -> "WAYFARER NAME"
+                    else -> "PROFILE NAME"
+                }
+                setText(if (guestMode) savedGuestName.orEmpty() else recoveredProfile?.username.orEmpty())
                 textSize = 15f
                 isSingleLine = true
                 setTextColor(Color.WHITE)
@@ -1637,7 +1728,44 @@ class MainActivity : Activity(), SensorEventListener {
                 setTextColor(Color.rgb(255, 180, 150))
             }
             panel.addView(validation, LinearLayout.LayoutParams(-1, dp(26)))
-            panel.addView(cinematicButton(if (selectedWorld == null) "CREATE CLOUD WORLD  ›" else "RESUME SELECTED WORLD  ›", true) {
+            panel.addView(cinematicButton(if (guestMode) "ENTER LOCAL WORLD  ›" else if (selectedWorld == null) "CREATE CLOUD WORLD  ›" else "RESUME SELECTED WORLD  ›", true) {
+                if (guestMode) {
+                    characterCreation.name = characterNameInput.text.toString()
+                    val issue = characterCreation.validate()
+                    if (issue != null) {
+                        validation.text = issue
+                        return@cinematicButton
+                    }
+                    setPlayerName(characterCreation.name)
+                    getSharedPreferences(GUEST_PREFS, MODE_PRIVATE).edit()
+                        .putString(GUEST_WORLD_NAME, characterCreation.name)
+                        .apply()
+                    validation.setTextColor(Color.rgb(255, 205, 145))
+                    validation.text = if (guestWorldState() == null) "Creating local world on this device…" else "Restoring local guest world…"
+                    val savedState = guestWorldState() ?: GUEST_DEFAULT_WORLD_STATE
+                    gameView.queueEvent {
+                        val restored = NativeGameBridge.loadCloudState(savedState)
+                        runOnUiThread {
+                            if (!restored) {
+                                validation.setTextColor(Color.rgb(255, 180, 150))
+                                validation.text = "Local guest snapshot is incompatible with this game build."
+                                return@runOnUiThread
+                            }
+                            activeCloudWorld = null
+                            worldStateReadyForWorld = true
+                            markWorldLoadingTaskReady("world")
+                            validation.setTextColor(Color.rgb(164, 231, 190))
+                            validation.text = "Local world ready. Entering Aethelgrad…"
+                            rootContainer.postDelayed({
+                                enterWorldThroughCinematic {
+                                    rootContainer.removeView(overlay)
+                                    characterSetupOverlay = null
+                                }
+                            }, 420L)
+                        }
+                    }
+                    return@cinematicButton
+                }
                 val recoveredWorld = selectedWorld
                 if (recoveredWorld != null) {
                     validation.setTextColor(Color.rgb(164, 231, 190))
@@ -2002,6 +2130,10 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun startCoOpRoom(snapshot: CoOpRoomSnapshot) {
+        if (accountSession.snapshot.isGuest) {
+            if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP UNAVAILABLE  •  GUEST MODE IS LOCAL-ONLY  •  GOOGLE LOGIN REQUIRED"
+            return
+        }
         activeCoOpRoom = snapshot
         coOpReconnectInFlight = false
         coOpReconnectAttempts = 0
@@ -2063,6 +2195,10 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun ensureLocalPermissions(action: () -> Unit): Boolean {
+        if (accountSession.snapshot.isGuest) {
+            if (::coOpStatusLabel.isInitialized) coOpStatusLabel.text = "CO-OP UNAVAILABLE  •  GUEST MODE IS LOCAL-ONLY  •  GOOGLE LOGIN REQUIRED"
+            return false
+        }
         val required = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES)
         } else {
@@ -2155,6 +2291,17 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun showCoOpDialog() {
+        if (accountSession.snapshot.isGuest) {
+            AlertDialog.Builder(this)
+                .setTitle("HOSTED CO-OP UNAVAILABLE")
+                .setMessage("Guest mode keeps every local world, combat, gathering, crafting, companion, camp, and exploration feature on this device. Hosted multiplayer, cloud worlds, and shared saves require Google login.")
+                .setNegativeButton("BACK", null)
+                .setPositiveButton("SWITCH TO GOOGLE") { _, _ ->
+                    confirmLogout()
+                }
+                .show()
+            return
+        }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(4))
@@ -2701,9 +2848,14 @@ class MainActivity : Activity(), SensorEventListener {
     private fun confirmLogout() {
         AlertDialog.Builder(this)
             .setTitle("LOG OUT OF AETHELGRAD?")
-            .setMessage("This removes the local session from this device. Your cloud world remains protected in your account.")
+            .setMessage(if (accountSession.snapshot.isGuest) {
+                "This ends guest mode. Your local guest world remains on this device; hosted multiplayer and cloud worlds require Google login."
+            } else {
+                "This removes the local session from this device. Your cloud world remains protected in your account."
+            })
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("LOG OUT") { _, _ ->
+                if (accountSession.snapshot.isGuest && worldStateReadyForWorld) saveGuestWorldState()
                 if (networkOnline) activeCoOpRoom?.let { accountSession.leaveCoOpRoom(it.code) }
                 if (localSessionActive) localMultiplayer.leaveSession()
                 activeCoOpRoom = null

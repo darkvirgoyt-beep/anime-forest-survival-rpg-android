@@ -2,7 +2,7 @@
 
 ## Test build
 
-Install the matching AETHELGRAD AAB through Play internal testing, or install the complete bundletool local-testing APK set from a successful GitHub Actions run. The release client requires network access, mandatory Google sign-in, and the complete high-end HTTPS content archive before entering the world. A direct APK is limited to login/configuration smoke checks because it cannot fetch the production packs.
+Install the matching AETHELGRAD AAB through Play internal testing, or install the complete bundletool local-testing APK set from a successful GitHub Actions run. Validate both launch paths: Google requires network access for the hosted account/cloud/co-op path, while Guest must enter the bundled Stage 1 local world without Gmail or server login. The direct APK can prove the guest-local path from its bundled Stage 1 content; hosted Google features require the configured backend and matching OAuth certificate.
 
 ## Control acceptance matrix
 

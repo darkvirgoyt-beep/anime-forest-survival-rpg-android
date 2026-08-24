@@ -49,9 +49,9 @@ ACCOUNT GATE ───────────────→ AUTHENTICATED PROF
 | Screen or state | Player-facing responsibilities | Server/backend responsibility | Current foundation |
 |---|---|---|---|
 | Boot | Load version, legal text, local settings, asset-pack status | Version compatibility and maintenance status | Android activity and Unreal project descriptor |
-| Account | Mandatory Google Play sign-in and session status; no player-facing guest entry | Exchange short-lived provider credential for backend session | `AccountSessionManager`, `UForestSliceAccountSubsystem` boundary; the Android release exposes only the verified Google account flow |
+| Account | Choose Google for cloud/co-op or Guest for local worlds; show session status and scope | Exchange short-lived provider credential for Google backend session; no backend call for Guest | `AccountSessionManager`, `UForestSliceAccountSubsystem` boundary; Android exposes both explicit paths with separate authority scopes |
 | Server directory | Show region, status, capacity, measured ping, selected row | Return signed directory and perform real health/ping checks | `ServerDirectory.kt`, `UForestSliceServerDirectorySubsystem` |
-| World lobby | Create private world, invite friends, join by code, set privacy; blocked until authenticated and cloud-save preflight succeeds | Allocate/destroy authoritative session and verify party permissions | `UForestSliceWorldSessionSubsystem` contract; dedicated service still required |
+| World lobby | Google: create private world, invite friends, join by code, set privacy. Guest: enter the local world directly; hosted lobby is unavailable | Allocate/destroy authoritative session and verify party permissions for Google accounts | `UForestSliceWorldSessionSubsystem` contract; local guest world uses the native versioned snapshot |
 | Cloud save | Show last saved version, conflict warning, retry state | Versioned save, checksum, conflict resolution, migration, backup | Planned cloud-save service boundary |
 | Character creation | Choose original style parameters and valid name | Validate name, reserve identity, replicate profile | `CharacterCreationState`, `UForestSliceCharacterProfileComponent` |
 | World bootstrap | Spawn at safe camp, load nearby chunk, display quest | Own seed, spawn, mutations, quest state, inventory | Procedural forest and gameplay component foundations |
@@ -66,7 +66,7 @@ The client owns presentation state, local input, camera feel, menu navigation, a
 
 ## First account/server/character milestone
 
-The online-only release milestone is complete when a player can launch the Android build, complete Google Play sign-in through the platform bridge, receive a backend session, see live server health and measured latency, pass cloud-save preflight, join or create an invite-only co-op session, enter a character name, cycle original style indices for eyebrow/clothes/hair, and pass validation before the gameplay HUD is revealed. The Google Play button must not fake an authenticated session. A guest control is not part of the Android release path.
+The dual-entry release milestone is complete when a player can launch the Android build and choose either Google or Guest. Google sign-in goes through the platform bridge, receives a backend session, shows live server health and measured latency, passes cloud-save preflight, and can join or create an invite-only co-op session. Guest entry makes a local world available without Gmail or server login and preserves the same character, exploration, combat, gathering, crafting, companion, and camp gameplay path, while hosted multiplayer and cloud worlds remain disabled. Both paths enter character setup and the Google button must never fake an authenticated session.
 
 ## First world milestone
 
@@ -74,11 +74,11 @@ The first world is intentionally narrow: one authored forest clearing, one safe 
 
 ## Co-op milestone order
 
-Co-op begins as invite-only four-player sessions on a dedicated authoritative server. The party owner creates or selects a world; invited players join after version and entitlement checks. The server owns the shared seed, party membership, world mutations, loot claims, quest progression policy, revive rules, and sleep-time policy. Reconnect and conflict-safe save are mandatory before public matchmaking. The Android milestone may expose the lobby contract while using guest/offline mode; that is not a claim that online services are already live.
+Co-op begins as invite-only four-player sessions on a dedicated authoritative server. Google players create or select a world; invited players join after version and entitlement checks. Guest players remain single-player and see an explicit hosted-multiplayer-unavailable state rather than a fake room or LAN fallback. The server owns the shared seed, party membership, world mutations, loot claims, quest progression policy, revive rules, and sleep-time policy. Reconnect and conflict-safe save are mandatory before public matchmaking.
 
 ## Cloud-save contract
 
-Every save has a `schemaVersion`, `worldId`, `playerId`, `revision`, `updatedAt`, `contentHash`, and separate player/world mutation sections. Uploads are idempotent. The server rejects stale revisions unless the conflict resolver can merge disjoint mutations; otherwise the player receives an explicit conflict screen with local and cloud timestamps. Save migration is tested before each release. Online-only release saves are account-bound and uploaded through the authenticated backend. A developer-only local profile may exist for test automation, but it must never appear as a release login option or silently merge into a production account.
+Every save has a `schemaVersion`, `worldId`, `playerId`, `revision`, `updatedAt`, `contentHash`, and separate player/world mutation sections. Google saves upload idempotently through the authenticated backend, and the server rejects stale revisions unless the conflict resolver can merge disjoint mutations. Guest saves use the same versioned native snapshot format in app-private local storage and never silently merge into a Google account. Save migration is tested before each release; switching from Guest to Google is an explicit account path, not an automatic conversion.
 
 ## Taming and creature contract
 

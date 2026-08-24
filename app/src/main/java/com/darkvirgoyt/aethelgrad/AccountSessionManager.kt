@@ -32,6 +32,7 @@ import javax.crypto.spec.GCMParameterSpec
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.util.Locale
+import java.util.UUID
 import java.time.Instant
 import java.util.concurrent.Executors
 
@@ -204,6 +205,8 @@ class AccountSessionManager {
         const val SESSION_KEY_ALIAS = "aethelgard_session_key"
         const val LAST_COOP_CODE_PREFS = "aethelgard_persistent_world"
         const val LAST_COOP_CODE = "last_world_code"
+        const val GUEST_PREFS = "aethelgard_guest_profile"
+        const val GUEST_ACCOUNT_ID = "guest_account_id"
     }
 
     fun initialize(activity: Activity, onStateChanged: (SessionSnapshot) -> Unit) {
@@ -215,13 +218,43 @@ class AccountSessionManager {
         authRefreshUrl = activity.getString(R.string.auth_refresh_url)
         credentialManager = CredentialManager.create(activity)
 
-        if (!hasGoogleConfiguration()) {
-            publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "The HTTPS online game service is not configured."))
-            return
+        if (restoreGuestSession()) return
+        if (hasGoogleConfiguration() && restorePersistedSession()) return
+        publish(
+            SessionSnapshot(
+                SessionState.SIGNED_OUT,
+                message = if (hasGoogleConfiguration()) {
+                    "Choose Google for cloud worlds and hosted co-op, or continue as a guest for local play."
+                } else {
+                    "Google login is unavailable for this build. Guest local play remains available."
+                }
+            )
+        )
+    }
+
+    /** Starts a local-only profile without Gmail, a backend request, or a hosted session. */
+    fun requestGuestSignIn(): SessionSnapshot {
+        val owner = activity
+        if (owner == null) {
+            return publish(SessionSnapshot(SessionState.ERROR, message = "Guest mode is still starting. Close and reopen the game, then try again."))
         }
-        if (!restorePersistedSession()) {
-            publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Sign in to continue to Aethelgrad online."))
-        }
+        clearSession()
+        val guestId = owner.getSharedPreferences(GUEST_PREFS, Activity.MODE_PRIVATE)
+            .getString(GUEST_ACCOUNT_ID, null)
+            ?.takeIf { it.startsWith("guest-") }
+            ?: "guest-${UUID.randomUUID().toString().replace("-", "").take(20)}"
+        owner.getSharedPreferences(GUEST_PREFS, Activity.MODE_PRIVATE)
+            .edit()
+            .putString(GUEST_ACCOUNT_ID, guestId)
+            .apply()
+        return publish(
+            SessionSnapshot(
+                SessionState.AUTHENTICATED,
+                accountId = guestId,
+                message = "Guest mode ready. Local worlds and gameplay are available; hosted multiplayer requires Google login.",
+                isGuest = true
+            )
+        )
     }
 
     fun requestGoogleSignIn(): SessionSnapshot {
@@ -991,6 +1024,7 @@ class AccountSessionManager {
 
     fun signOut(): SessionSnapshot {
         clearSession()
+        activity?.getSharedPreferences(GUEST_PREFS, Activity.MODE_PRIVATE)?.edit()?.remove(GUEST_ACCOUNT_ID)?.apply()
         return publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out"))
     }
 
@@ -1089,6 +1123,23 @@ class AccountSessionManager {
     private fun publishCompanionStateResult(callback: (CompanionStateSnapshot?, String?) -> Unit, result: CompanionStateSnapshot?, error: String?) = mainHandler.post { callback(result, error) }
     private fun publishAuthoritativeCampResult(callback: (AuthoritativeCampResult?, String?) -> Unit, result: AuthoritativeCampResult?, error: String?) = mainHandler.post { callback(result, error) }
     private fun publishBooleanResult(callback: (Boolean, String?) -> Unit, result: Boolean, error: String?) = mainHandler.post { callback(result, error) }
+
+    private fun restoreGuestSession(): Boolean {
+        val owner = activity ?: return false
+        val guestId = owner.getSharedPreferences(GUEST_PREFS, Activity.MODE_PRIVATE)
+            .getString(GUEST_ACCOUNT_ID, null)
+            ?.takeIf { it.startsWith("guest-") }
+            ?: return false
+        publish(
+            SessionSnapshot(
+                SessionState.AUTHENTICATED,
+                accountId = guestId,
+                message = "Guest mode restored. Local worlds and gameplay are available; hosted multiplayer requires Google login.",
+                isGuest = true
+            )
+        )
+        return true
+    }
 
     private fun restorePersistedSession(): Boolean {
         val owner = activity ?: return false

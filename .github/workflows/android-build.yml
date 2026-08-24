@@ -79,10 +79,11 @@ jobs:
           test -f tools/test_progressive_content_contract.py
           test -f tools/test_launch_slice_content.py
           test -f tools/test_forest_prop_kit.py
+          test -f tools/test_dual_login_contract.py
           test -f tools/author_launch_slice_assets.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/test_dual_login_contract.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
@@ -149,6 +150,8 @@ jobs:
           python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null || { echo 'FAIL Unreal pack mapping JSON'; exit 1; }
           echo 'CHECK production foundation contract'
           python3 tools/test_production_foundation_contract.py || { echo 'FAIL production foundation contract'; exit 1; }
+          echo 'CHECK dual-login contract'
+          python3 tools/test_dual_login_contract.py || { echo 'FAIL dual-login contract'; exit 1; }
           echo 'CHECK online-only contract'
           python3 tools/test_online_only_contract.py || { echo 'FAIL online-only contract'; exit 1; }
           echo 'CHECK persistent multiplayer contract'

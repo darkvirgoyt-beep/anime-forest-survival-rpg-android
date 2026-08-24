@@ -8,7 +8,7 @@
 | Current launcher label | `AETHELGARD: Wild Horizons` | It identifies the current locked-package build; an older icon with the former short label is a separately installed historical package and must be removed once from Android settings. |
 | Android minimum version | Android 11 / API 30 | The downloadable release is deliberately Android 11+; app-scoped OBB download storage needs no broad shared-storage permission. |
 | Game authentication base and routes | `https://aethelgard-api-v2.onrender.com/v1` with `/auth/google-id-token/exchange` and `/auth/refresh` | The authenticated Google exchange and refresh flow require the exact managed Render v2 backend boundary. |
-| Online mode | `online-only` | Do not add a guest or offline production bypass; cloud/session ownership is the game entry boundary. |
+| Login modes | `dual-entry` | Google login creates the hosted cloud/co-op session; Guest starts a local world without Gmail or server login. Guest mode cannot create, join, or reconnect to multiplayer. |
 | High-graphics publication gate | `false` | Keep this false until real original/licensed Unreal Android cooked content has a measured signed archive or Play release. See `docs/VERIFIED_CONTENT_PUBLICATION.md`. |
 | Unreal Engine source | `external-private-only` | Epic-licensed engine source stays outside this public game repository. Commit only project code and original/licensed assets. |
 

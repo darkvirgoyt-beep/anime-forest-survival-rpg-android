@@ -50,7 +50,7 @@ A successful response is `200 OK`:
 }
 ```
 
-Malformed keys return `400 invalid_guest_key`. A guest session can immediately create or join a co-op tower room; no Gmail account or account picker is required.
+Malformed keys return `400 invalid_guest_key`. This endpoint documents a future/server-backed anonymous account contract; the current Android release does not call it. Android Guest mode is intentionally local-only, stores the versioned world snapshot on-device, and cannot create, join, or reconnect to hosted co-op. Google login remains the required path for cloud worlds and multiplayer.
 
 ### `POST /v1/auth/google-id-token/exchange`
 
