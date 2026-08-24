@@ -23,8 +23,22 @@
     "stream crossing",
     "gathering nodes",
     "safe bed",
-    "target dummy"
+    "target dummy",
+    "rock clusters",
+    "fallen logs",
+    "moss ruin arch",
+    "shrine wall segment"
   ],
+  "propKit": {
+    "manifest": "forest_prop_kit.json",
+    "placementSeed": 74291,
+    "chunk": "forest-sector-00",
+    "landmark": "SM_Ruin_Pillar_Left + SM_Ruin_Pillar_Right + SM_Ruin_Arch_Lintel",
+    "campAnchor": "SM_Camp_FireRing + SM_Camp_EmberCore",
+    "obstacle": "SM_Log_Fallen",
+    "scatter": ["SM_Rock_Large", "SM_Rock_Mossy", "SM_Rock_Small"],
+    "mobileCollision": "simple convex per prop; no per-poly collision"
+  },
   "collision": "procedural-mobile-capsule",
   "navigation": "bounded-grid-v1"
 }

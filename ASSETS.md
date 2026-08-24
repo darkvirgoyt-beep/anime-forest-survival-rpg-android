@@ -18,9 +18,20 @@
 
 ## Included in v0.1
 
-The Android bootstrap contains the production account shell, settings, loading scene, native renderer, save schema, and the authored **forest launch slice**. The launch slice is distributed into the Gradle asset-pack modules and includes original mobile textures, terrain heightfield data, foliage LOD data, water movement/material descriptors, Aurora motion/palette data, GLES material metadata, and the original/procedural forest audio bank. Its measured payload is approximately 3.22 MiB; it is real content, not budget padding.
+The Android bootstrap contains the production account shell, settings, loading scene, native renderer, save schema, and the authored **forest launch slice**. The launch slice is distributed into the Gradle asset-pack modules and includes original mobile textures, terrain heightfield data, foliage LOD data, water movement/material descriptors, Aurora motion/palette data, GLES material metadata, the original/procedural forest audio bank, and a deterministic low-poly `forest_prop_kit` source set for rocks, logs, ruins, camp, and shrine props. Its measured payload is exactly 3,353,935 bytes (approximately 3.20 MiB); it is real content, not budget padding.
 
 The launch slice is not the complete high-end Unreal archive. The final cooked world meshes, materials, animation graphs, LODs, platform shaders, cinematics, voice, and future biome sectors must arrive through a trusted Unreal cook and a verified Play Asset Delivery or HTTPS OBB release before those expansions are unlocked.
+
+## Forest launch prop kit
+
+| Prop family | Authored source | Mobile contract | Runtime/import boundary |
+|---|---|---|---|
+| Rocks | `assetpack_forest/src/main/assets/launch_slice/forest_prop_kit.obj` groups `SM_Rock_*` | Low-poly silhouettes, convex or simple-box collision, three LOD targets | Mirrored into the direct APK source tree; requires Unreal import and cook for `.uasset` use |
+| Fallen log | `SM_Log_Fallen` with bark/cut materials | Capsule collision, traversal obstacle, three LOD targets | Descriptor is integrated into `forest_region.json`; cooked collision remains deferred |
+| Ruin arch and wall | `SM_Ruin_*` groups | Simple box collision, one landmark arch and one cover segment | Original source geometry only; no fake cooked world is claimed |
+| Camp/shrine cluster | `SM_Camp_*` and `SM_Shrine_*` groups | Camp anchor plus pedestal/standing-stone interaction silhouette | Deterministic placement seed `74291`, protected from water by the placement contract |
+
+The authoritative source, ownership, LOD, collision, and placement metadata is `assetpack_forest/src/main/assets/launch_slice/forest_prop_kit.json`; its receipt is centralized in `assets/production_content/pack_receipts.json`. The OBJ/MTL files are authored source stand-ins for the Android launch slice. A licensed Unreal Engine 5.6 import/cook and device profiling pass is still required before these become cooked `.uasset` static meshes.
 
 ## Planned original assets
 

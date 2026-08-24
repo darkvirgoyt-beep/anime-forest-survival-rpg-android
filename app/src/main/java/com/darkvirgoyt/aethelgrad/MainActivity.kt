@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 import android.Manifest
 import android.animation.ValueAnimator
@@ -2779,7 +2779,11 @@ class MainActivity : Activity(), SensorEventListener {
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 56, 61))
         }
         val details = TextView(this).apply {
-            text = resourceTier.description
+            text = if (resourceTier == ContentDownloadPlan.ResourceTier.HIGH) {
+                "HIGH-END CONTENT is not published for this installation. GAME LOCKED until a signed Unreal cook is available."
+            } else {
+                resourceTier.description
+            }
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(161, 190, 187))

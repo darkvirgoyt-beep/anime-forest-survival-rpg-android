@@ -27,7 +27,10 @@
       "status": "authored-launch-slice",
       "files": [
         "launch_slice/forest_region.json",
-        "launch_slice/water_surface.json"
+        "launch_slice/water_surface.json",
+        "launch_slice/forest_prop_kit.obj",
+        "launch_slice/forest_prop_kit.mtl",
+        "launch_slice/forest_prop_kit.json"
       ],
       "origin": "original procedural and repository-owned AETHELGRAD content",
       "license": "AETHELGRAD project-owned generated source; no third-party game assets"

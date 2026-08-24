@@ -1,0 +1,96 @@
+{
+  "contentId": "aethelgard-forest-launch-v1",
+  "kitId": "forest-prop-kit-v1",
+  "source": "original deterministic AETHELGRAD procedural geometry",
+  "license": "AETHELGRAD project-owned generated source; no third-party game assets",
+  "format": "OBJ source for Unreal import and later UE 5.6 cook",
+  "mobileProfile": {
+    "maxTrianglesPerCombinedSource": 544,
+    "lods": [
+      "LOD0 source",
+      "LOD1 60 percent",
+      "LOD2 25 percent"
+    ],
+    "collision": "simple convex per prop; no per-poly mobile collision"
+  },
+  "props": [
+    {
+      "id": "rock_large",
+      "mesh": "SM_Rock_Large",
+      "role": "cover and resource-node anchor",
+      "placement": "forest edge and stream bank",
+      "collision": "convex"
+    },
+    {
+      "id": "rock_mossy",
+      "mesh": "SM_Rock_Mossy",
+      "role": "moss detail cluster",
+      "placement": "shade and ruin base",
+      "collision": "convex"
+    },
+    {
+      "id": "rock_small",
+      "mesh": "SM_Rock_Small",
+      "role": "scatter detail",
+      "placement": "path edge",
+      "collision": "simple box"
+    },
+    {
+      "id": "log_fallen",
+      "mesh": "SM_Log_Fallen",
+      "role": "fallen traversal obstacle",
+      "placement": "forest floor",
+      "collision": "capsule"
+    },
+    {
+      "id": "ruin_arch",
+      "mesh": "SM_Ruin_Pillar_Left + SM_Ruin_Pillar_Right + SM_Ruin_Arch_Lintel",
+      "role": "landmark gate",
+      "placement": "forest shrine approach",
+      "collision": "three simple boxes"
+    },
+    {
+      "id": "ruin_wall",
+      "mesh": "SM_Ruin_Wall_Segment",
+      "role": "partial ruin cover",
+      "placement": "shrine perimeter",
+      "collision": "box"
+    },
+    {
+      "id": "camp_fire_ring",
+      "mesh": "SM_Camp_FireRing + SM_Camp_EmberCore",
+      "role": "camp interactable anchor",
+      "placement": "safe camp clearing",
+      "collision": "flat ring"
+    },
+    {
+      "id": "camp_wood_pile",
+      "mesh": "SM_Camp_WoodPile",
+      "role": "restockable camp prop",
+      "placement": "beside fire ring",
+      "collision": "box"
+    },
+    {
+      "id": "shrine_pedestal",
+      "mesh": "SM_Shrine_Pedestal",
+      "role": "shrine interaction anchor",
+      "placement": "behind camp clearing",
+      "collision": "box"
+    },
+    {
+      "id": "shrine_standing_stone",
+      "mesh": "SM_Shrine_StandingStone",
+      "role": "shrine silhouette",
+      "placement": "on pedestal",
+      "collision": "convex"
+    }
+  ],
+  "placementContract": {
+    "chunk": "forest-sector-00",
+    "seed": 74291,
+    "minimumSpacingMeters": 2.5,
+    "avoidWaterMeters": 1.5,
+    "ruinLandmarkCount": 1,
+    "campCount": 1
+  }
+}

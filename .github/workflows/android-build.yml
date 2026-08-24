@@ -78,19 +78,20 @@ jobs:
           test -f tools/test_persistent_multiplayer_contract.py
           test -f tools/test_progressive_content_contract.py
           test -f tools/test_launch_slice_content.py
+          test -f tools/test_forest_prop_kit.py
           test -f tools/author_launch_slice_assets.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
-          grep -q 'namespace = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
-          grep -q 'applicationId = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
-          grep -R -q 'com.darvirgoyt.aethelgrad' app/src/main app/build.gradle.kts app/src/main/cpp
-          grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
-          grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
+          grep -q 'namespace = "com.darkvirgoyt.aethelgrad"' app/build.gradle.kts
+          grep -q 'applicationId = "com.darkvirgoyt.aethelgrad"' app/build.gradle.kts
+          grep -R -q 'com.darkvirgoyt.aethelgrad' app/src/main app/build.gradle.kts app/src/main/cpp
+          grep -q 'Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
+          grep -q 'Java_com_darkvirgoyt_aethelgrad_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           grep -q 'void draw3DEmberling' app/src/main/cpp/forest_game.cpp
           grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
@@ -134,6 +135,8 @@ jobs:
           python3 tools/validate_runtime_content_package.py || { echo 'FAIL runtime content package'; exit 1; }
           echo 'CHECK authored launch-slice content'
           python3 tools/test_launch_slice_content.py || { echo 'FAIL authored launch-slice content'; exit 1; }
+          echo 'CHECK forest prop kit'
+          python3 tools/test_forest_prop_kit.py || { echo 'FAIL forest prop kit'; exit 1; }
           echo 'CHECK resource center'
           python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject || { echo 'FAIL resource center'; exit 1; }
           echo 'CHECK graphics tier contract'
@@ -301,7 +304,7 @@ jobs:
           python3 tools/validate_asset_budget.py
           gradle bundleRelease assembleRelease --stacktrace
           APK_PACKAGE="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging app/build/outputs/apk/release/app-release.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
-          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
+          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrad"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
 
       - name: Verify release APK identity and report payload sizes
@@ -309,7 +312,7 @@ jobs:
           AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
-          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
+          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrad"
           test -s "$APK_PATH"
           test -s "app/build/outputs/bundle/release/app-release.aab"
           APK_BYTES=$(stat -c%s "$APK_PATH")
@@ -367,7 +370,7 @@ jobs:
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
           APK_VERSION_CODE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p")"
-          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
+          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrad"
           test "$APK_VERSION_CODE" -gt 0
           python3 tools/build_expansion_obb.py \
             --input-dir build/obb-staging \
@@ -386,7 +389,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aethelgard-expansion-obb
-          path: build/expansion-obb/main.*.com.darvirgoyt.aethelgrad.obb
+          path: build/expansion-obb/main.*.com.darkvirgoyt.aethelgrad.obb
           if-no-files-found: error
 
       - name: Upload direct APK artifact

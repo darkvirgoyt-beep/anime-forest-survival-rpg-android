@@ -34,7 +34,7 @@ DEFERRED_PACKS = (
     "assetpack_shaders_vulkan",
     "assetpack_pipeline_cache",
 )
-PAYLOAD_SUFFIXES = {".json", ".png", ".wav", ".mp3", ".glsl"}
+PAYLOAD_SUFFIXES = {".json", ".png", ".wav", ".mp3", ".glsl", ".obj", ".mtl"}
 
 
 def payload_files(pack: str) -> list[Path]:

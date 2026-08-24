@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 /**
  * Staged packaging plan for AETHELGRAD content. Size budgets are planning targets,
