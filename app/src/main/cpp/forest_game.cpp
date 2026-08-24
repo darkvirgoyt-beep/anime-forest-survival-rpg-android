@@ -2247,10 +2247,10 @@ void simulatePhysicsStep() {
     updateCalendar();
     updateCentralRiverFlow();
     if (gGyroEnabled) gController.camera.orbit(gGyroX * 0.012f, gGyroY * 0.008f);
-    // Android screen and world handedness are opposite on the horizontal axis in
-    // this camera setup. Mirror both axes exactly once here so thumb movement
-    // produces intuitive visible traversal regardless of joystick placement.
-    const forest::controller::InputFrame input{-gMoveX, -gMoveY, gController.camera.yaw, gSprintHeld};
+    // Joystick coordinates are already expressed in the controller’s walkable
+    // plane. Do not mirror them here: the thumb direction must match traversal
+    // direction on screen, while CharacterBody applies smooth acceleration.
+    const forest::controller::InputFrame input{gMoveX, gMoveY, gController.camera.yaw, gSprintHeld};
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
     updateMobs(kPhysicsStep);

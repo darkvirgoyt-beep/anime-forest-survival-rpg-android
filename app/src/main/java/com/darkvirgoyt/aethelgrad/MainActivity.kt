@@ -423,7 +423,9 @@ class MainActivity : Activity(), SensorEventListener {
         gameView.applyGraphicsTier(selectedGraphicsTier)
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         rootContainer.addView(LookPadView(this) { dx, dy ->
-            gameView.queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f * lookSensitivity, dy * 0.0032f * lookSensitivity) }
+            // Direct manipulation: the camera follows the finger instead of
+            // orbiting against it. Both axes use the same intuitive mapping.
+            gameView.queueEvent { NativeGameBridge.orbitCamera(-dx * 0.0048f * lookSensitivity, -dy * 0.0032f * lookSensitivity) }
         })
         rootContainer.addView(buildHud())
         joystickView = JoystickView(this) { x, y ->
@@ -3650,7 +3652,9 @@ private class GameSurfaceView(context: Context, onRendererReady: () -> Unit) : G
                         val dx = (event.getX(index) - lastLookX).coerceIn(-96f, 96f)
                         val dy = (event.getY(index) - lastLookY).coerceIn(-96f, 96f)
                         if (kotlin.math.abs(dx) >= 0.35f || kotlin.math.abs(dy) >= 0.35f) {
-                            queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f, dy * 0.0032f) }
+                            // Keep the fallback surface path consistent with the
+                            // LookPadView direct-manipulation sign convention.
+                            queueEvent { NativeGameBridge.orbitCamera(-dx * 0.0048f, -dy * 0.0032f) }
                         }
                         lastLookX = event.getX(index)
                         lastLookY = event.getY(index)
