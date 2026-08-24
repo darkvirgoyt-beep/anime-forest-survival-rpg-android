@@ -1,4 +1,4 @@
-package com.darkvirgoyt.aethelgrand
+package com.darvirgoyt.aethelgrad
 
 import android.Manifest
 import android.content.BroadcastReceiver
