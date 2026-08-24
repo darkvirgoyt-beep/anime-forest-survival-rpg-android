@@ -9,7 +9,7 @@ The required `SIGN IN WITH GOOGLE` control uses Android Credential Manager and t
 | Google sign-in ended before the game server | Copy the package name and SHA-1 fingerprint shown in the app’s error message into the Android OAuth client in Google Cloud Console, then retry. Do not enable the custom URI scheme. |
 | Interrupted | Re-open the app and retry once. |
 
-The backend cannot fix a failed Android credential request because that failure occurs before an ID token is issued or sent to `/api/game-auth/exchange`. The backend health endpoint only proves that server configuration is ready. The new diagnostic computes the public signing certificate SHA-1 from the installed APK at runtime; it never displays a token, account identifier, or private key.
+The backend cannot fix a failed Android credential request because that failure occurs before an ID token is issued or sent to `/v1/auth/google-id-token/exchange`. The backend health endpoint only proves that server configuration is ready. The new diagnostic computes the public signing certificate SHA-1 from the installed APK at runtime; it never displays a token, account identifier, or private key.
 
 ## Release-Certificate Requirement
 

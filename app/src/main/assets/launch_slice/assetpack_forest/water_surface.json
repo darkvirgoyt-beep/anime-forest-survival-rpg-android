@@ -1,0 +1,13 @@
+{
+  "material": "river_normal.png",
+  "movement": [
+    "wade",
+    "swim",
+    "shore-exit"
+  ],
+  "waveModel": "layered-sine-mobile",
+  "qualityTiers": [
+    "balanced",
+    "high"
+  ]
+}

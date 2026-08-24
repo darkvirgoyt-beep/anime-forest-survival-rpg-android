@@ -1,0 +1,9 @@
+{
+  "pack": "assetpack_animation_sets",
+  "status": "authored-launch-slice",
+  "files": [
+    "launch_slice/aurora_motion_contract.json"
+  ],
+  "origin": "original procedural and repository-owned AETHELGRAD content",
+  "license": "AETHELGRAD project-owned generated source; no third-party game assets"
+}

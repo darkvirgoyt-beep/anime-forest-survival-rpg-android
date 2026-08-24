@@ -1,0 +1,22 @@
+{
+  "pack": "assetpack_audio_hd",
+  "contentId": "aethelgard-forest-launch-v1",
+  "status": "authored-launch-slice",
+  "files": [
+    "launch_slice/audio/aethelgard_forest_exploration.wav",
+    "launch_slice/audio/sfx_animal_companion_call.wav",
+    "launch_slice/audio/sfx_attack_sword.wav",
+    "launch_slice/audio/sfx_aurora_magic_pulse.mp3",
+    "launch_slice/audio/sfx_aurora_sword_hit.mp3",
+    "launch_slice/audio/sfx_boss_roar.wav",
+    "launch_slice/audio/sfx_bow_release.wav",
+    "launch_slice/audio/sfx_craft_workbench.wav",
+    "launch_slice/audio/sfx_footsteps_forest.wav",
+    "launch_slice/audio/sfx_gather_resource.wav",
+    "launch_slice/audio/sfx_slide.wav",
+    "launch_slice/audio/sfx_sprint_loop.wav",
+    "launch_slice/audio/sfx_ui_click.wav"
+  ],
+  "origin": "original generated/procedural AETHELGRAD audio bank",
+  "license": "AETHELGRAD project-owned generated source"
+}

@@ -1,0 +1,7 @@
+{
+  "sector": "forest_launch",
+  "seed": 174031,
+  "activeRadiusChunks": 2,
+  "streaming": "bounded-pool",
+  "saveKey": "forest-launch-v1"
+}

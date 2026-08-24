@@ -1,0 +1,13 @@
+{
+  "atlas": "foliage_cluster.png",
+  "lods": [
+    "near",
+    "mid",
+    "impostor"
+  ],
+  "cullDistanceMeters": [
+    18,
+    42,
+    76
+  ]
+}

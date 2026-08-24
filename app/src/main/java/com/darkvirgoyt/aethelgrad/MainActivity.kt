@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 import android.Manifest
 import android.animation.ValueAnimator
@@ -2854,8 +2854,13 @@ class MainActivity : Activity(), SensorEventListener {
                     when {
                         event.complete -> {
                             val envelope = ContentDownloadPlan.qualityEnvelopeFor(resourceTier)
-                            status.text = "${envelope.id.uppercase()} CONTENT READY"
-                            details.text = "${formatVerifiedBytes(event.totalBytes)} verified and mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
+                            if (event.source == "bundled-launch-slice") {
+                                status.text = "FOREST LAUNCH SLICE READY"
+                                details.text = "${formatVerifiedBytes(event.totalBytes)} of authored mobile content mounted: forest terrain, water, foliage, Aurora motion data, GLES materials, and audio. Starting the game…"
+                            } else {
+                                status.text = "${envelope.id.uppercase()} CONTENT READY"
+                                details.text = "${formatVerifiedBytes(event.totalBytes)} verified and mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
+                            }
                         }
                                                 event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
                             status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {

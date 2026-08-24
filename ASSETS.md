@@ -18,7 +18,9 @@
 
 ## Included in v0.1
 
-The Android bootstrap contains only the production account shell, settings, loading scene, native renderer, save schema, and minimum runtime code required before the private high-end archive is mounted. It does not ship a reference-image library or character-photo gallery. The final world meshes, materials, animation graphs, cooked shaders, LODs, audio, VFX, and world-sector data must arrive through the verified HTTPS OBB.
+The Android bootstrap contains the production account shell, settings, loading scene, native renderer, save schema, and the authored **forest launch slice**. The launch slice is distributed into the Gradle asset-pack modules and includes original mobile textures, terrain heightfield data, foliage LOD data, water movement/material descriptors, Aurora motion/palette data, GLES material metadata, and the original/procedural forest audio bank. Its measured payload is approximately 3.22 MiB; it is real content, not budget padding.
+
+The launch slice is not the complete high-end Unreal archive. The final cooked world meshes, materials, animation graphs, LODs, platform shaders, cinematics, voice, and future biome sectors must arrive through a trusted Unreal cook and a verified Play Asset Delivery or HTTPS OBB release before those expansions are unlocked.
 
 ## Planned original assets
 

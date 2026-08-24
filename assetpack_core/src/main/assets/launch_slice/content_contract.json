@@ -1,0 +1,11 @@
+{
+  "contentId": "aethelgard-forest-launch-v1",
+  "status": "authored-launch-slice",
+  "world": "forest",
+  "runtime": "Android GLES 3",
+  "notIncluded": [
+    "cooked Unreal pak",
+    "full 6.75 GiB high-end archive",
+    "future biomes"
+  ]
+}

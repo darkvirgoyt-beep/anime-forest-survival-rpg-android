@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 /**
  * Packaging plan for future cooked 3D Aethelgard content. Its size budgets are never
@@ -59,17 +59,17 @@ object ContentDownloadPlan {
         Pack("assetpack_world_streaming", 400, "world partition descriptors, streamed sublevels, nav data for all world sectors"),
         Pack("assetpack_terrain_lod", 425, "terrain heightfields, landscape LODs, virtual shadow maps"),
         Pack("assetpack_animation_sets", 425, "locomotion, combat, traversal, emotes, montage sections"),
-        Pack("assetpack_sand", 400, "sand biome terrain, settlements, rocks, foliage, weather", sector = WorldSector.SAND),
-        Pack("assetpack_snow", 400, "snow biome terrain, caves, ice materials, weather", sector = WorldSector.SNOW),
-        Pack("assetpack_dungeons", 400, "dungeon cells, props, traps, encounter data, lighting data", sector = WorldSector.DUNGEON),
-        Pack("assetpack_hd_textures", 500, "high-resolution PBR textures, virtual-texture pages, decals", sector = WorldSector.SAND),
-        Pack("assetpack_foliage_lods", 400, "foliage clusters, impostors, mobile LODs", sector = WorldSector.SAND),
-        Pack("assetpack_audio_hd", 450, "music, ambience, combat sounds, wildlife and high-quality mixes", sector = WorldSector.SNOW),
-        Pack("assetpack_vfx", 300, "Niagara systems, weather effects, impact effects", sector = WorldSector.DUNGEON),
-        Pack("assetpack_cinematics", 450, "story scenes, sequences and camera animation data", sector = WorldSector.DUNGEON),
-        Pack("assetpack_voice", 250, "dialogue, localization voice banks, subtitles metadata", sector = WorldSector.DUNGEON),
-        Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources", sector = WorldSector.DUNGEON),
-        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
+        Pack("assetpack_sand", 400, "sand biome terrain, settlements, rocks, foliage, weather", requiredBeforeStart = false, sector = WorldSector.SAND),
+        Pack("assetpack_snow", 400, "snow biome terrain, caves, ice materials, weather", requiredBeforeStart = false, sector = WorldSector.SNOW),
+        Pack("assetpack_dungeons", 400, "dungeon cells, props, traps, encounter data, lighting data", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_hd_textures", 500, "high-resolution PBR textures, virtual-texture pages, decals", requiredBeforeStart = false, sector = WorldSector.SAND),
+        Pack("assetpack_foliage_lods", 400, "foliage clusters, impostors, mobile LODs", requiredBeforeStart = false, sector = WorldSector.SAND),
+        Pack("assetpack_audio_hd", 450, "music, ambience, combat sounds, wildlife and high-quality mixes", requiredBeforeStart = false, sector = WorldSector.SNOW),
+        Pack("assetpack_vfx", 300, "Niagara systems, weather effects, impact effects", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_cinematics", 450, "story scenes, sequences and camera animation data", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_voice", 250, "dialogue, localization, voice banks, subtitles metadata", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_shaders_vulkan", 300, "compiled Vulkan shader libraries and pipeline state resources", requiredBeforeStart = false, sector = WorldSector.DUNGEON),
+        Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", requiredBeforeStart = false, sector = WorldSector.DUNGEON)
     )
 
     /** Planning-only pack group; the runtime never reports these target sizes as installed bytes. */

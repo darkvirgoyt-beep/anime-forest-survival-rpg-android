@@ -1,0 +1,14 @@
+{
+  "character": "Aurora",
+  "motions": [
+    "idle",
+    "walk",
+    "sprint",
+    "slide",
+    "dodge",
+    "jump",
+    "light_combo_3",
+    "heavy_finisher"
+  ],
+  "source": "procedural GLES harness and Unreal presentation bindings"
+}

@@ -1,0 +1,14 @@
+{
+  "backend": "OpenGL ES 3",
+  "materials": [
+    "forest_albedo",
+    "forest_roughness",
+    "river_normal"
+  ],
+  "features": [
+    "rim-light",
+    "biome-fog",
+    "emissive-heartfire",
+    "water-flow"
+  ]
+}

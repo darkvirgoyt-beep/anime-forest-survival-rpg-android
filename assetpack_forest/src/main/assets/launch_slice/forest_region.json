@@ -1,0 +1,30 @@
+{
+  "sector": "forest_launch",
+  "chunkCoordinates": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "features": [
+    "Heartfire camp",
+    "stream crossing",
+    "gathering nodes",
+    "safe bed",
+    "target dummy"
+  ],
+  "collision": "procedural-mobile-capsule",
+  "navigation": "bounded-grid-v1"
+}

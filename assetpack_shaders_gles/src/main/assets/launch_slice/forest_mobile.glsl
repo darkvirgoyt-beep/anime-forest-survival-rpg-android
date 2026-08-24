@@ -1,0 +1,1 @@
+// Original AETHELGRAD GLES launch-slice material contract.\n// Runtime shader integration remains in forest_game.cpp for the dependency-free harness.\nvoid aethelgard_forest_material() { /* forest_albedo + roughness + river normal */ }\n

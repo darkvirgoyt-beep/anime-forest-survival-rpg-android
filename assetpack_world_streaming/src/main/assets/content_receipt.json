@@ -1,0 +1,9 @@
+{
+  "pack": "assetpack_world_streaming",
+  "status": "authored-launch-slice",
+  "files": [
+    "launch_slice/forest_sector_00.json"
+  ],
+  "origin": "original procedural and repository-owned AETHELGRAD content",
+  "license": "AETHELGRAD project-owned generated source; no third-party game assets"
+}

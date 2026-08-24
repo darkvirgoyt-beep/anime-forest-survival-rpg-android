@@ -6,6 +6,15 @@
     "value": "PRODUCTION_REPLACE_WITH_SERVER_SIGNATURE"
   },
   "contentDelivery": {
+    "launchSlice": {
+      "contentId": "aethelgard-forest-launch-v1",
+      "mode": "authored-pad-slice",
+      "published": true,
+      "measuredBytes": 3338513,
+      "startupPacks": ["assetpack_core", "assetpack_graphics_base", "assetpack_forest", "assetpack_characters", "assetpack_shaders_gles", "assetpack_world_streaming", "assetpack_terrain_lod", "assetpack_animation_sets"],
+      "authoredOnDemandPacks": ["assetpack_foliage_lods", "assetpack_audio_hd"],
+      "futurePacksRemainDeferred": true
+    },
     "mode": "not-published",
     "published": false,
     "measuredArchiveBytes": 0,
@@ -44,20 +53,20 @@
   "packs": [
     {"name": "assetpack_graphics_base", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": true, "contents": "compiled materials, base shaders, shared meshes and mobile render resources"},
     {"name": "assetpack_forest", "delivery": "fast-follow", "targetMiB": 350, "requiredBeforeStart": true, "contents": "forest launch region, village, foliage, water, collision and navigation"},
-    {"name": "assetpack_sand", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": true, "contents": "sand biome terrain, settlements, rocks, foliage and weather", "expansionTrigger": "discover_sand_frontier"},
-    {"name": "assetpack_snow", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": true, "contents": "snow biome terrain, caves, ice materials and weather", "expansionTrigger": "discover_snow_frontier"},
+    {"name": "assetpack_sand", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "sand biome terrain, settlements, rocks, foliage and weather", "expansionTrigger": "discover_sand_frontier"},
+    {"name": "assetpack_snow", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "snow biome terrain, caves, ice materials and weather", "expansionTrigger": "discover_snow_frontier"},
     {"name": "assetpack_characters", "delivery": "on-demand", "targetMiB": 500, "requiredBeforeStart": true, "contents": "original heroes, NPCs, animals, enemies, rigs and animation bindings"},
-    {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": true, "contents": "music, ambience, combat sounds, wildlife and high-quality mixes"},
-    {"name": "assetpack_cinematics", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": true, "contents": "story scenes, sequences and camera animation data"},
-    {"name": "assetpack_hd_textures", "delivery": "on-demand", "targetMiB": 500, "requiredBeforeStart": true, "contents": "PBR textures, virtual-texture pages and decals"},
-    {"name": "assetpack_dungeons", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": true, "contents": "dungeon cells, props, traps, encounter data and lighting data", "expansionTrigger": "reach_root_dungeon_gate"},
-    {"name": "assetpack_vfx", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": true, "contents": "weather, impact and river visual effects"},
-    {"name": "assetpack_voice", "delivery": "on-demand", "targetMiB": 250, "requiredBeforeStart": true, "contents": "dialogue, localization voice banks and subtitle metadata"},
-    {"name": "assetpack_shaders_vulkan", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": true, "contents": "compiled Vulkan shader libraries and pipeline-state resources"},
+    {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": false, "contents": "music, ambience, combat sounds, wildlife and high-quality mixes"},
+    {"name": "assetpack_cinematics", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": false, "contents": "story scenes, sequences and camera animation data"},
+    {"name": "assetpack_hd_textures", "delivery": "on-demand", "targetMiB": 500, "requiredBeforeStart": false, "contents": "PBR textures, virtual-texture pages and decals"},
+    {"name": "assetpack_dungeons", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "dungeon cells, props, traps, encounter data and lighting data", "expansionTrigger": "reach_root_dungeon_gate"},
+    {"name": "assetpack_vfx", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": false, "contents": "weather, impact and river visual effects"},
+    {"name": "assetpack_voice", "delivery": "on-demand", "targetMiB": 250, "requiredBeforeStart": false, "contents": "dialogue, localization voice banks and subtitle metadata"},
+    {"name": "assetpack_shaders_vulkan", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": false, "contents": "compiled Vulkan shader libraries and pipeline-state resources"},
     {"name": "assetpack_shaders_gles", "delivery": "on-demand", "targetMiB": 250, "requiredBeforeStart": true, "contents": "compiled OpenGL ES shader libraries and pipeline-state resources"},
-    {"name": "assetpack_pipeline_cache", "delivery": "on-demand", "targetMiB": 100, "requiredBeforeStart": true, "contents": "device-safe pipeline-cache seeds and shader warm-up data"},
+    {"name": "assetpack_pipeline_cache", "delivery": "on-demand", "targetMiB": 100, "requiredBeforeStart": false, "contents": "device-safe pipeline-cache seeds and shader warm-up data"},
     {"name": "assetpack_world_streaming", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": true, "contents": "world-partition descriptors, streamed sublevels and navigation data"},
-    {"name": "assetpack_foliage_lods", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": true, "contents": "foliage clusters, impostors and mobile LODs"},
+    {"name": "assetpack_foliage_lods", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "foliage clusters, impostors and mobile LODs"},
     {"name": "assetpack_terrain_lod", "delivery": "on-demand", "targetMiB": 425, "requiredBeforeStart": true, "contents": "terrain heightfields, landscape LODs and mobile shadow data"},
     {"name": "assetpack_animation_sets", "delivery": "on-demand", "targetMiB": 425, "requiredBeforeStart": true, "contents": "locomotion, combat, traversal, emotes and montage sections"}
   ]

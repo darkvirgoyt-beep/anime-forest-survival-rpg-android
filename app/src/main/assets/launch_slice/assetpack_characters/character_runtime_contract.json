@@ -1,0 +1,15 @@
+{
+  "character": "Aurora",
+  "identity": "original AETHELGRAD hero",
+  "states": [
+    "idle",
+    "walk",
+    "sprint",
+    "slide",
+    "dodge",
+    "attack",
+    "heavy",
+    "gather"
+  ],
+  "palette": "aurora_palette.png"
+}

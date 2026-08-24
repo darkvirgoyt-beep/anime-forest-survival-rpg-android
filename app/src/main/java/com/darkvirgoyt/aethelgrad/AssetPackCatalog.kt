@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.content.Context
@@ -9,6 +9,7 @@ import com.google.android.play.core.assetpacks.AssetPackState
 import com.google.android.play.core.assetpacks.AssetPackStateUpdateListener
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import java.io.File
+import org.json.JSONObject
 
 /**
  * Runtime boundary for Play Asset Delivery.
@@ -35,7 +36,8 @@ class AssetPackCatalog(context: Context) {
         val totalBytes: Long,
         val sizeVerified: Boolean,
         val failedPack: String? = null,
-        val errorCode: Int = 0
+        val errorCode: Int = 0,
+        val source: String = "asset-pack"
     ) {
         val complete: Boolean get() = status == AssetPackStatus.COMPLETED
         val failed: Boolean get() = status == AssetPackStatus.FAILED
@@ -112,6 +114,11 @@ class AssetPackCatalog(context: Context) {
         if (standaloneExpansionFile.inspect().ready) {
             val totalBytes = standaloneExpansionFile.inspect().bytes
             onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, totalBytes, totalBytes, true))
+            return
+        }
+        val bundledLaunchBytes = bundledLaunchSliceBytes()
+        if (bundledLaunchBytes > 0L) {
+            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, bundledLaunchBytes, bundledLaunchBytes, true, source = "bundled-launch-slice"))
             return
         }
         if (!privateContentDownloader.published) {
@@ -271,10 +278,17 @@ class AssetPackCatalog(context: Context) {
 
     fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean {
         if (standaloneExpansionFile.inspect().ready) return true
+        if (bundledLaunchSliceBytes() > 0L) return true
         if (!privateContentDownloader.published) return false
         val expectedPacks = ContentDownloadPlan.startupPackNamesFor(tier)
         return expectedPacks.isNotEmpty() && expectedPacks.all(::isReady) && measureInstalledPackBytes(expectedPacks) > 0L
     }
+
+    private fun bundledLaunchSliceBytes(): Long = runCatching {
+        val manifest = appContext.assets.open("asset_manifest.json").bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+        val launchSlice = manifest.getJSONObject("contentDelivery").getJSONObject("launchSlice")
+        if (!launchSlice.optBoolean("published", false)) 0L else launchSlice.optLong("measuredBytes", 0L).takeIf { it > 0L } ?: 0L
+    }.getOrDefault(0L)
 
     fun sectorContentReady(tier: ContentDownloadPlan.ResourceTier, sector: ContentDownloadPlan.WorldSector): Boolean =
         ContentDownloadPlan.packNamesForSector(tier, sector).all(::isReady)

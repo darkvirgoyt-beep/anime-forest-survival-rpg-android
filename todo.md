@@ -29,7 +29,7 @@
 - [x] Verify the release signing certificate fingerprint and Google Android OAuth registration required for device Google Sign-In.
 - [x] Diagnose the reported Google Credential Manager cancellation before backend exchange and improve the device-facing remediation guidance.
 - [x] Separate the offline `.prototype` harness from the online release at launch and document the matching Google OAuth package/artifact path; physical release-device sign-in validation remains required.
-- [x] Update the Android release authentication base URL and exchange/refresh endpoints to the live `/api/game-auth` contract, then verify the real Google token exchange.
+- [x] Update the Android release authentication base URL and exchange/refresh endpoints to the live Render v2 `/v1/auth/google-id-token/exchange` and `/v1/auth/refresh` contract, then verify the real Google token exchange.
 - [x] Verify the downloaded release APK embeds the corrected live game-auth host and diagnose any remaining post-Google exchange failure without relying on stale build artifacts.
 - [x] Restore and lock the required Android namespace and application ID `com.darkvirgoyt.aethelgrad`, including matching Kotlin declarations, JNI exports, CI checks, and Google OAuth registration.
 - [x] Add authenticated logout and character/inventory access controls, and repair reversed horizontal joystick direction in the mobile gameplay HUD.
