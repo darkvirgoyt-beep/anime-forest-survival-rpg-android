@@ -1063,7 +1063,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const pool = new Pool({
     connectionString: config.databaseUrl,
     max: 10,
-    ssl: config.databaseSsl ? { rejectUnauthorized: config.databaseSslRejectUnauthorized } : undefined
+    ssl: config.databaseSsl ? { rejectUnauthorized: config.databaseSslVerify } : undefined
   });
   const port = Number(process.env.PORT || 8080);
   createOnlineService({ pool, config }).listen(port, () => {
