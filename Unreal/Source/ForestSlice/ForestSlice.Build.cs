@@ -11,6 +11,7 @@ public class ForestSlice : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "DeveloperSettings",
             "Niagara",
             "InputCore",
             "EnhancedInput",
@@ -19,6 +20,11 @@ public class ForestSlice : ModuleRules
             "GameplayTasks",
             "AIModule",
             "NavigationSystem",
+            "MassEntity",
+            "MassCommon",
+            "MassMovement",
+            "MassNavigation",
+            "MassSpawner",
             "OnlineSubsystemUtils",
             "UMG"
         });

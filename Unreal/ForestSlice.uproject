@@ -16,6 +16,8 @@
     { "Name": "EnhancedInput", "Enabled": true },
     { "Name": "GameplayAbilities", "Enabled": true },
     { "Name": "AIModule", "Enabled": true },
+    { "Name": "MassGameplay", "Enabled": true },
+    { "Name": "MassAI", "Enabled": true },
     { "Name": "OnlineSubsystemUtils", "Enabled": true },
     { "Name": "GooglePAD", "Enabled": true },
     { "Name": "AndroidFileServer", "Enabled": true }
