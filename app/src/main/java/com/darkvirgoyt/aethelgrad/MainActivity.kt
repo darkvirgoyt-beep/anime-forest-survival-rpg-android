@@ -1042,7 +1042,7 @@ class MainActivity : Activity(), SensorEventListener {
             isChecked = false
         }
         val google = cinematicButton("✦  SIGN IN WITH GOOGLE", true) {
-            accountSession.requestGoogleSignIn()
+            requestGoogleAccountLink()
         }
         consent.visibility = View.GONE
         consent.setOnCheckedChangeListener { _, checked ->

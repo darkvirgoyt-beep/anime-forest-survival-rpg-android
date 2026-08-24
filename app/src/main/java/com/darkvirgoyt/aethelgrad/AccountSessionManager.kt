@@ -228,39 +228,51 @@ class AccountSessionManager {
         val owner = activity
         val manager = credentialManager
         if (owner == null || manager == null) {
-            return publish(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
+            Log.w("AethelgardAuth", "Google sign-in requested before the credential service was ready")
+            return publish(SessionSnapshot(SessionState.ERROR, message = "Google sign-in is still starting. Close and reopen the game, then try again."))
         }
         if (!hasGoogleConfiguration()) {
-            return publish(SessionSnapshot(SessionState.CONFIGURATION_ERROR, message = "Internal error. Please try again later."))
+            Log.w("AethelgardAuth", "Google sign-in configuration is invalid for package ${owner.packageName}")
+            return publish(
+                SessionSnapshot(
+                    SessionState.CONFIGURATION_ERROR,
+                    message = "Google sign-in is not configured for this installed APK. Install the latest build, then verify the Android OAuth package and this APK signing SHA-1."
+                )
+            )
         }
 
         publish(SessionSnapshot(SessionState.SIGNING_IN, message = "Choose a Google account to connect…"))
-        val option = GetSignInWithGoogleOption.Builder(googleWebClientId).build()
-        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
-        manager.getCredentialAsync(
-            owner,
-            request,
-            null,
-            ContextCompat.getMainExecutor(owner),
-            object : CredentialManagerCallback<GetCredentialResponse, GetCredentialException> {
-                override fun onResult(result: GetCredentialResponse) {
-                    val credential = result.credential
-                    if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                        publish(SessionSnapshot(SessionState.DENIED, message = "Google did not return a usable sign-in credential. Try again."))
-                        return
+        try {
+            val option = GetSignInWithGoogleOption.Builder(googleWebClientId).build()
+            val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+            manager.getCredentialAsync(
+                owner,
+                request,
+                null,
+                ContextCompat.getMainExecutor(owner),
+                object : CredentialManagerCallback<GetCredentialResponse, GetCredentialException> {
+                    override fun onResult(result: GetCredentialResponse) {
+                        val credential = result.credential
+                        if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                            publish(SessionSnapshot(SessionState.DENIED, message = "Google did not return a usable sign-in credential. Try again."))
+                            return
+                        }
+                        try {
+                            exchangeGoogleIdToken(GoogleIdTokenCredential.createFrom(credential.data).idToken)
+                        } catch (_: Exception) {
+                            publish(SessionSnapshot(SessionState.DENIED, message = "Google returned an invalid sign-in credential. Try again."))
+                        }
                     }
-                    try {
-                        exchangeGoogleIdToken(GoogleIdTokenCredential.createFrom(credential.data).idToken)
-                    } catch (_: Exception) {
-                        publish(SessionSnapshot(SessionState.DENIED, message = "Google returned an invalid sign-in credential. Try again."))
-                    }
-                }
 
-                override fun onError(error: GetCredentialException) {
-                    publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error)))
+                    override fun onError(error: GetCredentialException) {
+                        publish(SessionSnapshot(SessionState.DENIED, message = describeGoogleCredentialFailure(error)))
+                    }
                 }
-            }
-        )
+            )
+        } catch (error: Exception) {
+            Log.w("AethelgardAuth", "Google credential request could not be launched: ${error::class.java.simpleName}")
+            return publish(SessionSnapshot(SessionState.DENIED, message = "Google sign-in could not open. Update Google Play services, then retry. If it continues, verify the Android OAuth package and APK signing SHA-1."))
+        }
         return snapshot
     }
 
@@ -984,7 +996,8 @@ class AccountSessionManager {
     }
 
     private fun hasGoogleConfiguration(): Boolean =
-        !googleWebClientId.startsWith("REPLACE_") &&
+        googleWebClientId.endsWith(".apps.googleusercontent.com") &&
+            !googleWebClientId.startsWith("REPLACE_") &&
             !apiBaseUrl.startsWith("REPLACE_") &&
             !authExchangeUrl.startsWith("REPLACE_") &&
             !authRefreshUrl.startsWith("REPLACE_") &&
