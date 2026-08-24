@@ -8,6 +8,7 @@ import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.android.play.core.assetpacks.AssetPackState
 import com.google.android.play.core.assetpacks.AssetPackStateUpdateListener
 import com.google.android.play.core.assetpacks.model.AssetPackStatus
+import java.io.File
 
 /**
  * Runtime boundary for Play Asset Delivery.
@@ -32,6 +33,7 @@ class AssetPackCatalog(context: Context) {
         val percent: Int,
         val bytesDownloaded: Long,
         val totalBytes: Long,
+        val sizeVerified: Boolean,
         val failedPack: String? = null,
         val errorCode: Int = 0
     ) {
@@ -57,31 +59,23 @@ class AssetPackCatalog(context: Context) {
     private val standaloneExpansionFile = StandaloneExpansionFile(appContext)
     private val privateContentDownloader = PrivateContentDownloader(
         appContext,
+        appContext.getString(R.string.published_high_end_content).equals("true", ignoreCase = true),
         appContext.getString(R.string.private_content_manifest_url),
         appContext.getString(R.string.private_content_archive_url)
     )
-    private var listener: AssetPackStateUpdateListener? = null
+    private val listener: AssetPackStateUpdateListener? = null
 
     fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH): Preflight {
-        val requiredBytes = (ContentDownloadPlan.startupMiBFor(tier) + 512).toLong() * 1024L * 1024L
+        val requiredBytes = 0L
         return try {
             val stats = StatFs(appContext.filesDir.absolutePath)
             val availableBytes = stats.availableBytes
-            if (availableBytes < requiredBytes) {
-                Preflight(
-                    ready = false,
-                    detail = "Not enough free storage: ${availableBytes / (1024L * 1024L)} MB available; ${(requiredBytes / (1024L * 1024L))} MB required.",
-                    availableBytes = availableBytes,
-                    requiredBytes = requiredBytes
-                )
-            } else {
-                Preflight(
-                    ready = true,
-                    detail = "Storage check passed: ${availableBytes / (1024L * 1024L)} MB available.",
-                    availableBytes = availableBytes,
-                    requiredBytes = requiredBytes
-                )
-            }
+            Preflight(
+                ready = true,
+                detail = "${availableBytes / (1024L * 1024L)} MB free. Required size is disclosed only after a signed archive manifest or Play reports it.",
+                availableBytes = availableBytes,
+                requiredBytes = requiredBytes
+            )
         } catch (error: Exception) {
             Preflight(
                 ready = false,
@@ -117,7 +111,21 @@ class AssetPackCatalog(context: Context) {
     ) {
         if (standaloneExpansionFile.inspect().ready) {
             val totalBytes = standaloneExpansionFile.inspect().bytes
-            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, totalBytes, totalBytes))
+            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, totalBytes, totalBytes, true))
+            return
+        }
+        if (!privateContentDownloader.published) {
+            onProgress(
+                ProductionProgress(
+                    status = AssetPackStatus.FAILED,
+                    percent = 0,
+                    bytesDownloaded = 0L,
+                    totalBytes = 0L,
+                    sizeVerified = false,
+                    failedPack = "No signed high-graphics archive or cooked Play Asset Delivery build is published for this APK. Repository plans and Unreal source do not contain downloadable map, model, or graphics payload bytes.",
+                    errorCode = -30
+                )
+            )
             return
         }
         if (privateContentDownloader.configured) {
@@ -132,6 +140,7 @@ class AssetPackCatalog(context: Context) {
                         percent = progress.percent,
                         bytesDownloaded = progress.bytesDownloaded,
                         totalBytes = progress.totalBytes,
+                        sizeVerified = progress.totalBytes > 0L,
                         failedPack = progress.detail,
                         errorCode = if (progress.status == PrivateContentDownloader.Status.FAILED) -20 else 0
                     )
@@ -140,7 +149,7 @@ class AssetPackCatalog(context: Context) {
             return
         }
         val requestedPackNames = ContentDownloadPlan.startupPackNamesFor(tier)
-        requestPackSet(requestedPackNames, ContentDownloadPlan.startupMiBFor(tier), onProgress)
+        requestPackSet(requestedPackNames, onProgress)
     }
 
     /** Requests the immutable pack group associated with a newly discovered sector. */
@@ -151,10 +160,10 @@ class AssetPackCatalog(context: Context) {
     ) {
         val requestedPackNames = ContentDownloadPlan.packNamesForSector(tier, sector)
         if (requestedPackNames.isEmpty()) {
-            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, 0L, 0L))
+            onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, 0L, 0L, true))
             return
         }
-        requestPackSet(requestedPackNames, ContentDownloadPlan.sectorMiBFor(tier, sector), onProgress)
+        requestPackSet(requestedPackNames, onProgress)
     }
 
     /** Backward-compatible high-resource request for existing callers and tests. */
@@ -163,30 +172,18 @@ class AssetPackCatalog(context: Context) {
 
     private fun requestPackSet(
         requestedPackNames: List<String>,
-        targetMiB: Int,
         onProgress: (ProductionProgress) -> Unit
     ) {
         if (requestedPackNames.isEmpty() || requestedPackNames.all(::isReady)) {
+            val mountedBytes = measureInstalledPackBytes(requestedPackNames)
             onProgress(
                 ProductionProgress(
-                    status = AssetPackStatus.COMPLETED,
-                    percent = 100,
-                    bytesDownloaded = targetMiB.toLong() * 1024L * 1024L,
-                    totalBytes = targetMiB.toLong() * 1024L * 1024L
-                )
-            )
-            return
-        }
-        val preflight = checkPreflight(targetMiB)
-        if (!preflight.ready) {
-            onProgress(
-                ProductionProgress(
-                    status = AssetPackStatus.FAILED,
-                    percent = 0,
-                    bytesDownloaded = 0L,
-                    totalBytes = targetMiB.toLong() * 1024L * 1024L,
-                    failedPack = preflight.detail,
-                    errorCode = -2
+                    status = if (mountedBytes > 0L) AssetPackStatus.COMPLETED else AssetPackStatus.FAILED,
+                    percent = if (mountedBytes > 0L) 100 else 0,
+                    bytesDownloaded = mountedBytes,
+                    totalBytes = mountedBytes,
+                    sizeVerified = mountedBytes > 0L,
+                    failedPack = if (mountedBytes > 0L) null else "Play Asset Delivery reported ready packs, but no cooked payload bytes were mounted."
                 )
             )
             return
@@ -201,7 +198,7 @@ class AssetPackCatalog(context: Context) {
                 totalBytes = state.totalBytesToDownload(),
                 errorCode = state.errorCode()
             )
-            emitProductionProgress(requestedPackNames, targetMiB, states, onProgress)
+            emitProductionProgress(requestedPackNames, states, onProgress)
         }
         listener = updateListener
         manager.registerListener(updateListener)
@@ -211,7 +208,8 @@ class AssetPackCatalog(context: Context) {
                     status = AssetPackStatus.FAILED,
                     percent = 0,
                     bytesDownloaded = 0L,
-                    totalBytes = targetMiB.toLong() * 1024L * 1024L,
+                    totalBytes = 0L,
+                    sizeVerified = false,
                     failedPack = error.message ?: requestedPackNames.joinToString(),
                     errorCode = -1
                 )
@@ -219,29 +217,8 @@ class AssetPackCatalog(context: Context) {
         }
     }
 
-    private fun checkPreflight(targetMiB: Int): Preflight {
-        val requiredBytes = (targetMiB + 512).toLong() * 1024L * 1024L
-        return try {
-            val stats = StatFs(appContext.filesDir.absolutePath)
-            val availableBytes = stats.availableBytes
-            Preflight(
-                ready = availableBytes >= requiredBytes,
-                detail = if (availableBytes >= requiredBytes) {
-                    "Storage check passed: ${availableBytes / (1024L * 1024L)} MB available."
-                } else {
-                    "Not enough free storage: ${availableBytes / (1024L * 1024L)} MB available; ${(requiredBytes / (1024L * 1024L))} MB required."
-                },
-                availableBytes = availableBytes,
-                requiredBytes = requiredBytes
-            )
-        } catch (error: Exception) {
-            Preflight(false, "Storage check failed: ${error.message ?: "unable to inspect free space"}", 0L, requiredBytes)
-        }
-    }
-
     private fun emitProductionProgress(
         requestedPackNames: List<String>,
-        targetMiB: Int,
         states: Map<String, Progress>,
         onProgress: (ProductionProgress) -> Unit
     ) {
@@ -254,14 +231,12 @@ class AssetPackCatalog(context: Context) {
         val complete = requestedPackNames.all { packName ->
             states[packName]?.status == AssetPackStatus.COMPLETED || isReady(packName)
         }
-        // Play reports packs independently. Until every pack total is known, use
-        // the selected envelope as a stable denominator so the visible bar never moves backward.
         val allTotalsKnown = requestedPackNames.all { (states[it]?.totalBytes ?: 0L) > 0L }
-        val totalBytes = if (allTotalsKnown) reportedTotalBytes else maxOf(reportedTotalBytes, targetMiB.toLong() * 1024L * 1024L)
+        val totalBytes = if (allTotalsKnown) reportedTotalBytes else 0L
         val percent = when {
             complete -> 100
-            totalBytes > 0L -> (bytesDownloaded.toDouble() * 100.0 / totalBytes.toDouble()).toInt().coerceIn(1, 99)
-            else -> 5
+            totalBytes > 0L -> (bytesDownloaded.toDouble() * 100.0 / totalBytes.toDouble()).toInt().coerceIn(if (bytesDownloaded > 0L) 1 else 0, 99)
+            else -> 0
         }
         onProgress(
             ProductionProgress(
@@ -276,6 +251,7 @@ class AssetPackCatalog(context: Context) {
                 percent = percent,
                 bytesDownloaded = bytesDownloaded,
                 totalBytes = totalBytes,
+                sizeVerified = allTotalsKnown || complete,
                 failedPack = failed?.packName,
                 errorCode = failed?.errorCode ?: 0
             )
@@ -295,8 +271,9 @@ class AssetPackCatalog(context: Context) {
 
     fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean {
         if (standaloneExpansionFile.inspect().ready) return true
+        if (!privateContentDownloader.published) return false
         val expectedPacks = ContentDownloadPlan.startupPackNamesFor(tier)
-        return expectedPacks.isNotEmpty() && expectedPacks.all(::isReady)
+        return expectedPacks.isNotEmpty() && expectedPacks.all(::isReady) && measureInstalledPackBytes(expectedPacks) > 0L
     }
 
     fun sectorContentReady(tier: ContentDownloadPlan.ResourceTier, sector: ContentDownloadPlan.WorldSector): Boolean =
@@ -308,6 +285,11 @@ class AssetPackCatalog(context: Context) {
     }
 
     fun isComplete(progress: Progress): Boolean = progress.status == AssetPackStatus.COMPLETED
+
+    private fun measureInstalledPackBytes(packNames: List<String>): Long = packNames.sumOf { packName ->
+        val assetsPath = manager.getPackLocation(packName)?.assetsPath() ?: return@sumOf 0L
+        File(assetsPath).walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    }
 
     fun close() {
         listener?.let(manager::unregisterListener)

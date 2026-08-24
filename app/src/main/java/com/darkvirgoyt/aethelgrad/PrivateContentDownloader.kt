@@ -22,6 +22,7 @@ import java.util.concurrent.Executors
  */
 class PrivateContentDownloader(
     context: Context,
+    val published: Boolean,
     private val manifestUrl: String,
     private val configuredArchiveUrl: String
 ) {
@@ -39,7 +40,7 @@ class PrivateContentDownloader(
     private val executor = Executors.newSingleThreadExecutor()
 
     val configured: Boolean
-        get() = manifestUrl.startsWith("https://") && configuredArchiveUrl.startsWith("https://")
+        get() = published && manifestUrl.startsWith("https://") && configuredArchiveUrl.startsWith("https://")
 
     fun downloadHighEndContent(onProgress: (Progress) -> Unit) {
         if (!configured) {

@@ -1,26 +1,27 @@
 {
-  "manifestVersion": 4,
-  "catalogId": "aethelgard-authored-runtime-catalog",
+  "manifestVersion": 5,
+  "catalogId": "aethelgard-unpublished-runtime-plan",
   "signature": {
     "algorithm": "ed25519",
     "value": "PRODUCTION_REPLACE_WITH_SERVER_SIGNATURE"
   },
   "contentDelivery": {
-    "mode": "private-https-archive",
+    "mode": "not-published",
+    "published": false,
+    "measuredArchiveBytes": 0,
     "bootstrapInstallMiB": 358,
-    "full3dTargetMiB": 6750,
-    "full3dTargetLabel": "6.6 GB",
-    "requiredBeforeStart": true,
+    "plannedFull3dBudgetMiB": 6750,
+    "requiredBeforeStart": false,
     "selectionRequiredAfterBootstrap": false,
     "automaticExpansion": false,
-    "distribution": "private-four-player-backend",
+    "distribution": "not-published-no-cooked-payload",
     "resumeAfterRestart": true,
     "cameraProfile": "third-person-orbit-360-horizontal-180-vertical",
     "compiledGraphics": {
-      "required": true,
+      "required": false,
       "shaderVariants": ["vulkan", "gles"],
       "pipelineCacheRequired": true,
-      "runtimeFormat": "unreal-cooked-pak-v1"
+      "runtimeFormat": "unreal-cooked-pak-v1-after-publication"
     },
     "highFidelityFeatures": {
       "nativeRenderer": ["quality-aware micro-lighting", "atmospheric fog", "water caustics", "firefly glow field"],
@@ -32,11 +33,11 @@
   "resourceTiers": [
     {
       "id": "high",
-      "label": "HIGH-END RESOURCES",
-      "targetMiB": 6750,
-      "targetLabel": "6.6 GB",
-      "graphicsQuality": "high",
-      "description": "Required authored world sectors, original characters, PBR textures, foliage, shaders, VFX, audio, cinematics, and animation for the private four-player game. Gameplay remains locked until this archive is verified.",
+      "label": "HIGH-END RESOURCES — NOT PUBLISHED",
+      "plannedBudgetMiB": 6750,
+      "measuredBytes": 0,
+      "graphicsQuality": "unavailable-until-cooked",
+      "description": "No signed cooked world sectors, characters, maps, models, textures, shaders, or archive payload is published for this APK. The 6,750 MiB figure is a packaging plan, not an installed or downloadable size.",
       "packs": ["assetpack_graphics_base", "assetpack_forest", "assetpack_sand", "assetpack_snow", "assetpack_characters", "assetpack_audio_hd", "assetpack_cinematics", "assetpack_hd_textures", "assetpack_dungeons", "assetpack_vfx", "assetpack_voice", "assetpack_shaders_vulkan", "assetpack_shaders_gles", "assetpack_pipeline_cache", "assetpack_world_streaming", "assetpack_foliage_lods", "assetpack_terrain_lod", "assetpack_animation_sets"]
     }
   ],

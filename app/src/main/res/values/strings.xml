@@ -14,7 +14,8 @@
     <string name="auth_exchange_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth/exchange</string>
     <!-- Matching HTTPS endpoint for rotating game sessions. -->
     <string name="auth_refresh_url" translatable="false">https://aethelservs-g7pzbnwp.manus.space/api/game-auth/refresh</string>
-    <!-- Private four-player distribution endpoints; serve the signed high-end OBB from the backend or CDN. -->
-    <string name="private_content_manifest_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1/content/high/manifest</string>
-    <string name="private_content_archive_url" translatable="false">https://aethelgard-api-v2.onrender.com/v1/content/high/archive</string>
+    <!-- Leave false and URLs blank until a real signed, measured archive is published for this exact APK. -->
+    <string name="published_high_end_content" translatable="false">false</string>
+    <string name="private_content_manifest_url" translatable="false"></string>
+    <string name="private_content_archive_url" translatable="false"></string>
 </resources>

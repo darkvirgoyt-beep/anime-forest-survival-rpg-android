@@ -1,6 +1,7 @@
 package com.darvirgoyt.aethelgrad
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
@@ -897,8 +898,7 @@ class MainActivity : Activity(), SensorEventListener {
             if (assetPacks.sectorContentReady(tier, sector)) return@forEach
             if (!requestedProgressiveSectors.add(sector)) return@forEach
             val label = sector.label
-            val size = ContentDownloadPlan.sectorMiBFor(tier, sector)
-            progressiveContentNotice = "EXPANSION UNLOCKED  •  $label  •  PREPARING ${size} MB"
+            progressiveContentNotice = "EXPANSION UNLOCKED  •  $label  •  VERIFYING DOWNLOAD SIZE"
             assetPacks.requestWorldSector(tier, sector) { event ->
                 when {
                     event.complete -> {
@@ -925,9 +925,13 @@ class MainActivity : Activity(), SensorEventListener {
                         progressiveContentNotice = "$label DOWNLOAD PAUSED  •  RETRY WHEN ONLINE"
                     }
                     else -> {
-                        val downloaded = event.bytesDownloaded / (1024 * 1024)
-                        val total = event.totalBytes / (1024 * 1024)
-                        progressiveContentNotice = "$label  •  ${event.percent}%  •  ${downloaded} / ${total.coerceAtLeast(size.toLong())} MB"
+                        progressiveContentNotice = if (event.sizeVerified && event.totalBytes > 0L) {
+                            val downloaded = event.bytesDownloaded / (1024 * 1024)
+                            val total = event.totalBytes / (1024 * 1024)
+                            "$label  •  ${event.percent}%  •  $downloaded / $total MB"
+                        } else {
+                            "$label  •  WAITING FOR VERIFIED DOWNLOAD METADATA"
+                        }
                     }
                 }
             }
@@ -2722,7 +2726,7 @@ class MainActivity : Activity(), SensorEventListener {
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "HIGH-END GRAPHICS REQUIRED BEFORE SIGN-IN"
+            text = "CHECKING VERIFIED GRAPHICS AVAILABILITY"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -2742,7 +2746,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "High-resolution world content is verified separately. The core online world remains available when the optional archive service is temporarily unavailable."
+            text = "Exact size and 0–100% progress appear only after Play or a signed archive reports measured bytes. Unreal source plans are not downloadable graphics."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2778,8 +2782,31 @@ class MainActivity : Activity(), SensorEventListener {
         }
         loadingAnimationHandler.post(loadingAnimation)
 
+        var displayedProgress = 0
+        var progressAnimator: ValueAnimator? = null
+        fun animateVerifiedProgress(targetPercent: Int) {
+            val target = targetPercent.coerceIn(0, 100)
+            if (target == displayedProgress) return
+            progressAnimator?.cancel()
+            progressAnimator = ValueAnimator.ofInt(displayedProgress, target).apply {
+                duration = if (kotlin.math.abs(target - displayedProgress) <= 1) 110L else 260L
+                interpolator = AccelerateDecelerateInterpolator()
+                addUpdateListener { animator -> progress.progress = animator.animatedValue as Int }
+                start()
+            }
+            displayedProgress = target
+        }
+
+        fun formatVerifiedBytes(bytes: Long): String = when {
+            bytes >= 1024L * 1024L * 1024L -> "%.2f GB".format(bytes.toDouble() / (1024.0 * 1024.0 * 1024.0))
+            bytes >= 1024L * 1024L -> "%.1f MB".format(bytes.toDouble() / (1024.0 * 1024.0))
+            bytes >= 1024L -> "%.1f KB".format(bytes.toDouble() / 1024.0)
+            else -> "$bytes bytes"
+        }
+
         fun finishPreparation(highResolution: Boolean) {
             loadingAnimationHandler.removeCallbacks(loadingAnimation)
+            progressAnimator?.cancel()
             hudHandler.postDelayed({
                 rootContainer.removeView(overlay)
                 assetPatchOverlay = null
@@ -2793,6 +2820,8 @@ class MainActivity : Activity(), SensorEventListener {
         startPreparation = {
             retry.visibility = View.GONE
             enterCoreWorld.visibility = View.GONE
+            progressAnimator?.cancel()
+            displayedProgress = 0
             progress.progress = 0
             var failureShown = false
             assetPacks.requestProductionContent(resourceTier) { event ->
@@ -2800,30 +2829,33 @@ class MainActivity : Activity(), SensorEventListener {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        val failure = event.failedPack ?: "Private high-end content service could not start for this installation."
-                        val serviceUnavailable = failure.contains("timed out", ignoreCase = true) ||
+                        val failure = event.failedPack ?: "Verified high-graphics content could not start for this installation."
+                        val contentNotPublished = event.errorCode == -30
+                        val serviceUnavailable = contentNotPublished || failure.contains("timed out", ignoreCase = true) ||
                             failure.contains("HTTP 5", ignoreCase = true) ||
                             failure.contains("private_content_not_configured", ignoreCase = true)
-                        status.text = if (serviceUnavailable) "HIGH GRAPHICS SERVICE UNAVAILABLE" else "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
+                        status.text = when {
+                            contentNotPublished -> "HIGH GRAPHICS CONTENT NOT PUBLISHED"
+                            serviceUnavailable -> "HIGH GRAPHICS SERVICE UNAVAILABLE"
+                            else -> "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
+                        }
                         details.text = failure
                         note.text = if (serviceUnavailable) {
-                            "The optional high-resolution archive is not published or reachable. You can retry it later, or continue into the verified core online world now."
+                            "No measured Unreal cooked map, model, texture, or archive payload is published for this APK. Core online world is available; retry only after a signed content release is published."
                         } else {
                             "The downloaded archive did not pass a release integrity check. Retry after the content service is corrected."
                         }
                         note.setTextColor(Color.rgb(255, 188, 142))
-                        progress.progress = 0
+                        animateVerifiedProgress(0)
                         retry.visibility = View.VISIBLE
                         if (serviceUnavailable) enterCoreWorld.visibility = View.VISIBLE
                     }
                 } else {
-                    val downloaded = event.bytesDownloaded / (1024 * 1024)
-                    val total = event.totalBytes / (1024 * 1024)
                     when {
                         event.complete -> {
                             val envelope = ContentDownloadPlan.qualityEnvelopeFor(resourceTier)
                             status.text = "${envelope.id.uppercase()} CONTENT READY"
-                            details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
+                            details.text = "${formatVerifiedBytes(event.totalBytes)} verified and mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
                                                 event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
                             status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
@@ -2841,11 +2873,19 @@ class MainActivity : Activity(), SensorEventListener {
                             retry.visibility = View.VISIBLE
                         }
                         else -> {
-                            status.text = "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
-                            details.text = if (total > 0) "$downloaded MB / $total MB downloaded  •  compiled graphics, world sectors, shaders, and gameplay resources" else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, world sectors, shaders, and gameplay resources…"
+                            status.text = if (event.sizeVerified) {
+                                "DOWNLOADING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
+                            } else {
+                                "WAITING FOR VERIFIED CONTENT METADATA"
+                            }
+                            details.text = if (event.sizeVerified && event.totalBytes > 0L) {
+                                "${formatVerifiedBytes(event.bytesDownloaded)} / ${formatVerifiedBytes(event.totalBytes)} downloaded  •  signed cooked graphics payload"
+                            } else {
+                                "Play or the signed archive has not yet reported an exact byte total. The bar stays at 0% until it does."
+                            }
                         }
                     }
-                    progress.progress = event.percent
+                    animateVerifiedProgress(if (event.sizeVerified || event.complete) event.percent else 0)
                     if (event.complete) finishPreparation(highResolution = true)
                 }
             }

@@ -50,9 +50,8 @@ class PackState:
 class ResourceCenterModel:
     """Small mirror of the aggregate state exposed by AssetPackCatalog."""
 
-    def __init__(self, packs: tuple[str, ...] = PACKS, envelope_total: int = 6750 * 1024 * 1024) -> None:
+    def __init__(self, packs: tuple[str, ...] = PACKS) -> None:
         self.states = {name: PackState() for name in packs}
-        self.envelope_total = envelope_total
         self.retry_count = 0
         self.history: list[int] = []
 
@@ -67,10 +66,10 @@ class ResourceCenterModel:
         failed = next((pack for pack, item in self.states.items() if item.status == FAILED), None)
         complete = all(item.status == COMPLETED for item in self.states.values())
         all_totals_known = all(item.total > 0 for item in self.states.values())
-        aggregate_total = reported_total if all_totals_known else max(reported_total, self.envelope_total)
+        aggregate_total = reported_total if all_totals_known else 0
         percent = 100 if complete else (
-            min(99, max(1, aggregate_downloaded * 100 // aggregate_total))
-            if aggregate_total else 5
+            min(99, max(0, aggregate_downloaded * 100 // aggregate_total))
+            if aggregate_total else 0
         )
         self.history.append(percent)
         return {
@@ -109,23 +108,26 @@ def assert_source_contract(repo: Path) -> None:
         ("pipeline cache pack", "assetpack_pipeline_cache", plan),
         ("all packs in settings", "assetpack_animation_sets", settings),
         ("all packs in app bundle", ":assetpack_animation_sets", app_build),
-        ("progress bar", "progress.progress = event.percent", main),
+        ("smooth verified progress bar", "animateVerifiedProgress(if (event.sizeVerified || event.complete) event.percent else 0)", main),
         ("retry control", "RETRY ASSET PREPARATION", main),
-        ("6.6 GB high-end plan", "full3dTargetMiB", json.dumps(manifest)),
+        ("verified publication gate", "published_high_end_content", (repo / "app/src/main/res/values/strings.xml").read_text()),
+        ("real-byte-only progress", "sizeVerified", catalog),
+        ("unpublished content catalog", "not-published", json.dumps(manifest)),
         ("wide pitch clamp", "1.52f", cpp),
     )
     missing = [label for label, needle, haystack in required if needle not in haystack]
     if missing:
         raise AssertionError("missing source contract: " + ", ".join(missing))
-    if manifest.get("contentDelivery", {}).get("full3dTargetMiB") != 6750:
-        raise AssertionError("manifest target must remain 6750 MiB")
+    content_delivery = manifest.get("contentDelivery", {})
+    if content_delivery.get("published") is not False or content_delivery.get("measuredArchiveBytes") != 0:
+        raise AssertionError("unchecked-in high-end content must be marked unpublished with zero measured bytes")
     tiers = {item.get("id"): item for item in manifest.get("resourceTiers", [])}
-    if set(tiers) != {"high"} or tiers["high"].get("targetMiB") != 6750:
-        raise AssertionError("manifest must declare only the 6750 MiB high-end tier")
+    if set(tiers) != {"high"} or tiers["high"].get("measuredBytes") != 0:
+        raise AssertionError("manifest must declare only the unpublished high-end tier with zero measured bytes")
     if set(tiers["high"].get("packs", [])) != set(PACKS):
         raise AssertionError("high-end pack set is inconsistent")
-    if manifest.get("contentDelivery", {}).get("mode") != "private-https-archive":
-        raise AssertionError("manifest must use private HTTPS archive delivery")
+    if content_delivery.get("mode") != "not-published":
+        raise AssertionError("manifest must declare unpublished content until a real archive exists")
 
 
 def test_initial_state() -> None:
@@ -133,7 +135,7 @@ def test_initial_state() -> None:
     assert set(model.states) == set(PACKS)
     result = model.apply(PACKS[0], DOWNLOADING, 0, 100)
     assert result["status"] == DOWNLOADING
-    assert result["percent"] == 1
+    assert result["percent"] == 0
 
 
 def test_aggregate_progress_is_monotonic() -> None:
@@ -184,6 +186,13 @@ def test_invalid_progress_is_rejected() -> None:
     raise AssertionError("invalid byte progress was accepted")
 
 
+def test_unknown_size_stays_at_zero() -> None:
+    model = ResourceCenterModel()
+    result = model.apply(PACKS[0], DOWNLOADING, 0, 0)
+    assert result["total"] == 0
+    assert result["percent"] == 0
+
+
 def assert_unreal_project(project: Path) -> None:
     descriptor = json.loads(project.read_text())
     if not descriptor.get("FileVersion"):
@@ -200,6 +209,7 @@ def run(repo: Path | None, unreal_project: Path | None) -> None:
         test_failure_and_retry_state,
         test_high_end_pack_set_is_complete,
         test_invalid_progress_is_rejected,
+        test_unknown_size_stays_at_zero,
     )
     for test in tests:
         test()

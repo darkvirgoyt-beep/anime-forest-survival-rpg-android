@@ -1,8 +1,8 @@
 package com.darvirgoyt.aethelgrad
 
 /**
- * Required high-end runtime-content envelope for the cooked 3D Aethelgrad
- * experience. The private archive must be mounted before the online world opens.
+ * Packaging plan for future cooked 3D Aethelgard content. Its size budgets are never
+ * player-facing download facts; the client displays only bytes from a signed archive or Play.
  */
 object ContentDownloadPlan {
     data class QualityEnvelope(
@@ -28,14 +28,12 @@ object ContentDownloadPlan {
     fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope = highQualityEnvelope
 
     enum class ResourceTier(
-        val storageLabel: String,
         val graphicsTierIndex: Int,
         val description: String
     ) {
         HIGH(
-            storageLabel = "6.6 GB",
             graphicsTierIndex = 4,
-            description = "Required authored world sectors, characters, textures, foliage, shaders, VFX, audio, cinematics, and animation for the private four-player game."
+            description = "High graphics are available only after a measured, signed cooked archive or Play Asset Delivery release is published for this APK."
         )
     }
 
@@ -74,7 +72,7 @@ object ContentDownloadPlan {
         Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", sector = WorldSector.DUNGEON)
     )
 
-    /** Every high-end pack is required before the online world can open. */
+    /** Planning-only pack group; the runtime never reports these target sizes as installed bytes. */
     fun packsFor(tier: ResourceTier): List<Pack> = packs
 
     fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
