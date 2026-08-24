@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the authored one-gibibyte runtime-content package without padding."""
+"""Validate the authored high-end runtime-content package without padding."""
 from __future__ import annotations
 
 import argparse
@@ -15,12 +15,12 @@ def main() -> int:
     parser.add_argument("--require-authored-payload", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    manifest = json.loads((root / "assets/runtime_content/aethelgard_1gib_v1.json").read_text())
+    manifest = json.loads((root / "assets/runtime_content/aethelgard_high_end_v1.json").read_text())
     groups = manifest["packageGroups"]
-    assert manifest["targetMiB"] == 1024
-    assert manifest["bundledWorldPlayable"] is True
+    assert manifest["targetMiB"] == 6750
+    assert manifest["bundledWorldPlayable"] is False
     assert manifest["sourceReceiptRequired"] is True
-    assert sum(group["targetMiB"] for group in groups) == 1024
+    assert sum(group["targetMiB"] for group in groups) == 6750
     assert all(group["sourceFormats"] and group["runtimeFormats"] for group in groups)
 
     payload_root = root / "assets/runtime_content/payload"
@@ -38,7 +38,7 @@ def main() -> int:
     print(f"AUTHORED_PAYLOAD_FILES={len(authored)}")
     print(f"AUTHORED_PAYLOAD_BYTES={authored_bytes}")
     if args.require_authored_payload and authored_bytes < target_bytes:
-        raise SystemExit("FAIL runtime_content_package: licensed authored payload is below the 1 GiB target")
+        raise SystemExit("FAIL runtime_content_package: licensed authored payload is below the 6.75 GiB target")
     return 0
 
 

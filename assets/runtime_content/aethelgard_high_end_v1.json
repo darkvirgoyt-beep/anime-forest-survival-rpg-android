@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 1,
+  "packageId": "aethelgard-high-end-runtime-v1",
+  "targetMiB": 6750,
+  "delivery": "required-private-https-archive",
+  "bundledWorldPlayable": false,
+  "sourceReceiptRequired": true,
+  "packageGroups": [
+    {"id": "environment_textures", "targetMiB": 1500, "sourceFormats": ["ktx2", "png", "tga"], "runtimeFormats": ["ktx2"], "purpose": "forest, sand, snow, dungeon and water materials"},
+    {"id": "world_sectors", "targetMiB": 1400, "sourceFormats": ["uasset", "umap", "fbx"], "runtimeFormats": ["pak", "ucas", "utoc"], "purpose": "streamed biome sectors, collision and navigation"},
+    {"id": "characters_and_animation", "targetMiB": 1100, "sourceFormats": ["fbx", "uasset"], "runtimeFormats": ["pak", "ucas", "utoc"], "purpose": "original heroes, creatures, rigs, locomotion and combat"},
+    {"id": "audio_and_voice", "targetMiB": 700, "sourceFormats": ["wav", "flac", "ogg"], "runtimeFormats": ["ogg", "opus"], "purpose": "music, ambience, combat, wildlife and dialogue"},
+    {"id": "cinematics", "targetMiB": 600, "sourceFormats": ["mp4", "mov", "uasset"], "runtimeFormats": ["mp4", "pak"], "purpose": "story sequences and camera data"},
+    {"id": "vfx_and_shaders", "targetMiB": 600, "sourceFormats": ["uasset", "spv"], "runtimeFormats": ["pak", "spv"], "purpose": "weather, impacts, river effects and mobile shader variants"},
+    {"id": "foliage_and_props", "targetMiB": 500, "sourceFormats": ["fbx", "uasset", "ktx2"], "runtimeFormats": ["pak", "ucas", "utoc"], "purpose": "foliage clusters, settlements, props and mobile LODs"},
+    {"id": "navigation_and_pipeline", "targetMiB": 350, "sourceFormats": ["uasset", "bin"], "runtimeFormats": ["pak", "bin"], "purpose": "navigation, terrain LOD data and pipeline-cache seeds"}
+  ]
+}

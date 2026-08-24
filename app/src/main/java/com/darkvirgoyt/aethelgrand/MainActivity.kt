@@ -204,7 +204,6 @@ class MainActivity : Activity(), SensorEventListener {
     private var networkOnline = false
     private var pingProbeInFlight = false
     private var latestPingMs: Int? = null
-    private var guestSignInAttempted = false
     private var googleLoginInFlight = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
@@ -909,6 +908,15 @@ class MainActivity : Activity(), SensorEventListener {
             authenticationTransitionStarted = false
         }
         if (!networkOnline) return
+        if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest) {
+            authenticationTransitionStarted = false
+            accountSession.signOut()
+            if (::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "GOOGLE SIGN-IN REQUIRED  •  TEMPORARY SESSIONS ARE NOT SUPPORTED"
+                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            }
+            return
+        }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -2292,6 +2300,9 @@ class MainActivity : Activity(), SensorEventListener {
                     .setView(panel)
                     .setNegativeButton("CLOSE", null)
                     .setPositiveButton("LOG OUT") { _, _ -> confirmLogout() }
+                if (!accountSession.snapshot.isGuest) {
+                    accountDialog.setNeutralButton("LINK GOOGLE") { _, _ -> requestGoogleAccountLink() }
+                }
                 accountDialog.show()
             }
         }
@@ -2352,7 +2363,7 @@ class MainActivity : Activity(), SensorEventListener {
             alpha = 0.92f
         }
         val title = TextView(this).apply {
-            text = "OPTIONAL ${resourceTier.name} VISUAL CONTENT"
+            text = "PREPARE ${resourceTier.name} GRAPHICS"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
@@ -2432,12 +2443,12 @@ class MainActivity : Activity(), SensorEventListener {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        status.text = "OPTIONAL VISUAL CONTENT UNAVAILABLE"
-                        details.text = "The bundled world is ready to play. High-detail visuals can be retried later from settings."
-                        note.text = "Online play and world entry continue without this optional download."
-                        note.setTextColor(Color.rgb(167, 214, 232))
-                        progress.progress = 100
-                        finishPreparation()
+                        status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
+                        details.text = event.failedPack ?: "Private high-end content service could not start for this installation."
+                        note.text = "The complete high-end archive is required before sign-in and world entry. Check the private HTTPS service, then retry."
+                        note.setTextColor(Color.rgb(255, 188, 142))
+                        progress.progress = 0
+                        retry.visibility = View.VISIBLE
                     }
                 } else {
                     val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2448,19 +2459,20 @@ class MainActivity : Activity(), SensorEventListener {
                             status.text = "${envelope.id.uppercase()} CONTENT READY"
                             details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
-                        event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
+                                                event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
                             status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
-                                "WAITING FOR WI-FI  •  BUNDLED WORLD READY"
+                                "WAITING FOR WI-FI  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
                             } else {
-                                "OPTIONAL DOWNLOAD PAUSED  •  BUNDLED WORLD READY"
+                                "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
                             }
-                            details.text = "Continue into the bundled world now. Optional visual content can be resumed later."
-                            finishPreparation()
+                            details.text = "The complete high-end archive is required before sign-in and gameplay. Connect to Wi-Fi or approve the download, then retry."
+                            retry.visibility = View.VISIBLE
+
                         }
                         event.status == AssetPackStatus.CANCELED -> {
-                            status.text = "OPTIONAL DOWNLOAD CANCELED  •  BUNDLED WORLD READY"
-                            details.text = "The bundled world continues without the optional visual download."
-                            finishPreparation()
+                            status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
+                            details.text = "The complete high-end archive is required before sign-in and gameplay. Press retry to resume."
+                            retry.visibility = View.VISIBLE
                         }
                         else -> {
                             status.text = "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
