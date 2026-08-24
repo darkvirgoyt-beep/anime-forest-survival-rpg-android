@@ -223,6 +223,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var pingProbeInFlight = false
     private var latestPingMs: Int? = null
     private var googleLoginInFlight = false
+    private var googleSignInButton: Button? = null
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
     private lateinit var identityStatusLabel: TextView
@@ -646,11 +647,33 @@ class MainActivity : Activity(), SensorEventListener {
             if (::onboardingStatus.isInitialized) onboardingStatus.text = "ACCOUNT LINK  •  CONNECTION RESTORING"
             return
         }
+        if (googleLoginInFlight) {
+            if (::onboardingStatus.isInitialized) onboardingStatus.text = "GOOGLE ACCOUNT CHOOSER IS ALREADY OPEN"
+            return
+        }
         googleLoginInFlight = true
+        googleSignInButton?.apply {
+            isEnabled = false
+            alpha = 0.62f
+            text = "OPENING GOOGLE ACCOUNT CHOOSER…"
+        }
         authenticationTransitionStarted = false
         val immediate = accountSession.requestGoogleSignIn()
         if (immediate.state != SessionState.SIGNING_IN) {
-            googleLoginInFlight = false
+            restoreGoogleSignInAction(immediate.state)
+        }
+    }
+
+    private fun restoreGoogleSignInAction(state: SessionState) {
+        googleLoginInFlight = false
+        googleSignInButton?.apply {
+            isEnabled = true
+            alpha = 1.0f
+            text = when (state) {
+                SessionState.DENIED -> "↻  RETRY GOOGLE SIGN-IN"
+                SessionState.CONFIGURATION_ERROR -> "GOOGLE LOGIN CONFIGURATION REQUIRED"
+                else -> "✦  SIGN IN WITH GOOGLE"
+            }
         }
     }
 
@@ -1044,6 +1067,7 @@ class MainActivity : Activity(), SensorEventListener {
         val google = cinematicButton("✦  SIGN IN WITH GOOGLE", true) {
             requestGoogleAccountLink()
         }
+        googleSignInButton = google
         consent.visibility = View.GONE
         consent.setOnCheckedChangeListener { _, checked ->
             google.isEnabled = checked
@@ -1095,8 +1119,10 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun applyAccountSnapshot(snapshot: SessionSnapshot) {
         updateNetworkAndIdentityLabels()
-        if (snapshot.state == SessionState.AUTHENTICATED && !snapshot.isGuest && googleLoginInFlight) {
-            googleLoginInFlight = false
+        if (snapshot.state != SessionState.SIGNING_IN && googleLoginInFlight) {
+            restoreGoogleSignInAction(snapshot.state)
+        }
+        if (snapshot.state == SessionState.AUTHENTICATED && !snapshot.isGuest) {
             authenticationTransitionStarted = false
         }
         if (!networkOnline) return

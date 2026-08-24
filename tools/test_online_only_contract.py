@@ -26,6 +26,8 @@ REQUIRED = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "Google sign-in is not configured for this installed APK", "actionable Android OAuth configuration diagnostic"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "Google sign-in is still starting", "actionable credential lifecycle diagnostic"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGoogleAccountLink()", "network-gated Google sign-in button"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "RETRY GOOGLE SIGN-IN", "recoverable cancelled Google chooser retry"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "GOOGLE ACCOUNT CHOOSER IS ALREADY OPEN", "duplicate Google chooser launch guard"),
     ("server/src/server.mjs", "/v1/content/high/manifest", "private high-end manifest route"),
     ("server/src/server.mjs", "/v1/content/high/archive", "private high-end archive route"),
     ("server/.env.example", "PRIVATE_CONTENT_ARCHIVE_PATH", "private archive server configuration"),
