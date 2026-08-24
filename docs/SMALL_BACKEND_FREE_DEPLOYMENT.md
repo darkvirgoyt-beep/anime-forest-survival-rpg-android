@@ -26,7 +26,7 @@ Set these values in the hosting dashboard or secret manager. Never commit a data
 | `GOOGLE_GAME_SERVER_CLIENT_ID` | Leave empty until Play Games Services is configured. |
 | `GOOGLE_GAME_SERVER_CLIENT_SECRET` | Leave empty until Play Games Services is configured. |
 
-After deployment, verify that `https://YOUR-SERVICE.onrender.com/healthz` returns JSON similar to `{"ok":true,"service":"aethelgard-online-services"}`. An HTML page or a `502 upstream_connect_failed` response is not a working API endpoint.
+After deployment, verify that `https://YOUR-SERVICE.onrender.com/healthz` returns JSON similar to `{"ok":true,"service":"aethelgard-online-services"}`. An HTML page or a `502 upstream_connect_failed` response is not a working API endpoint. If Render says the container is live but `/healthz` returns HTTP 503 with `{"ok":false,"service":"aethelgard-online-services"}`, the Node process and routes are running but its PostgreSQL `SELECT 1` readiness check failed. In that case, repair `DATABASE_URL`/`DATABASE_SSL` or the database availability and rerun the migration/startup logs; changing the Android login code cannot make a database-backed session exchange succeed.
 
 ## Android endpoint
 

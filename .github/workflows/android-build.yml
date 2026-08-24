@@ -125,17 +125,28 @@ jobs:
           test -f assetpack_foliage_lods/build.gradle.kts
           test -f assetpack_terrain_lod/build.gradle.kts
           test -f assetpack_animation_sets/build.gradle.kts
-          python3 tools/validate_asset_budget.py
-          python3 tools/validate_runtime_content_package.py
-          python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
-          python3 tools/test_graphics_tier_contract.py
-          python3 tools/test_startup_warmup.py --repo .
-          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py tools/build_private_content_manifest.py
-          python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null
-          python3 tools/test_production_foundation_contract.py
-          python3 tools/test_online_only_contract.py
-          python3 tools/test_persistent_multiplayer_contract.py
-          python3 tools/test_progressive_content_contract.py
+          echo 'CHECK asset budget'
+          python3 tools/validate_asset_budget.py || { echo 'FAIL asset budget'; exit 1; }
+          echo 'CHECK runtime content package'
+          python3 tools/validate_runtime_content_package.py || { echo 'FAIL runtime content package'; exit 1; }
+          echo 'CHECK resource center'
+          python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject || { echo 'FAIL resource center'; exit 1; }
+          echo 'CHECK graphics tier contract'
+          python3 tools/test_graphics_tier_contract.py || { echo 'FAIL graphics tier contract'; exit 1; }
+          echo 'CHECK startup warmup'
+          python3 tools/test_startup_warmup.py --repo . || { echo 'FAIL startup warmup'; exit 1; }
+          echo 'CHECK Python syntax'
+          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py tools/build_private_content_manifest.py || { echo 'FAIL Python syntax'; exit 1; }
+          echo 'CHECK Unreal pack mapping JSON'
+          python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null || { echo 'FAIL Unreal pack mapping JSON'; exit 1; }
+          echo 'CHECK production foundation contract'
+          python3 tools/test_production_foundation_contract.py || { echo 'FAIL production foundation contract'; exit 1; }
+          echo 'CHECK online-only contract'
+          python3 tools/test_online_only_contract.py || { echo 'FAIL online-only contract'; exit 1; }
+          echo 'CHECK persistent multiplayer contract'
+          python3 tools/test_persistent_multiplayer_contract.py || { echo 'FAIL persistent multiplayer contract'; exit 1; }
+          echo 'CHECK progressive content contract'
+          python3 tools/test_progressive_content_contract.py || { echo 'FAIL progressive content contract'; exit 1; }
 
   native-tests:
     runs-on: ubuntu-latest
