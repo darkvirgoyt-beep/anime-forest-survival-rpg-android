@@ -4,14 +4,15 @@ This directory records the first **authored production-content slice** for AETHE
 
 The launch slice contains a forest-sector descriptor, water movement/material data, original mobile textures, a terrain heightfield, foliage LOD data, Aurora motion and palette data, GLES material metadata, and the existing original/procedural audio bank. The payload is distributed into the corresponding Gradle Play Asset Delivery modules under `assetpack_*/src/main/assets/launch_slice/`.
 
-The measured payload is approximately **3.22 MiB**, which is real content and is intentionally far below the previously planned 7,108 MiB asset envelope. The repository does not create padding and does not claim that the complete 6,750 MiB high-end Unreal archive is finished.
+Stage 1 has a truthful **1 GiB source-budget envelope**. The currently authored payload is approximately **3.22 MiB** of real content; the remaining Stage 1 budget is reserved for later authored packs and is never filled with padding. The separate full high-end Unreal plan remains deferred and is not presented as installed or downloadable.
 
-The following remain deferred until a real Unreal Engine 5.6 cook is run in a licensed Unreal build environment: `.uasset` and `.umap` world sectors, cooked `.pak`/`.ucas`/`.utoc` files, production skeletal meshes and animation graphs, Niagara packages, platform shader libraries, cinematics, voice, and the future sand, snow, and dungeon expansions. Those packs remain on-demand and must stay locked until their signed cooked payloads and source receipts exist.
+The following remain deferred until a real Unreal Engine 5.6 cook is run in a licensed Unreal build environment: `.uasset` and `.umap` world sectors, cooked `.pak`/`.ucas`/`.utoc` files, production skeletal meshes and animation graphs, Niagara packages, platform shader libraries, cinematics, voice, and the future sand, snow, and dungeon expansions. Those packs remain deferred and must stay locked until their signed cooked payloads and source receipts exist.
 
 Run the following checks after authoring or replacing content:
 
 ```bash
-python3 tools/validate_asset_budget.py --require-nonempty
+python3 tools/validate_asset_budget.py
+python3 tools/validate_asset_budget.py --manifest assets/full_content_budget.json --require-nonempty --require-target
 python3 tools/validate_runtime_content_package.py
 python3 tools/test_full_content_build_contract.py
 ```

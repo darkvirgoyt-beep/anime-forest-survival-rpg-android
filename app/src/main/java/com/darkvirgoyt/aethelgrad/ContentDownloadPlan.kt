@@ -1,8 +1,8 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 /**
- * Packaging plan for future cooked 3D Aethelgard content. Its size budgets are never
- * player-facing download facts; the client displays only bytes from a signed archive or Play.
+ * Staged packaging plan for AETHELGRAD content. Size budgets are planning targets,
+ * never claims about installed bytes; runtime progress comes only from measured payloads.
  */
 object ContentDownloadPlan {
     data class QualityEnvelope(
@@ -15,6 +15,16 @@ object ContentDownloadPlan {
         val requiresDownloadedContent: Boolean
     )
 
+    private val stageOneEnvelope = QualityEnvelope(
+        id = "mobile-stage-1",
+        textureLabel = "authored forest mobile",
+        foliageDensity = 60,
+        effectScalePercent = 90,
+        shadowQuality = "mobile dynamic shadows",
+        waterQuality = "river surface and foam accents",
+        requiresDownloadedContent = false
+    )
+
     private val highQualityEnvelope = QualityEnvelope(
         id = "cinematic-high",
         textureLabel = "high-resolution PBR",
@@ -25,12 +35,17 @@ object ContentDownloadPlan {
         requiresDownloadedContent = true
     )
 
-    fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope = highQualityEnvelope
+    fun qualityEnvelopeFor(tier: ResourceTier): QualityEnvelope =
+        if (tier == ResourceTier.HIGH) highQualityEnvelope else stageOneEnvelope
 
     enum class ResourceTier(
         val graphicsTierIndex: Int,
         val description: String
     ) {
+        STAGE_1(
+            graphicsTierIndex = 2,
+            description = "Stage 1 targets a 1 GiB authored forest release budget. Only measured launch-slice bytes are used; future content is added in later packs."
+        ),
         HIGH(
             graphicsTierIndex = 4,
             description = "High graphics are available only after a measured, signed cooked archive or Play Asset Delivery release is published for this APK."
@@ -51,7 +66,20 @@ object ContentDownloadPlan {
         val sector: WorldSector? = null
     )
 
-    val packs = listOf(
+    private val stageOnePacks = listOf(
+        Pack("assetpack_core", 96, "bootstrap UI, online authentication, launch scene and content catalog"),
+        Pack("assetpack_graphics_base", 160, "mobile forest materials, base shaders, shared meshes and renderer resources"),
+        Pack("assetpack_forest", 160, "forest launch region, water, collision and navigation slice"),
+        Pack("assetpack_characters", 144, "Stage 1 Aurora character palette, runtime contract and animation bindings"),
+        Pack("assetpack_audio_hd", 128, "Stage 1 forest ambience, UI, movement and combat audio", requiredBeforeStart = false),
+        Pack("assetpack_shaders_gles", 96, "OpenGL ES mobile shader and material contract"),
+        Pack("assetpack_world_streaming", 96, "Stage 1 forest sector streaming descriptor"),
+        Pack("assetpack_terrain_lod", 64, "Stage 1 forest heightfield and terrain LOD data"),
+        Pack("assetpack_animation_sets", 48, "Stage 1 locomotion and combat motion contract"),
+        Pack("assetpack_foliage_lods", 32, "Stage 1 foliage cluster and mobile LOD data", requiredBeforeStart = false)
+    )
+
+    private val highEndPacks = listOf(
         Pack("assetpack_graphics_base", 450, "compiled materials, base shaders, shared meshes, mobile render resources"),
         Pack("assetpack_forest", 350, "forest launch region, village, foliage, water, collision, navigation"),
         Pack("assetpack_characters", 500, "heroes, NPCs, animals, enemies, rigs, animation bindings"),
@@ -72,8 +100,11 @@ object ContentDownloadPlan {
         Pack("assetpack_pipeline_cache", 100, "device-safe pipeline cache seeds and shader warm-up data", requiredBeforeStart = false, sector = WorldSector.DUNGEON)
     )
 
-    /** Planning-only pack group; the runtime never reports these target sizes as installed bytes. */
-    fun packsFor(tier: ResourceTier): List<Pack> = packs
+    /** Full-cook compatibility view; the current phone release uses Stage 1 below. */
+    val packs: List<Pack> = highEndPacks
+
+    fun packsFor(tier: ResourceTier): List<Pack> =
+        if (tier == ResourceTier.STAGE_1) stageOnePacks else highEndPacks
 
     fun packNamesFor(tier: ResourceTier): List<String> = packsFor(tier).map { it.playPackName }
 
@@ -94,11 +125,13 @@ object ContentDownloadPlan {
 
     fun totalGiBLabelFor(tier: ResourceTier): String = "%.1f GB".format(totalMiBFor(tier) / 1024.0)
 
-    val totalMiB: Int = packs.sumOf { it.targetMiB }
-    val requiredMiB: Int = packs.filter { it.requiredBeforeStart }.sumOf { it.targetMiB }
-    // Reserve headroom for the required high-end archive and safe updates.
-    val minimumFreeSpaceMiB: Int = totalMiB + 128
-    val totalGiBLabel: String = "%.1f GB".format(totalMiB / 1024.0)
-    val summary: String = packs.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }
-    val requiredPackNames: List<String> = startupPackNamesFor(ResourceTier.HIGH)
+    val stageOneTotalMiB: Int = totalMiBFor(ResourceTier.STAGE_1)
+    val fullContentTotalMiB: Int = totalMiBFor(ResourceTier.HIGH)
+    val totalMiB: Int = stageOneTotalMiB
+    val requiredMiB: Int = startupMiBFor(ResourceTier.STAGE_1)
+    val minimumFreeSpaceMiB: Int = stageOneTotalMiB + 128
+    val totalGiBLabel: String = totalGiBLabelFor(ResourceTier.STAGE_1)
+    val summary: String = stageOnePacks.joinToString("  •  ") { "${it.playPackName}: ${it.targetMiB} MB" }
+    val requiredPackNames: List<String> = startupPackNamesFor(ResourceTier.STAGE_1)
+    val fullContentRequiredPackNames: List<String> = startupPackNamesFor(ResourceTier.HIGH)
 }

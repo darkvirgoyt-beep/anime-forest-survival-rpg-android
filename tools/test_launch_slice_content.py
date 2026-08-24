@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate the authored AETHELGRAD forest launch slice.
 
-This gate checks real startup payloads only. It intentionally does not require the
-future 6.75 GiB Unreal cook, and it never counts receipts or .gitkeep files as
+This gate checks real Stage 1 startup payloads only. It intentionally does not require the
+future high-end Unreal cook, and it never counts receipts or .gitkeep files as
 payload bytes.
 """
 from __future__ import annotations
@@ -77,6 +77,8 @@ def main() -> None:
         raise SystemExit("FAIL launch_slice_content: measured payload is empty")
     if launch_manifest["contentId"] != manifest["contentId"] or not launch_manifest["published"]:
         raise SystemExit("FAIL launch_slice_content: Android launch manifest is not published for the authored slice")
+    if launch_manifest.get("stage") != "stage-1-forest-launch" or launch_manifest.get("plannedStageBudgetMiB") != 1024:
+        raise SystemExit("FAIL launch_slice_content: Stage 1 must declare a 1 GiB planned budget")
     if set(launch_manifest["startupPacks"]) != set(STARTUP_PACKS[:8]):
         raise SystemExit("FAIL launch_slice_content: startup pack list does not match the authored launch plan")
     if set(launch_manifest["authoredOnDemandPacks"]) != {"assetpack_foliage_lods", "assetpack_audio_hd"}:

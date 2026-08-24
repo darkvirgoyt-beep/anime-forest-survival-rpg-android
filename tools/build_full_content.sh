@@ -42,6 +42,7 @@ python3 "$ROOT/tools/stage_cooked_unreal_assets.py" \
 
 python3 "$ROOT/tools/validate_asset_budget.py" \
   --root "$ROOT" \
+  --manifest assets/full_content_budget.json \
   --require-nonempty \
   --require-target
 
@@ -52,7 +53,7 @@ if [[ -n "${ANDROID_HOME:-}" && -x "$ANDROID_HOME/build-tools/35.0.0/aapt" ]]; t
   AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
   APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
   APK_VERSION_CODE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p")"
-  [[ "$APK_PACKAGE" == "com.darvirgoyt.aethelgrad" ]] || fail "unexpected APK package: $APK_PACKAGE"
+  [[ "$APK_PACKAGE" == "com.darkvirgoyt.aethelgrad" ]] || fail "unexpected APK package: $APK_PACKAGE"
   [[ "$APK_VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || fail "invalid APK version code: $APK_VERSION_CODE"
   mkdir -p "$OBB_ROOT"
   python3 "$ROOT/tools/build_expansion_obb.py" \

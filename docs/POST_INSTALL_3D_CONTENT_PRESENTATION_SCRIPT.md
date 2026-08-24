@@ -35,11 +35,11 @@ The contract between the layers is simple: Android requests named Play Asset Del
 
 ---
 
-## Section 2 — “The content envelope: 6.6 GB after installation”
+## Section 2 — “The content envelope: 1 GiB Stage 1 release”
 
 **Speaker:**
 
-“The production post-install envelope is 6,750 MiB, displayed to the player as approximately 6.6 GB. There is also a small install-time core pack for the bootstrap and loading experience. The post-install content is represented by 18 separately downloadable packs. We keep the pack targets below the documented dynamic-pack ceiling so the content can be delivered as multiple independently managed units rather than one oversized archive.”
+“The first production release is a staged 1 GiB forest envelope. It contains the authored mobile launch slice and leaves room for later real packs. The currently measured content is displayed from actual mounted bytes, not from the planning budget. The complete high-end Unreal envelope remains a future cook and is not presented as installed content.”
 
 | Family | Packs | Purpose |
 |---|---|---|

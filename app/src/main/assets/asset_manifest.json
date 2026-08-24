@@ -11,6 +11,8 @@
       "mode": "authored-pad-slice",
       "published": true,
       "measuredBytes": 3338513,
+      "plannedStageBudgetMiB": 1024,
+      "stage": "stage-1-forest-launch",
       "startupPacks": ["assetpack_core", "assetpack_graphics_base", "assetpack_forest", "assetpack_characters", "assetpack_shaders_gles", "assetpack_world_streaming", "assetpack_terrain_lod", "assetpack_animation_sets"],
       "authoredOnDemandPacks": ["assetpack_foliage_lods", "assetpack_audio_hd"],
       "futurePacksRemainDeferred": true
@@ -40,6 +42,15 @@
     }
   },
   "resourceTiers": [
+    {
+      "id": "stage-1",
+      "label": "STAGE 1 FOREST LAUNCH — 1 GB PLAN",
+      "plannedBudgetMiB": 1024,
+      "measuredBytes": 3338513,
+      "graphicsQuality": "mobile-launch-ready",
+      "description": "The first staged release targets a 1 GiB source budget. Only measured authored launch-slice bytes are published; the remaining budget is future real content, never padding.",
+      "packs": ["assetpack_core", "assetpack_graphics_base", "assetpack_forest", "assetpack_characters", "assetpack_audio_hd", "assetpack_shaders_gles", "assetpack_world_streaming", "assetpack_terrain_lod", "assetpack_animation_sets", "assetpack_foliage_lods"]
+    },
     {
       "id": "high",
       "label": "HIGH-END RESOURCES — NOT PUBLISHED",

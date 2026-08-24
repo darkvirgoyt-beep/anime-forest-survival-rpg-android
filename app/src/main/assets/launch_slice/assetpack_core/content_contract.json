@@ -5,7 +5,7 @@
   "runtime": "Android GLES 3",
   "notIncluded": [
     "cooked Unreal pak",
-    "full 6.75 GiB high-end archive",
+    "deferred high-end Unreal cooked archive",
     "future biomes"
   ]
 }

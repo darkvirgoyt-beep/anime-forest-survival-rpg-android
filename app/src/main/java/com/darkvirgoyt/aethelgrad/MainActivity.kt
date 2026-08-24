@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 import android.Manifest
 import android.animation.ValueAnimator
@@ -113,7 +113,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var joystickSensitivity = 1.0f
     private var selectedTargetFps = 60
     private var selectedGraphicsTier = 2
-    private var selectedResourceTier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH
+    private var selectedResourceTier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.STAGE_1
     private var supportedTargetFps = listOf(60)
     private val graphicsPreferences by lazy { getSharedPreferences("aethelgard_graphics", MODE_PRIVATE) }
     private val controlPreferences by lazy { getSharedPreferences("aethelgard_controls", MODE_PRIVATE) }
@@ -437,8 +437,8 @@ class MainActivity : Activity(), SensorEventListener {
         localMultiplayer = LocalMultiplayerManager(this, localMultiplayerCallbacks)
         networkMonitor.start(::applyConnectivitySnapshot)
         onboardingOverlay.visibility = View.VISIBLE
-        // The private high-end archive is a hard gate before Google sign-in and
-        // online world entry. No bundled or optional gameplay path exists.
+        // Stage 1 forest content is the current phone-first boundary. The future
+        // high-end archive remains an explicit opt-in tier after a real cook.
         showAssetPatchOverlay { beginOnlineStartup() }
         if (networkOnline) beginOnlineStartup()
     }
@@ -478,13 +478,13 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginOnlineStartup() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "NETWORK REQUIRED  •  HIGH-END CONTENT AND ONLINE PLAY ARE LOCKED"
+                onboardingStatus.text = "NETWORK REQUIRED  •  STAGE 1 CONTENT AND ONLINE PLAY ARE LOCKED"
             }
             return
         }
         if (!resourcePreparationComplete) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "HIGH-END GRAPHICS DOWNLOAD REQUIRED BEFORE SIGN-IN"
+                onboardingStatus.text = "STAGE 1 FOREST CONTENT CHECK REQUIRED BEFORE SIGN-IN"
             }
             return
         }
@@ -513,7 +513,7 @@ class MainActivity : Activity(), SensorEventListener {
                 coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "NETWORK REQUIRED  •  HIGH-END CONTENT AND ONLINE PLAY ARE LOCKED"
+                onboardingStatus.text = "NETWORK REQUIRED  •  STAGE 1 CONTENT AND ONLINE PLAY ARE LOCKED"
             }
             return
         }
@@ -1363,7 +1363,7 @@ class MainActivity : Activity(), SensorEventListener {
         worldLoadingStatus?.text = when {
             playerSkippedLoadingPresentation && !allReady -> "PREPARING IN BACKGROUND  •  $percent%"
             !allReady -> "${nextTask.label}  •  $percent%"
-            timelinePercent < 100 -> "WARMING HIGH-END GRAPHICS  •  $percent%"
+            timelinePercent < 100 -> "WARMING STAGE 1 GRAPHICS  •  $percent%"
             else -> "NECESSARY RESOURCES READY  •  100%"
         }
         if (allReady && timelinePercent >= 100) revealWorldWhenReady()
@@ -2756,13 +2756,13 @@ class MainActivity : Activity(), SensorEventListener {
             alpha = 0.92f
         }
         val title = TextView(this).apply {
-            text = "PREPARE ${resourceTier.name} GRAPHICS"
+            text = "PREPARE STAGE 1 FOREST CONTENT"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = "CHECKING VERIFIED GRAPHICS AVAILABILITY"
+            text = "CHECKING STAGE 1 CONTENT AVAILABILITY"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -2782,7 +2782,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = "Exact size and 0–100% progress appear only after Play or a signed archive reports measured bytes. Unreal source plans are not downloadable graphics."
+            text = "Stage 1 is planned at 1 GiB, but the app displays only bytes actually mounted from authored content. Future Unreal content is added in later verified packs; no padding is used."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2871,13 +2871,13 @@ class MainActivity : Activity(), SensorEventListener {
                             failure.contains("HTTP 5", ignoreCase = true) ||
                             failure.contains("private_content_not_configured", ignoreCase = true)
                         status.text = when {
-                            contentNotPublished -> "HIGH GRAPHICS CONTENT NOT PUBLISHED"
-                            serviceUnavailable -> "HIGH GRAPHICS SERVICE UNAVAILABLE"
+                            contentNotPublished -> "STAGE 1 FOREST CONTENT NOT AVAILABLE"
+                            serviceUnavailable -> "STAGE 1 CONTENT SERVICE UNAVAILABLE"
                             else -> "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
                         }
                         details.text = failure
                         note.text = if (serviceUnavailable) {
-                            "No measured Unreal cooked map, model, texture, or archive payload is published for this APK. Core online world is available; retry only after a signed content release is published."
+                            "No measured Stage 1 payload is available for this APK. The bundled forest launch slice remains the phone-first path; retry after the staged content release is available."
                         } else {
                             "The downloaded archive did not pass a release integrity check. Retry after the content service is corrected."
                         }
@@ -2904,18 +2904,18 @@ class MainActivity : Activity(), SensorEventListener {
                             } else {
                                 "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
                             }
-                            details.text = "The complete high-end archive is required before sign-in and gameplay. Connect to Wi-Fi or approve the download, then retry."
+                            details.text = "Stage 1 forest content is required before sign-in and gameplay. Connect to Wi-Fi or approve the staged download, then retry."
                             retry.visibility = View.VISIBLE
 
                         }
                         event.status == AssetPackStatus.CANCELED -> {
                             status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
-                            details.text = "The complete high-end archive is required before sign-in and gameplay. Press retry to resume."
+                            details.text = "Stage 1 forest content is required before sign-in and gameplay. Press retry to resume."
                             retry.visibility = View.VISIBLE
                         }
                         else -> {
                             status.text = if (event.sizeVerified) {
-                                "DOWNLOADING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
+                                "DOWNLOADING STAGE 1 FOREST CONTENT  •  ${event.percent}%"
                             } else {
                                 "WAITING FOR VERIFIED CONTENT METADATA"
                             }
@@ -2927,7 +2927,7 @@ class MainActivity : Activity(), SensorEventListener {
                         }
                     }
                     animateVerifiedProgress(if (event.sizeVerified || event.complete) event.percent else 0)
-                    if (event.complete) finishPreparation(highResolution = true)
+                    if (event.complete) finishPreparation(highResolution = resourceTier == ContentDownloadPlan.ResourceTier.HIGH)
                 }
             }
             }

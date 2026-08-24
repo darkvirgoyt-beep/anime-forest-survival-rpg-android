@@ -23,12 +23,13 @@ def mib(value: int) -> float:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--manifest", type=Path, default=Path("assets/asset_budget.json"), help="budget manifest relative to --root")
     parser.add_argument("--require-target", action="store_true", help="fail when authored bytes are below the planned target")
     parser.add_argument("--require-nonempty", action="store_true", help="fail when any declared asset pack has no authored payload files")
     args = parser.parse_args()
 
     root = args.root.resolve()
-    manifest_path = root / "assets" / "asset_budget.json"
+    manifest_path = args.manifest if args.manifest.is_absolute() else root / args.manifest
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     packs = manifest["packs"]
     policy = manifest.get("policy", {})

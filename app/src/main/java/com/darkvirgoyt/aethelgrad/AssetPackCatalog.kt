@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.content.Context
@@ -51,7 +51,7 @@ class AssetPackCatalog(context: Context) {
     )
 
     companion object {
-        /** The online world requires every declared high-end pack before entry. */
+        /** Stage 1 is the current phone-first content boundary; high-end remains deferred. */
         val productionPackNames: List<String>
             get() = ContentDownloadPlan.requiredPackNames
     }
@@ -67,7 +67,7 @@ class AssetPackCatalog(context: Context) {
     )
     private var listener: AssetPackStateUpdateListener? = null
 
-    fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.HIGH): Preflight {
+    fun checkProductionPreflight(tier: ContentDownloadPlan.ResourceTier = ContentDownloadPlan.ResourceTier.STAGE_1): Preflight {
         val requiredBytes = 0L
         return try {
             val stats = StatFs(appContext.filesDir.absolutePath)
@@ -117,7 +117,7 @@ class AssetPackCatalog(context: Context) {
             return
         }
         val bundledLaunchBytes = bundledLaunchSliceBytes()
-        if (bundledLaunchBytes > 0L) {
+        if (bundledLaunchBytes > 0L && tier == ContentDownloadPlan.ResourceTier.STAGE_1) {
             onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, bundledLaunchBytes, bundledLaunchBytes, true, source = "bundled-launch-slice"))
             return
         }
@@ -175,7 +175,7 @@ class AssetPackCatalog(context: Context) {
 
     /** Backward-compatible high-resource request for existing callers and tests. */
     fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) =
-        requestProductionContent(ContentDownloadPlan.ResourceTier.HIGH, onProgress)
+        requestProductionContent(ContentDownloadPlan.ResourceTier.STAGE_1, onProgress)
 
     private fun requestPackSet(
         requestedPackNames: List<String>,
@@ -274,7 +274,7 @@ class AssetPackCatalog(context: Context) {
 
     fun isReady(packName: String): Boolean = manager.getPackLocation(packName) != null
 
-    fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.HIGH)
+    fun productionContentReady(): Boolean = productionContentReady(ContentDownloadPlan.ResourceTier.STAGE_1)
 
     fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean {
         if (standaloneExpansionFile.inspect().ready) return true
