@@ -1,0 +1,67 @@
+{
+  "assetId": "forest-warden-boss-user-source-derived-v1",
+  "displayName": "Forest Warden",
+  "role": "boss",
+  "identity": "AETHELGRAD forest boss; separate from the Aurora player character",
+  "source": {
+    "archive": "Hi3D_Untitled_allparts_20260824_215831.zip",
+    "sourceMesh": "model.obj",
+    "sourceTriangleCount": 2000000,
+    "sourceMeshBytes": 212387154,
+    "sourceMaterial": "model.mtl",
+    "derivation": "Quadric decimation to mobile LOD targets with nearest-source-vertex UV transfer",
+    "rawSourcePolicy": "The raw model.obj is not copied into the repository or Android payload",
+    "provenance": "User-supplied asset archive; commercial distribution rights and final source license remain a release gate"
+  },
+  "mobile": {
+    "lods": [
+      {
+        "name": "boss_forest_warden_lod0",
+        "file": "boss_forest_warden_lod0.obj",
+        "triangles": 16000,
+        "recommendedScreenCoverage": "near"
+      },
+      {
+        "name": "boss_forest_warden_lod1",
+        "file": "boss_forest_warden_lod1.obj",
+        "triangles": 8000,
+        "recommendedScreenCoverage": "mid"
+      }
+    ],
+    "farRepresentation": "existing procedural Forest Warden silhouette",
+    "materialSlots": 1,
+    "collision": {
+      "mode": "simple capsule plus boss arena hurtbox",
+      "perPolyCollision": false,
+      "radiusMeters": 0.42,
+      "halfHeightMeters": 0.86
+    },
+    "texturePolicy": {
+      "albedo": "boss_forest_warden_diffuse.jpg",
+      "roughness": "material default",
+      "metallic": "material default",
+      "maxTextureDimension": 2048
+    }
+  },
+  "runtime": {
+    "existingBossType": "ForestWarden",
+    "proceduralFallback": "draw3DForestWarden",
+    "gameplayContract": "existing three-phase Forest Warden health, telegraph, combat, and loot path",
+    "unrealImportRequired": true,
+    "cookedUassetPresent": false,
+    "deviceProfileValidationRequired": true
+  },
+  "playerPreservation": {
+    "mainPlayerCharacter": "Aurora",
+    "playerAssetContract": "character_runtime_contract.json",
+    "playerReplacement": false,
+    "playerFilesModified": false
+  },
+  "files": [
+    "launch_slice/forest_warden_boss_asset.json",
+    "launch_slice/boss_forest_warden_lod0.obj",
+    "launch_slice/boss_forest_warden_lod1.obj",
+    "launch_slice/boss_forest_warden.mtl",
+    "launch_slice/boss_forest_warden_diffuse.jpg"
+  ]
+}

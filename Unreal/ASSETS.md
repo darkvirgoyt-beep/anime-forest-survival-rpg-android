@@ -17,6 +17,10 @@ Private KML references supplied by the user remain outside this repository. `ORI
 
 The Stage 1 forest source kit is at `../assetpack_forest/src/main/assets/launch_slice/forest_prop_kit.obj` with its owned material library `forest_prop_kit.mtl` and contract `forest_prop_kit.json`. Import the named groups `SM_Rock_Large`, `SM_Rock_Mossy`, `SM_Rock_Small`, `SM_Log_Fallen`, `SM_Ruin_*`, `SM_Camp_*`, and `SM_Shrine_*` as separate static meshes under `/Game/Environment/Forest/Props/`. Preserve the three mobile LOD targets from the contract, assign simple convex/box/capsule collision rather than per-poly collision, and use the deterministic placement seed `74291` when wiring the forest-sector landmark and camp/shrine cluster. This source kit is original project-owned geometry; it is not a cooked `.uasset`, and no UE 5.6 import or device profiling is claimed until that licensed environment is available.
 
+## Forest Warden boss import mapping
+
+The user-supplied boss source is represented by the derived mobile files at `../assetpack_characters/src/main/assets/launch_slice/boss_forest_warden_lod0.obj`, `boss_forest_warden_lod1.obj`, `boss_forest_warden.mtl`, and `boss_forest_warden_diffuse.jpg`, governed by `forest_warden_boss_asset.json`. Import them under `/Game/Characters/Bosses/ForestWarden/` as a separate boss skeletal/static-mesh preparation task; do not replace `/Game/Characters/Aurora/` or the Android player contract. Keep the 16k near and 8k mid triangle limits, one material slot, simple capsule collision, and the existing `ForestWarden` three-phase gameplay identity. The archive’s raw 2M-triangle `model.obj` is intentionally excluded. Final rigging, animation retargeting, sockets, cooked `.uasset` generation, rights confirmation, and physical Android profiling remain required gates.
+
 ## Import gate
 
 Before importing an asset into `Content/`, record its filename, source, creator, license, intended use, target platform memory budget, texture compression, LOD policy, and replacement plan in the project asset manifest. Placeholder geometry is permitted only for local engineering tests and cannot be represented as final player-facing art.

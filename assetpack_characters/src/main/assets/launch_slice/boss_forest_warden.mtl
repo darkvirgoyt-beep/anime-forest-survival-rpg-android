@@ -1,0 +1,10 @@
+# AETHELGRAD Forest Warden mobile material
+# Derived from the user-supplied Hitem3D source archive; use the project receipt for provenance.
+newmtl material_0
+Kd 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ks 0.180000 0.180000 0.180000
+Ns 24.000000
+d 1.000000
+illum 2
+map_Kd boss_forest_warden_diffuse.jpg

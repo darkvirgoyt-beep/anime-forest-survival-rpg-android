@@ -11,5 +11,14 @@
     "heavy",
     "gather"
   ],
-  "palette": "aurora_palette.png"
+  "palette": "aurora_palette.png",
+  "playerReplacement": false,
+  "bossAssets": [
+    {
+      "asset": "forest_warden_boss_asset.json",
+      "displayName": "Forest Warden",
+      "role": "three-phase forest boss",
+      "runtimeFallback": "draw3DForestWarden"
+    }
+  ]
 }

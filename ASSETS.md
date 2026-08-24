@@ -18,7 +18,7 @@
 
 ## Included in v0.1
 
-The Android bootstrap contains the production account shell, settings, loading scene, native renderer, save schema, and the authored **forest launch slice**. The launch slice is distributed into the Gradle asset-pack modules and includes original mobile textures, terrain heightfield data, foliage LOD data, water movement/material descriptors, Aurora motion/palette data, GLES material metadata, the original/procedural forest audio bank, and a deterministic low-poly `forest_prop_kit` source set for rocks, logs, ruins, camp, and shrine props. Its measured payload is exactly 3,353,935 bytes (approximately 3.20 MiB); it is real content, not budget padding.
+The Android bootstrap contains the production account shell, settings, loading scene, native renderer, save schema, and the authored **forest launch slice**. The launch slice is distributed into the Gradle asset-pack modules and includes original mobile textures, terrain heightfield data, foliage LOD data, water movement/material descriptors, Aurora motion/palette data, GLES material metadata, the original/procedural forest audio bank, a deterministic low-poly `forest_prop_kit` source set for rocks, logs, ruins, camp, and shrine props, and the derived Forest Warden boss LOD source. Its measured payload is exactly 4,803,743 bytes (approximately 4.58 MiB); it is real content, not budget padding.
 
 The launch slice is not the complete high-end Unreal archive. The final cooked world meshes, materials, animation graphs, LODs, platform shaders, cinematics, voice, and future biome sectors must arrive through a trusted Unreal cook and a verified Play Asset Delivery or HTTPS OBB release before those expansions are unlocked.
 
@@ -32,6 +32,12 @@ The launch slice is not the complete high-end Unreal archive. The final cooked w
 | Camp/shrine cluster | `SM_Camp_*` and `SM_Shrine_*` groups | Camp anchor plus pedestal/standing-stone interaction silhouette | Deterministic placement seed `74291`, protected from water by the placement contract |
 
 The authoritative source, ownership, LOD, collision, and placement metadata is `assetpack_forest/src/main/assets/launch_slice/forest_prop_kit.json`; its receipt is centralized in `assets/production_content/pack_receipts.json`. The OBJ/MTL files are authored source stand-ins for the Android launch slice. A licensed Unreal Engine 5.6 import/cook and device profiling pass is still required before these become cooked `.uasset` static meshes.
+
+## Forest Warden boss asset
+
+The supplied `Hi3D_Untitled_allparts_20260824_215831.zip` was inspected as source data. Its raw `model.obj` is approximately 2,000,000 triangles and 212 MB, so it is deliberately not copied into the repository or Android package. A derived mobile source set is included at `assetpack_characters/src/main/assets/launch_slice/`: near LOD at 16,000 triangles, mid LOD at 8,000 triangles, one diffuse material, and a simple capsule collision contract. The original Aurora player character and its `character_runtime_contract.json` remain preserved; the Forest Warden is a separate boss asset and does not replace the player.
+
+The authoritative boss mapping, provenance, mobile limits, and Unreal import boundary are in `forest_warden_boss_asset.json`. The files are user-supplied/derived source pending final commercial-rights confirmation; the raw source textures and raw `model.obj` are not included. The Android GLES build continues to use the existing procedural `draw3DForestWarden` fallback until a licensed Unreal 5.6 import, rig/animation pass, collision setup, cooked `.uasset`, and device profiling pass are completed.
 
 ## Planned original assets
 
