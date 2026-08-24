@@ -1,4 +1,4 @@
-package com.darkvirgoyt.aethelgrad
+package com.darvirgoyt.aethelgrad
 
 import android.app.Activity
 import android.content.Intent

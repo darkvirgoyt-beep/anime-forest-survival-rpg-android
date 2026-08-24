@@ -1,4 +1,4 @@
-package com.darkvirgoyt.aethelgrad
+package com.darvirgoyt.aethelgrad
 
 /**
  * Packaging plan for future cooked 3D Aethelgard content. Its size budgets are never
