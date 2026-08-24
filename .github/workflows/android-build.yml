@@ -83,11 +83,11 @@ jobs:
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
-          grep -q 'namespace = "com.darkvirgoyt.aethelgrand"' app/build.gradle.kts
-          grep -q 'applicationId = "com.darkvirgoyt.aethelgrand"' app/build.gradle.kts
-          grep -R -q 'com.darkvirgoyt.aethelgrand' app/src/main app/build.gradle.kts app/src/main/cpp
-          grep -q 'Java_com_darkvirgoyt_aethelgrand_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
-          ! grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
+          grep -q 'namespace = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
+          grep -q 'applicationId = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
+          grep -R -q 'com.darvirgoyt.aethelgrad' app/src/main app/build.gradle.kts app/src/main/cpp
+          grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
+          ! grep -q 'Java_com_darkvirgoyt_aethelgrand_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           grep -q 'void draw3DEmberling' app/src/main/cpp/forest_game.cpp
           grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
@@ -292,7 +292,7 @@ jobs:
           python3 tools/validate_asset_budget.py
           gradle bundleRelease assembleRelease --stacktrace
           APK_PACKAGE="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging app/build/outputs/apk/release/app-release.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
-          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
+          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
 
       - name: Verify release APK identity and report payload sizes
@@ -300,7 +300,7 @@ jobs:
           AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
-          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
+          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
           test -s "$APK_PATH"
           test -s "app/build/outputs/bundle/release/app-release.aab"
           APK_BYTES=$(stat -c%s "$APK_PATH")
@@ -358,7 +358,7 @@ jobs:
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
           APK_VERSION_CODE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p")"
-          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
+          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
           test "$APK_VERSION_CODE" -gt 0
           python3 tools/build_expansion_obb.py \
             --input-dir build/obb-staging \
@@ -377,7 +377,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aethelgard-expansion-obb
-          path: build/expansion-obb/main.*.com.darkvirgoyt.aethelgrand.obb
+          path: build/expansion-obb/main.*.com.darvirgoyt.aethelgrad.obb
           if-no-files-found: error
 
       - name: Upload direct APK artifact

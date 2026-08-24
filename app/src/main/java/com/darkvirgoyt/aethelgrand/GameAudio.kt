@@ -1,4 +1,4 @@
-package com.darkvirgoyt.aethelgrand
+package com.darvirgoyt.aethelgrad
 
 import android.content.Context
 import android.media.AudioAttributes
