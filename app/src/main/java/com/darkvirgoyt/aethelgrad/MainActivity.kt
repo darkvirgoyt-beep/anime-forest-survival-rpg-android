@@ -782,6 +782,18 @@ class MainActivity : Activity(), SensorEventListener {
         if (::gameView.isInitialized) gameView.applyGraphicsTier(selectedGraphicsTier)
     }
 
+    private fun applyPerformanceProfile(profile: Int) {
+        val displayMax = supportedTargetFps.maxOrNull() ?: 60
+        val (fps, tier) = when (profile) {
+            0 -> 60 to 1 // Endurance: stable battery and thermal behavior.
+            1 -> 60 to 2 // Balanced: authored Stage 1 forest default.
+            else -> displayMax to 3 // Ascent: never exceeds the actual display capability.
+        }
+        graphicsPreferences.edit().putInt("performance_profile", profile).putBoolean("auto_fps", false).apply()
+        applyTargetFps(fps)
+        applyGraphicsTier(tier)
+    }
+
     private fun graphicsTierName(value: Int): String = listOf("LOW", "MEDIUM", "HIGH", "ULTRA", "MAX")[value.coerceIn(0, 4)]
 
     private fun registerGyro() {
@@ -3206,6 +3218,35 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, 0, 0, dp(10))
         }
         panel.addView(detected)
+        val savedProfile = graphicsPreferences.getInt("performance_profile", -1)
+        panel.addView(TextView(this).apply {
+            text = "AETHELGARD PERFORMANCE PROFILE"
+            textSize = 13f
+            setTextColor(Color.rgb(244, 218, 155))
+            setPadding(0, 0, 0, dp(4))
+        })
+        val profileGroup = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL }
+        listOf(
+            "ENDURANCE  •  60 FPS / MEDIUM",
+            "BALANCED  •  60 FPS / HIGH",
+            "ASCENT  •  UP TO ${detectedMax} FPS / ULTRA",
+            "CUSTOM  •  MANUAL FPS + QUALITY"
+        ).forEachIndexed { index, label ->
+            profileGroup.addView(RadioButton(this).apply {
+                text = label
+                textSize = 13f
+                setTextColor(Color.WHITE)
+                tag = index - 1
+                isChecked = if (index == 3) savedProfile !in 0..2 else savedProfile == index - 1
+            }, LinearLayout.LayoutParams(-1, dp(34)))
+        }
+        panel.addView(profileGroup)
+        panel.addView(TextView(this).apply {
+            text = "Profiles tune only Aethelgard’s own renderer. They never overclock your phone, invent high-end assets, or force OEM Game Space enrollment."
+            textSize = 12f
+            setTextColor(Color.rgb(171, 190, 187))
+            setPadding(0, 0, 0, dp(8))
+        })
         val autoFps = CheckBox(this).apply {
             text = "AUTO: use the highest supported FPS ($detectedMax)"
             textSize = 14f
@@ -3268,6 +3309,14 @@ class MainActivity : Activity(), SensorEventListener {
             .setView(panel)
             .setNegativeButton("‹ BACK", null)
             .setPositiveButton("APPLY") { _, _ ->
+                val profile = profileGroup.checkedRadioButtonId.let { id ->
+                    if (id == -1) -1 else profileGroup.findViewById<RadioButton>(id).tag as Int
+                }
+                if (profile in 0..2) {
+                    applyPerformanceProfile(profile)
+                    return@setPositiveButton
+                }
+                graphicsPreferences.edit().remove("performance_profile").apply()
                 val auto = autoFps.isChecked
                 graphicsPreferences.edit().putBoolean("auto_fps", auto).apply()
                 val chosenFps = if (auto) detectedMax else {
