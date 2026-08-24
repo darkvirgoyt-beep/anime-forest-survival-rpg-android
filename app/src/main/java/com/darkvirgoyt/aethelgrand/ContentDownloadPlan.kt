@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrand
 
 /**
  * Optional one-gibibyte runtime-content envelope for the cooked 3D Aethelgard

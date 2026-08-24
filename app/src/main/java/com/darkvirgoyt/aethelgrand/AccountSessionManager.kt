@@ -1,4 +1,4 @@
-package com.darvirgoyt.aethelgrad
+package com.darkvirgoyt.aethelgrand
 
 import android.app.Activity
 import android.os.Handler
@@ -282,7 +282,13 @@ class AccountSessionManager {
                 }
                 if (response.statusCode !in 200..299) {
                     Log.w("AethelgardAuth", "Google token exchange was rejected with HTTP ${response.statusCode}")
-                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = "Internal error. Please try again later."))
+                    val message = when (response.statusCode) {
+                        404 -> "Online login service is not deployed at the configured address. Try again after the game service is online."
+                        401 -> "Google account verification was rejected. Check the Android OAuth package and signing certificate for this build."
+                        503 -> "Online login service is temporarily unavailable. Try again in a moment."
+                        else -> "Online login could not be completed (${response.statusCode}). Try again later."
+                    }
+                    publishFromNetwork(SessionSnapshot(SessionState.ERROR, message = message))
                     return@execute
                 }
                 val sessionToken = jsonString(response.body, "accessToken")
@@ -965,8 +971,10 @@ class AccountSessionManager {
 
     private fun hasGoogleConfiguration(): Boolean =
         !googleWebClientId.startsWith("REPLACE_") &&
+            !apiBaseUrl.startsWith("REPLACE_") &&
             !authExchangeUrl.startsWith("REPLACE_") &&
             !authRefreshUrl.startsWith("REPLACE_") &&
+            apiBaseUrl.startsWith("https://") &&
             authExchangeUrl.startsWith("https://") &&
             authRefreshUrl.startsWith("https://")
 

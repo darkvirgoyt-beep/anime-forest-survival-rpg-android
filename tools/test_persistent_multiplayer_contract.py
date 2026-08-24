@@ -37,7 +37,7 @@ def main() -> None:
         'UPDATE coop_members SET is_active = FALSE',
         'is_active = TRUE, last_seen_at = now()',
     ])
-    require("app/src/main/java/com/darvirgoyt/aethelgrad/AccountSessionManager.kt", [
+    require("app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt", [
         "data class CoOpPlayerSave",
         "data class CoOpWorldSave",
         "lastPersistentCoOpRoomCode",
@@ -47,7 +47,7 @@ def main() -> None:
         "loadCoOpWorldSave",
         "rememberCoOpRoom",
     ])
-    require("app/src/main/java/com/darvirgoyt/aethelgrad/MainActivity.kt", [
+    require("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", [
         "savePersistentCoOpState",
         "SAVED ITEMS + PROGRESSION RESTORED",
         "NativeGameBridge.loadCloudState(playerSave.progressionStateJson)",
