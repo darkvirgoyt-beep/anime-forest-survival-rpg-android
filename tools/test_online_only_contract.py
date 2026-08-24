@@ -2,6 +2,7 @@
 """Validate that the Android release has one production online launch path."""
 from __future__ import annotations
 
+import configparser
 from pathlib import Path
 
 
@@ -74,6 +75,41 @@ FORBIDDEN = (
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     failures: list[str] = []
+    release_lock = root / "config/RELEASE_LOCK.ini"
+    lock = configparser.ConfigParser()
+    if not release_lock.is_file():
+        failures.append("missing immutable release configuration lock")
+    else:
+        lock.read(release_lock)
+        expected_lock = {
+            ("Manifest", "Version"): "1",
+            ("Identity", "AndroidPackage"): "com.darvirgoyt.aethelgrad",
+            ("Identity", "JniPrefix"): "Java_com_darvirgoyt_aethelgrad_",
+            ("Online", "Mode"): "online-only",
+            ("Online", "GameAuthBase"): "https://aethelservs-g7pzbnwp.manus.space/api/game-auth",
+            ("Online", "GameAuthExchange"): "/exchange",
+            ("Online", "GameAuthRefresh"): "/refresh",
+            ("Content", "HighGraphicsPublished"): "false",
+            ("Engine", "UnrealSource"): "external-private-only",
+        }
+        for (section, key), expected in expected_lock.items():
+            actual = lock.get(section, key, fallback="")
+            if actual != expected:
+                failures.append(f"release lock mismatch for [{section}] {key}: expected {expected!r}, got {actual!r}")
+        game_auth_base = expected_lock[("Online", "GameAuthBase")]
+        source_checks = (
+            ("app/build.gradle.kts", expected_lock[("Identity", "AndroidPackage")]),
+            ("app/src/main/cpp/forest_game.cpp", expected_lock[("Identity", "JniPrefix")]),
+            ("app/src/main/res/values/strings.xml", game_auth_base),
+            ("app/src/main/res/values/strings.xml", game_auth_base + expected_lock[("Online", "GameAuthExchange")]),
+            ("app/src/main/res/values/strings.xml", game_auth_base + expected_lock[("Online", "GameAuthRefresh")]),
+            ("app/src/main/res/values/strings.xml", ">false</string>"),
+            ("RELEASE_CONFIGURATION.md", "config/RELEASE_LOCK.ini"),
+        )
+        for relative, needle in source_checks:
+            path = root / relative
+            if not path.is_file() or needle not in path.read_text(errors="replace"):
+                failures.append(f"release lock source mismatch: {needle!r} in {relative}")
     for relative, needle, label in REQUIRED:
         path = root / relative
         if not path.is_file():
