@@ -83,6 +83,11 @@ jobs:
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
+          grep -q 'namespace = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
+          grep -q 'applicationId = "com.darvirgoyt.aethelgrad"' app/build.gradle.kts
+          ! grep -R -q 'com.darkvirgoyt.aethelgrand' app/src/main app/build.gradle.kts
+          grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
+          ! grep -q 'Java_com_darkvirgoyt_aethelgrand_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           grep -q 'void draw3DEmberling' app/src/main/cpp/forest_game.cpp
           grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
@@ -277,6 +282,19 @@ jobs:
           test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
 
+      - name: Verify release APK identity and report payload sizes
+        run: |
+          AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
+          test "$APK_PACKAGE" = "com.darvirgoyt.aethelgrad"
+          test -s "$APK_PATH"
+          test -s "app/build/outputs/bundle/release/app-release.aab"
+          APK_BYTES=$(stat -c%s "$APK_PATH")
+          AAB_BYTES=$(stat -c%s "app/build/outputs/bundle/release/app-release.aab")
+          printf 'package=%s\\napk_bytes=%s\\naab_bytes=%s\\n' "$APK_PACKAGE" "$APK_BYTES" "$AAB_BYTES" > app/build/outputs/release-package-report.txt
+          cat app/build/outputs/release-package-report.txt
+
       - name: Build Play Asset Delivery local-testing APK set
         run: |
           curl --fail --silent --show-error --location \
@@ -363,6 +381,12 @@ jobs:
           path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
+      - name: Upload release package report
+        uses: actions/upload-artifact@v4
+        with:
+          name: aethelgard-release-package-report
+          path: app/build/outputs/release-package-report.txt
+          if-no-files-found: error
       - name: Upload signing certificate fingerprint
         uses: actions/upload-artifact@v4
         with:

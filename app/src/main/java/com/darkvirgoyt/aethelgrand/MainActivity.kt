@@ -379,6 +379,12 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
+    private fun beginAutomaticContentPreparation() {
+        if (resourcePreparationComplete) return
+        markProductionContentReady()
+        continuePendingWorldEntry()
+    }
+
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
         networkOnline = snapshot.isOnline
         if (!networkOnline) {
@@ -2297,9 +2303,6 @@ class MainActivity : Activity(), SensorEventListener {
                     .setView(panel)
                     .setNegativeButton("CLOSE", null)
                     .setPositiveButton("LOG OUT") { _, _ -> confirmLogout() }
-                if (!accountSession.snapshot.isGuest) {
-                    accountDialog.setNeutralButton("LINK GOOGLE") { _, _ -> requestGoogleAccountLink() }
-                }
                 accountDialog.show()
             }
         }
