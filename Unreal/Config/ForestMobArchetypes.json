@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "world": "Aethelgard_Forest_01",
+  "archetypes": [
+    {
+      "mobId": "Thornfang",
+      "displayName": "Thornfang",
+      "role": "aggressive_stalker",
+      "archetype": "Thornfang",
+      "maxHealth": 80,
+      "moveSpeed": 310,
+      "aggroRange": 900,
+      "attackRange": 170,
+      "attackDamage": 12,
+      "attackCooldown": 1.35,
+      "attackWindup": 0.45,
+      "attackRecovery": 0.70,
+      "fleeHealthThreshold": 0.20,
+      "experienceReward": 25,
+      "lootTableId": "loot.thornfang",
+      "passiveUntilProvoked": false,
+      "model": {
+        "meshPath": "/Game/Characters/Mobs/Thornfang/SK_Thornfang",
+        "animBlueprintPath": "/Game/Characters/Mobs/Thornfang/ABP_Thornfang",
+        "sockets": ["jaw_socket", "spine_socket"],
+        "lods": 4,
+        "targetTriangleBudget": 28000
+      },
+      "loot": [
+        { "itemDefinitionId": "material.thornfang_hide", "min": 1, "max": 2, "chance": 1.0 },
+        { "itemDefinitionId": "material.forest_fang", "min": 0, "max": 1, "chance": 0.35 }
+      ]
+    },
+    {
+      "mobId": "Mossback",
+      "displayName": "Mossback",
+      "role": "passive_resource_beast",
+      "archetype": "Mossback",
+      "maxHealth": 150,
+      "moveSpeed": 190,
+      "aggroRange": 450,
+      "attackRange": 150,
+      "attackDamage": 24,
+      "attackCooldown": 2.10,
+      "attackWindup": 0.70,
+      "attackRecovery": 1.10,
+      "fleeHealthThreshold": 0.35,
+      "experienceReward": 40,
+      "lootTableId": "loot.mossback",
+      "passiveUntilProvoked": true,
+      "model": {
+        "meshPath": "/Game/Characters/Mobs/Mossback/SK_Mossback",
+        "animBlueprintPath": "/Game/Characters/Mobs/Mossback/ABP_Mossback",
+        "sockets": ["horn_l_socket", "horn_r_socket", "back_moss_socket"],
+        "lods": 4,
+        "targetTriangleBudget": 36000
+      },
+      "loot": [
+        { "itemDefinitionId": "material.mossback_plate", "min": 1, "max": 3, "chance": 1.0 },
+        { "itemDefinitionId": "material.moonleaf_fiber", "min": 1, "max": 2, "chance": 0.45 }
+      ]
+    },
+    {
+      "mobId": "EmberWarden",
+      "displayName": "Ember Warden",
+      "role": "forest_boss",
+      "archetype": "EmberWarden",
+      "maxHealth": 1200,
+      "moveSpeed": 250,
+      "aggroRange": 1800,
+      "attackRange": 260,
+      "attackDamage": 48,
+      "attackCooldown": 1.70,
+      "attackWindup": 0.90,
+      "attackRecovery": 1.20,
+      "fleeHealthThreshold": 0.0,
+      "experienceReward": 500,
+      "lootTableId": "loot.ember_warden",
+      "passiveUntilProvoked": false,
+      "model": {
+        "meshPath": "/Game/Characters/Mobs/EmberWarden/SK_EmberWarden",
+        "animBlueprintPath": "/Game/Characters/Mobs/EmberWarden/ABP_EmberWarden",
+        "sockets": ["horn_l_socket", "horn_r_socket", "ember_core_socket", "weapon_socket"],
+        "lods": 5,
+        "targetTriangleBudget": 70000
+      },
+      "loot": [
+        { "itemDefinitionId": "material.warden_core", "min": 1, "max": 1, "chance": 1.0 },
+        { "itemDefinitionId": "weapon.emberbloom_saber", "min": 1, "max": 1, "chance": 0.10 }
+      ]
+    }
+  ],
+  "spawnRules": [
+    { "zone": "forest_edge", "mobId": "Thornfang", "minCount": 1, "maxCount": 3, "respawnSeconds": 90, "dayWeight": 1.0, "nightWeight": 1.2 },
+    { "zone": "moss clearing", "mobId": "Mossback", "minCount": 1, "maxCount": 2, "respawnSeconds": 150, "dayWeight": 1.2, "nightWeight": 0.5 },
+    { "zone": "warden shrine", "mobId": "EmberWarden", "minCount": 1, "maxCount": 1, "respawnSeconds": 900, "dayWeight": 1.0, "nightWeight": 1.0 }
+  ]
+}

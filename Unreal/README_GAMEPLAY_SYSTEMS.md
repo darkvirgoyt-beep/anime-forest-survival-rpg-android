@@ -1,5 +1,9 @@
 # Gameplay systems implementation
 
+## Forest mobs and encounters
+
+`AForestSliceMob` is the production-shaped base actor for Thornfang, Mossback, and Ember Warden. It provides authority-gated roaming, aggro/chase, attack windup/recovery, sphere-sweep damage, stagger, flee behavior, death, replicated health/state, and Blueprint combat/loot events. `AForestSliceMobSpawner` provides bounded server-side placement for encounter groups. Configure archetype values, asset paths, loot identities, and spawn rules from `Config/ForestMobArchetypes.json`; the final skeletal mesh and animation blueprint remain Unreal Content assets.
+
 ## Combat and weapons
 
 `UForestSliceCombatComponent` is the first server-ready combat boundary. It exposes light and heavy attack requests, a three-step light combo, startup/active/recovery phases, combo buffering, active-hit events, replicated phase state, and replicated equipped weapon index. The first attack definitions are data-shaped so animation montages, stamina costs, ranges, damage, poise, knockback, and cue identifiers can move into data assets later.
