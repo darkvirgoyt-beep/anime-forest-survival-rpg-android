@@ -97,7 +97,7 @@ def run_simulation() -> None:
 
 
 def check_source_contract(repo: Path) -> None:
-    activity = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt").read_text(encoding="utf-8")
+    activity = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt").read_text(encoding="utf-8")
     required = (
         "minimumWorldLoadingDurationMs = 10_000L",
         "worldLoadingProgressTicker",

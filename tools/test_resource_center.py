@@ -89,9 +89,9 @@ class ResourceCenterModel:
 
 
 def assert_source_contract(repo: Path) -> None:
-    main = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt").read_text()
-    catalog = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt").read_text()
-    plan = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrand/ContentDownloadPlan.kt").read_text()
+    main = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt").read_text()
+    catalog = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt").read_text()
+    plan = (repo / "app/src/main/java/com/darkvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
     settings = (repo / "settings.gradle.kts").read_text()
     app_build = (repo / "app/build.gradle.kts").read_text()
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())

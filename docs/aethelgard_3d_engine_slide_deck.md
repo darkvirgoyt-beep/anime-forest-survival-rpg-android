@@ -83,7 +83,7 @@ A fixed-step native core, explicit camera modes, deterministic atmosphere, authe
 
 ## References
 [1]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/app/src/main/cpp/forest_game.cpp "Native renderer, gameplay, camera, weather, and co-op bridge"
-[2]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt "Android HUD, touch input, and client synchronization"
+[2]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt "Android HUD, touch input, and client synchronization"
 [3]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/server/src/server.mjs "Authenticated co-op and authoritative action routes"
 [4]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/server/sql/004_authoritative_gameplay.sql "Authoritative gameplay persistence migration"
 [5]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/server/test/coop_room_simulation.test.mjs "Local co-op room and tower-flow simulation"

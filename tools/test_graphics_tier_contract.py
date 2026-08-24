@@ -16,10 +16,10 @@ def main() -> None:
     manifest_text = (root / "app/src/main/assets/asset_manifest.json").read_text()
     manifest = json.loads(manifest_text)
     profiles = json.loads((root / "assets/graphics_profiles.json").read_text())["profiles"]
-    content_plan = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/ContentDownloadPlan.kt").read_text()
-    activity = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt").read_text()
-    catalog = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt").read_text()
-    downloader = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/PrivateContentDownloader.kt").read_text()
+    content_plan = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
+    activity = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt").read_text()
+    catalog = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt").read_text()
+    downloader = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/PrivateContentDownloader.kt").read_text()
     native = (root / "app/src/main/cpp/forest_game.cpp").read_text()
     workflow = (root / ".github/workflows/android-build.yml").read_text()
 

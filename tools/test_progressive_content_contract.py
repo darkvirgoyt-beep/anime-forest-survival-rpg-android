@@ -12,9 +12,9 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    plan = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/ContentDownloadPlan.kt").read_text()
-    catalog = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt").read_text()
-    activity = (root / "app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt").read_text()
+    plan = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text()
+    catalog = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt").read_text()
+    activity = (root / "app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt").read_text()
     cloud = (root / "app/src/main/cpp/rpg/cloud_state.h").read_text()
     native = (root / "app/src/main/cpp/forest_game.cpp").read_text()
     manifest = json.loads((root / "app/src/main/assets/asset_manifest.json").read_text())

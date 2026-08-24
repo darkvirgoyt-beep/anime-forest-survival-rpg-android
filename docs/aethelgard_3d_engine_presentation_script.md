@@ -195,7 +195,7 @@ The answer is a deliberately small but extensible architecture: fixed-step nativ
 
 [1]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/app/src/main/cpp/forest_game.cpp "AETHELGRAD native renderer and gameplay bridge"
 
-[2]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt "AETHELGRAD Android HUD, touch input, and co-op controls"
+[2]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt "AETHELGRAD Android HUD, touch input, and co-op controls"
 
 [3]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android/blob/main/server/src/server.mjs "AETHELGRAD authenticated co-op service routes"
 

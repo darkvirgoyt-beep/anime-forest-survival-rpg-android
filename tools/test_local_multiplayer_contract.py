@@ -25,7 +25,7 @@ def main() -> None:
         'android:name="android.permission.ACCESS_FINE_LOCATION"',
         'android:name="android.hardware.wifi.direct" android:required="false"',
     ])
-    require("app/src/main/java/com/darkvirgoyt/aethelgrand/LocalMultiplayerManager.kt", [
+    require("app/src/main/java/com/darkvirgoyt/aethelgrad/LocalMultiplayerManager.kt", [
         'SERVICE_TYPE = "_aethelgard._tcp."',
         "NsdManager",
         "ServerSocket(PORT",
@@ -41,7 +41,7 @@ def main() -> None:
         "groupOwnerAddress.hostAddress",
         "MAX_PLAYERS = 4",
     ])
-    require("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", [
+    require("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", [
         "LocalMultiplayerManager.Callbacks",
         "ensureLocalPermissions",
         "HOST LAN ROOM",

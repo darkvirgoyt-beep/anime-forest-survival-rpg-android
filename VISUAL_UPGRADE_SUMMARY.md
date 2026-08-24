@@ -27,7 +27,7 @@ The sandbox does not contain the Android SDK/NDK, Gradle wrapper, GLES headers, 
 | Area | Files |
 |---|---|
 | Native graphics | `app/src/main/cpp/forest_game.cpp` |
-| Android HUD | `app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt`, `app/src/main/java/com/darkvirgoyt/aethelgrand/HudOverlayViews.kt` |
+| Android HUD | `app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt`, `app/src/main/java/com/darkvirgoyt/aethelgrad/HudOverlayViews.kt` |
 | Art direction | `assets/aethelgard_visual_upgrade_target.png`, `ASSETS.md` |
 | Project tracking | `PLAN.md`, `MEMORY.md` |
 

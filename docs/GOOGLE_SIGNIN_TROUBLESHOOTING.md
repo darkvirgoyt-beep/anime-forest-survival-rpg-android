@@ -21,7 +21,7 @@ The current build workflow falls back to an Android debug certificate when prote
 
 ## Use the Correct GitHub Artifact
 
-Install the matching AETHELGARD AAB through Play internal testing, or use the workflow’s bundletool local-testing APK set when testing Play Asset Delivery. The release package is `com.darkvirgoyt.aethelgrand`; it requires Google sign-in and the selected full resource tier before world entry. Register the SHA-1 from the `aethelgard-android-signing-certificate` artifact against the same package in the Android OAuth client. A direct APK is limited to installation and configuration smoke checks because it cannot fetch Play Asset Delivery packs.
+Install the matching AETHELGARD AAB through Play internal testing, or use the workflow’s bundletool local-testing APK set when testing Play Asset Delivery. The release package is `com.darkvirgoyt.aethelgrad`; it requires Google sign-in and the selected full resource tier before world entry. Register the SHA-1 from the `aethelgard-android-signing-certificate` artifact against the same package in the Android OAuth client. A direct APK is limited to installation and configuration smoke checks because it cannot fetch Play Asset Delivery packs.
 
 ## Mobile Control Direction
 

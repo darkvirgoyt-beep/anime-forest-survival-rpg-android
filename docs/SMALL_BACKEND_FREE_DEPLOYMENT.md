@@ -43,7 +43,7 @@ The current repository default points to `https://aethelgard-api-v2.onrender.com
 
 ## Google sign-in certificate
 
-Standard Google account sign-in does not require Play Console. The Android OAuth client must contain the package name `com.darkvirgoyt.aethelgrand` and the SHA-1 certificate for the exact APK being installed. The GitHub debug-signed test artifact uses the certificate fingerprint printed by the workflow signing-certificate artifact. If a different local keystore signs the APK, add that keystore's SHA-1 as another fingerprint on the same Android OAuth client. The Web OAuth client ID must remain the audience configured in both Android resources and `GOOGLE_ID_TOKEN_AUDIENCE`.
+Standard Google account sign-in does not require Play Console. The Android OAuth client must contain the package name `com.darkvirgoyt.aethelgrad` and the SHA-1 certificate for the exact APK being installed. The GitHub debug-signed test artifact uses the certificate fingerprint printed by the workflow signing-certificate artifact. If a different local keystore signs the APK, add that keystore's SHA-1 as another fingerprint on the same Android OAuth client. The Web OAuth client ID must remain the audience configured in both Android resources and `GOOGLE_ID_TOKEN_AUDIENCE`.
 
 ## Four-player service rule
 

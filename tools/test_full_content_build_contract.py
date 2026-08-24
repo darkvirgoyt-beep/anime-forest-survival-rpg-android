@@ -15,9 +15,9 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> None:
     app_gradle = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
-    plan = (ROOT / "app/src/main/java/com/darkvirgoyt/aethelgrand/ContentDownloadPlan.kt").read_text(encoding="utf-8")
-    catalog = (ROOT / "app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt").read_text(encoding="utf-8")
-    activity = (ROOT / "app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt").read_text(encoding="utf-8")
+    plan = (ROOT / "app/src/main/java/com/darkvirgoyt/aethelgrad/ContentDownloadPlan.kt").read_text(encoding="utf-8")
+    catalog = (ROOT / "app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt").read_text(encoding="utf-8")
+    activity = (ROOT / "app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt").read_text(encoding="utf-8")
     staging = (ROOT / "tools/stage_cooked_unreal_assets.py").read_text(encoding="utf-8")
     build_script_path = ROOT / "tools/build_full_content.sh"
     build_script = build_script_path.read_text(encoding="utf-8")

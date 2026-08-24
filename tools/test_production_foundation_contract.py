@@ -7,15 +7,15 @@ from pathlib import Path
 
 CHECKS = (
     ("app/build.gradle.kts", "applicationId =", "Android application identity"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", "setContentTierReady", "downloaded quality readiness hook"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt", "requestProductionContent", "Play Asset Delivery request"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", "finishPreparation", "content preparation completion path"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", "requestProductionContent", "content preparation request path"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED", "safe fail-closed graphics state"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", "CONTENT READY", "downloaded content ready state"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt", "WARMING HIGH-END GRAPHICS", "high-end startup loading"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt", "PrivateContentDownloader", "private high-end content downloader"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/ContentDownloadPlan.kt", "QualityEnvelope", "quality envelope model"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "setContentTierReady", "downloaded quality readiness hook"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt", "requestProductionContent", "Play Asset Delivery request"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "finishPreparation", "content preparation completion path"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestProductionContent", "content preparation request path"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED", "safe fail-closed graphics state"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "CONTENT READY", "downloaded content ready state"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "WARMING HIGH-END GRAPHICS", "high-end startup loading"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AssetPackCatalog.kt", "PrivateContentDownloader", "private high-end content downloader"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/ContentDownloadPlan.kt", "QualityEnvelope", "quality envelope model"),
     ("app/src/main/cpp/forest_game.cpp", "effectiveGraphicsQuality", "native quality gate"),
     ("app/src/main/cpp/forest_game.cpp", "setContentTierReady", "native readiness JNI hook"),
     ("app/src/main/cpp/forest_game.cpp", "drawTerrainChunks", "mobile terrain renderer"),
@@ -73,7 +73,7 @@ CHECKS = (
     ("app/src/main/cpp/rpg/cloud_state.h", "schemaVersion", "schema 5 cloud persistence"),
     ("app/src/main/cpp/forest_game.cpp", "applyAuthoritativeCompanion", "native companion reconciliation JNI"),
     ("app/src/main/cpp/forest_game.cpp", "applyAuthoritativeCamp", "native camp reconciliation JNI"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt", "fetchCompanionCampState", "typed Android authority wrapper"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "fetchCompanionCampState", "typed Android authority wrapper"),
     ("docs/COMPANION_CAMP_AUTHORITY_DESIGN.md", "Deployment order", "authority deployment documentation"),
 )
 
