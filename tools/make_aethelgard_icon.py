@@ -62,7 +62,7 @@ try:
     small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
 except OSError:
     font = ImageFont.load_default(); small = font
-text = "AETHELGARD"
+text = "AETHELGRAD"
 box = d.textbbox((0, 0), text, font=font)
 d.text(((SIZE-(box[2]-box[0]))/2, 70), text, font=font, fill="#f7d27a")
 d.text((SIZE/2, 142), "WILD HORIZONS  •  CRAFTING", font=small, fill="#8fe8de", anchor="mm")

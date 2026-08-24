@@ -1,6 +1,6 @@
 # Cooking and packaging real Unreal assets for Play Asset Delivery
 
-Use this procedure when the project has a real Unreal content project with `.uasset` and `.umap` files. The checked-in Aethelgard prototype has source and empty pack folders but no authored Unreal content, so do not expect its current CI build to create a multi-gigabyte world.
+Use this procedure when the project has a real Unreal content project with `.uasset` and `.umap` files. The checked-in Aethelgrad prototype has source and empty pack folders but no authored Unreal content, so do not expect its current CI build to create a multi-gigabyte world.
 
 ## 1. Prepare the content project
 
@@ -91,7 +91,7 @@ The resource center should show the actual total bytes reported by Play, not onl
 
 ## 6. Build the AAB
 
-Use the project’s Gradle build or Unreal’s Android packaging command to create a **signed AAB**, not only a universal APK. For the Aethelgard Android bridge, the project build command is conceptually:
+Use the project’s Gradle build or Unreal’s Android packaging command to create a **signed AAB**, not only a universal APK. For the Aethelgrad Android bridge, the project build command is conceptually:
 
 ```bash
 gradle bundleRelease

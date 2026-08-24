@@ -2,7 +2,7 @@
 
 ## What the selected Google Earth polygon means
 
-The selected polygon is a **planning boundary**. It can communicate the approximate region, broad coastline, elevation range, and biome inspiration for Aethelgard. It must not become the shipped terrain by copying Google Earth screenshots, satellite imagery, 3D meshes, map tiles, or Google elevation output.
+The selected polygon is a **planning boundary**. It can communicate the approximate region, broad coastline, elevation range, and biome inspiration for Aethelgrad. It must not become the shipped terrain by copying Google Earth screenshots, satellite imagery, 3D meshes, map tiles, or Google elevation output.
 
 Google’s Earth terms permit creating KML files and map layers, but prohibit copying Google Earth content and creating a new product or service based on Google Earth. Google’s geo guidelines specifically prohibit using output from Google Earth, Google Earth Pro, or Earth Studio to reconstruct 3D models or create similar content. [1] [2]
 
@@ -30,7 +30,7 @@ Do not use Google Maps Platform Elevation API values or Google Earth output to b
 3. Fill voids, apply only documented resampling, and retain the original DEM plus processing settings outside Git.
 4. Export a **16-bit grayscale heightmap** such as `.r16` or a supported 16-bit PNG. Do not export a Google satellite image as a terrain texture.
 5. In Unreal Editor, import the heightmap into a Landscape or World Partition level. Configure XY scale from the chosen real-world meter coverage and tune Z scale from the DEM’s recorded elevation range.
-6. Create new, original biome masks and materials: forest soil, grass, rock, riverbed, wetland, beach, snow line, and volcanic/ruin accents. Materials, foliage, rivers, landmarks, settlements, quests, and creature habitats are authored for Aethelgard; they are not copied from the real map.
+6. Create new, original biome masks and materials: forest soil, grass, rock, riverbed, wetland, beach, snow line, and volcanic/ruin accents. Materials, foliage, rivers, landmarks, settlements, quests, and creature habitats are authored for Aethelgrad; they are not copied from the real map.
 7. Create a `UForestSliceTerrainDefinition` data asset. Record the KML boundary ID, DEM citation, license record, source kind, heightmap, scale, and original biome masks. Its validation forbids a Google-derived terrain input and blocks an oversized first-playable landscape.
 
 ## Unreal setup map

@@ -1,10 +1,10 @@
-# Aethelgard art and animation prompt pack
+# Aethelgrad art and animation prompt pack
 
 These prompts are for original concept and production references. They describe broad visual attributes without requesting copied characters, logos, names, maps, or ripped assets from existing games.
 
 ## Hero character
 
-Create an original high-end 3D anime action-survival RPG hero for Aethelgard: Wild Horizons – Crafting. Show an adult wilderness adventurer in layered leather-and-cloth survival armor, compact stamina backpack, hunting knife, glowing teal bow, practical boots, dark auburn wind-swept hair, amber scarf, and a clear readable silhouette. Provide front, back, side, three-quarter, and facial-expression views on a neutral studio background. Use polished stylized PBR materials with controlled cel-shaded accents. No text, no logo, no existing franchise design.
+Create an original high-end 3D anime action-survival RPG hero for Aethelgrad: Wild Horizons – Crafting. Show an adult wilderness adventurer in layered leather-and-cloth survival armor, compact stamina backpack, hunting knife, glowing teal bow, practical boots, dark auburn wind-swept hair, amber scarf, and a clear readable silhouette. Provide front, back, side, three-quarter, and facial-expression views on a neutral studio background. Use polished stylized PBR materials with controlled cel-shaded accents. No text, no logo, no existing franchise design.
 
 ## Companion creature
 

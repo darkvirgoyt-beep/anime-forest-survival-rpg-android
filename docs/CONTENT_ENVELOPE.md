@@ -1,6 +1,6 @@
 # Production Content Envelope
 
-The supplied content envelope is the planning target for a full production version of Aethelgard: Wild Horizons. It is not a claim about the size of the current Android vertical slice. The prototype should keep its runtime footprint small while using the same boundaries for future asset packs, streaming, and optional downloads.
+The supplied content envelope is the planning target for a full production version of Aethelgrad: Wild Horizons. It is not a claim about the size of the current Android vertical slice. The prototype should keep its runtime footprint small while using the same boundaries for future asset packs, streaming, and optional downloads.
 
 | Content group | Target size | Planned contents | Prototype mapping |
 |---|---:|---|---|

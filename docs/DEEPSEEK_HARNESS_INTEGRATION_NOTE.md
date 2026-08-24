@@ -8,15 +8,15 @@ The official DeepSeek Harness (`dsh`) is an open-source coding-agent harness fro
 
 The official quick start is `npx @deepseek-ai/dsh web`, which starts a local web UI. The source setup is `git clone https://github.com/deepseek-ai/deepseek-harness`, followed by `pnpm install`, `pnpm run build`, and `pnpm dsh web`. The project is in developer preview and warns that compatibility-breaking changes may occur.
 
-## Safe role in Aethelgard
+## Safe role in Aethelgrad
 
 DeepSeek Harness can be used as an optional **developer orchestration layer** for repository inspection, code-generation proposals, test planning, and traceable development sessions. It is not the Unreal Engine itself, not a replacement for the Unreal Editor or UnrealBuildTool, not a cloud-save backend, not a Google Play Games Services provider, and not a multiplayer game server. It cannot turn the current Android prototype into a finished AAA game automatically.
 
-The Aethelgard source of truth remains the public GitHub repository and the Unreal 5.6+ project. Any Harness-generated changes must pass the same review, source hygiene, host-test, CI, Unreal compilation, device, networking, asset-license, and release gates. Secrets such as Google credentials, Play signing keys, server tokens, and backend credentials must not be placed in prompts, repository files, or APK assets.
+The Aethelgrad source of truth remains the public GitHub repository and the Unreal 5.6+ project. Any Harness-generated changes must pass the same review, source hygiene, host-test, CI, Unreal compilation, device, networking, asset-license, and release gates. Secrets such as Google credentials, Play signing keys, server tokens, and backend credentials must not be placed in prompts, repository files, or APK assets.
 
-## Suggested Aethelgard Harness workflow
+## Suggested Aethelgrad Harness workflow
 
-1. Mount or clone the Aethelgard repository in a local Harness sandbox.
+1. Mount or clone the Aethelgrad repository in a local Harness sandbox.
 2. Load the `aaa-android-survival-rpg` skill and the current milestone checklist.
 3. Ask for a plan-only change first, with explicit files, acceptance tests, and Unreal-version assumptions.
 4. Ask for one bounded slice, such as an account/server-selection data contract or a character-customization schema.
@@ -27,7 +27,7 @@ The Aethelgard source of truth remains the public GitHub repository and the Unre
 
 ## Initial build order requested by the user
 
-The first Aethelgard product structure should be: boot and account boundary, Google Play sign-in with offline guest mode, server/region selection showing latency and status, character creation with original appearance controls and name validation, world creation or co-op world join, cloud-save and conflict policy, first forest spawn, cave entrance, mission tracker, navigation markers, gathering/crafting, creature interaction and bonding, and eventual four-player co-op authority. Each item is a milestone, not a single generated operation.
+The first Aethelgrad product structure should be: boot and account boundary, Google Play sign-in with offline guest mode, server/region selection showing latency and status, character creation with original appearance controls and name validation, world creation or co-op world join, cloud-save and conflict policy, first forest spawn, cave entrance, mission tracker, navigation markers, gathering/crafting, creature interaction and bonding, and eventual four-player co-op authority. Each item is a milestone, not a single generated operation.
 
 ## Official sources
 

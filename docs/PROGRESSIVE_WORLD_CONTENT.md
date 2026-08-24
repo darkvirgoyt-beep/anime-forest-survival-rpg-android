@@ -2,7 +2,7 @@
 
 ## Product behavior
 
-Aethelgard separates **account state** from **game content**. Google authentication identifies the player, profile and character identity remain recoverable from the service, and the compact world snapshot stores progression such as position, inventory, quest stage, companion state, and discovered-sector IDs. The snapshot never contains meshes, textures, audio, shader binaries, or other large files.
+Aethelgrad separates **account state** from **game content**. Google authentication identifies the player, profile and character identity remain recoverable from the service, and the compact world snapshot stores progression such as position, inventory, quest stage, companion state, and discovered-sector IDs. The snapshot never contains meshes, textures, audio, shader binaries, or other large files.
 
 When the player reaches a new exploration boundary, the Android client records that the sector was discovered and requests the matching Play Asset Delivery pack. The pack is stored locally by Play and increases the installed footprint. The server receives only the small discovery/progression update, so world exploration can grow the device installation without making cloud saves large.
 
@@ -28,4 +28,4 @@ The standalone APK plus matching OBB remains the local no-Play test path for the
 
 ## IP and integrity boundary
 
-Progressive expansion uses Aethelgard’s original content packs and procedural renderer. It does not copy assets, characters, maps, logos, or proprietary files from any external reference.
+Progressive expansion uses Aethelgrad’s original content packs and procedural renderer. It does not copy assets, characters, maps, logos, or proprietary files from any external reference.

@@ -66,7 +66,7 @@ ax.plot([520, 510, 531, 520], [812, 782, 812, 812], color='#8b4f2d', linewidth=4
 ax.plot([520, 520], [805, 755], color='#ffbd54', linewidth=5, alpha=.85, zorder=16)
 ax.plot([520, 505, 535, 520], [790, 767, 790, 790], color='#ffe9a3', linewidth=3, zorder=17)
 
-ax.text(80, 105, 'AETHELGARD NIGHT SKY', color='#f7df9e', fontsize=27, weight='bold', ha='left', va='center', zorder=20)
+ax.text(80, 105, 'AETHELGRAD NIGHT SKY', color='#f7df9e', fontsize=27, weight='bold', ha='left', va='center', zorder=20)
 ax.text(82, 145, 'Majestic celestial lighting reference • stars • moonlight • aurora • cool snow glow', color='#c9e3e4', fontsize=13, ha='left', va='center', zorder=20)
 ax.text(80, 852, 'Night mood target: quiet, luminous, navigable, and safe for gameplay readability', color='#d6e8dd', fontsize=12, ha='left', va='center', zorder=20)
 

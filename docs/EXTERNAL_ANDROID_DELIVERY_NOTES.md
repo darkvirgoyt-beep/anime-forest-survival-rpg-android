@@ -4,7 +4,7 @@ The official Android Play Asset Delivery guide is available at [Android Develope
 
 The official legacy expansion-file guide is available at [Android Developers: APK Expansion Files](https://developer.android.com/google/play/expansion-files). It documents the opaque `main.<versionCode>.<packageName>.obb` naming convention and the separate expansion-file storage model.
 
-For Aethelgard’s AAA production game, Play Asset Delivery remains the primary Google Play path. A direct APK downloaded from GitHub is only for base-client UI/native testing and cannot fetch on-demand asset packs. For local asset-pack testing outside Play, install the generated `aethelgard-local-testing.apks` with bundletool. Any standalone OBB is a private APK/device-lab compatibility artifact and must not be represented as the production Play release mechanism.
+For Aethelgrad’s AAA production game, Play Asset Delivery remains the primary Google Play path. A direct APK downloaded from GitHub is only for base-client UI/native testing and cannot fetch on-demand asset packs. For local asset-pack testing outside Play, install the generated `aethelgard-local-testing.apks` with bundletool. Any standalone OBB is a private APK/device-lab compatibility artifact and must not be represented as the production Play release mechanism.
 
 ## Fixing a failed asset-pack download
 

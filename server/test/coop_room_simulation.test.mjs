@@ -54,7 +54,7 @@ function createMemoryPool() {
         id: `room-${nextRoomId++}`,
         code: params[0],
         region: params[1],
-        worldName: hasWorldName ? params[2] : "Aethelgard Shared World",
+        worldName: hasWorldName ? params[2] : "Aethelgrad Shared World",
         createdBy: hasWorldName ? params[3] : params[2],
         maxPlayers: 4,
         worldTime: 0,

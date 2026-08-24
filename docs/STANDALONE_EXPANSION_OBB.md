@@ -1,6 +1,6 @@
-# Standalone Aethelgard Expansion OBB
+# Standalone Aethelgrad Expansion OBB
 
-Aethelgard now has a reproducible standalone expansion-file path for private APK distribution, device labs, and legacy Android channels. The builder creates the standard opaque expansion filename:
+Aethelgrad now has a reproducible standalone expansion-file path for private APK distribution, device labs, and legacy Android channels. The builder creates the standard opaque expansion filename:
 
 ```text
 main.<versionCode>.com.darkvirgoyt.aethelgrad.obb
@@ -44,7 +44,7 @@ adb push main.3.com.darkvirgoyt.aethelgrad.obb \
   /sdcard/Android/obb/com.darkvirgoyt.aethelgrad/
 ```
 
-Android treats the OBB as opaque data. The game or its launcher must explicitly locate and mount/read the package; copying an OBB beside an APK does not make Play Asset Delivery packs appear automatically. The Aethelgard production resource center remains the authoritative runtime path for the AAB/PAD build.
+Android treats the OBB as opaque data. The game or its launcher must explicitly locate and mount/read the package; copying an OBB beside an APK does not make Play Asset Delivery packs appear automatically. The Aethelgrad production resource center remains the authoritative runtime path for the AAB/PAD build.
 
 ## Google Play release rule
 

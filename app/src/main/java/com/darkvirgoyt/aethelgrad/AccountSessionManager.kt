@@ -85,7 +85,7 @@ data class CoOpRoomSnapshot(
     val bossHealth: Int,
     val combatRevision: Int,
     val participants: List<CoOpParticipant>,
-    val worldName: String = "Aethelgard Shared World",
+    val worldName: String = "Aethelgrad Shared World",
     val ownerAccountId: String? = null
 )
 
@@ -179,7 +179,7 @@ data class AuthoritativeInventoryResult(
 /**
  * Standard Google account sign-in boundary for pre-Play-Console testing.
  * The Android client sends only a Google-issued ID token to the configured HTTPS backend.
- * The backend verifies the token audience, issuer, expiry, and signature before it creates an Aethelgard session.
+ * The backend verifies the token audience, issuer, expiry, and signature before it creates an Aethelgrad session.
  */
 class AccountSessionManager {
     var snapshot: SessionSnapshot = SessionSnapshot(SessionState.SIGNED_OUT, message = "Signed out")
@@ -220,7 +220,7 @@ class AccountSessionManager {
             return
         }
         if (!restorePersistedSession()) {
-            publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Sign in to continue to Aethelgard online."))
+            publish(SessionSnapshot(SessionState.SIGNED_OUT, message = "Sign in to continue to Aethelgrad online."))
         }
     }
 
@@ -611,7 +611,7 @@ class AccountSessionManager {
                     return@execute
                 }
                 val root = JSONObject(response.body)
-                publishCoOpSaveResult(onComplete, CoOpPlayerSave(root.optString("worldName", "Aethelgard Shared World"), root.optString("ownerAccountId").takeIf { it.isNotBlank() }, root.optInt("memberRevision"), root.optJSONObject("itemState")?.toString() ?: "{}", root.optJSONObject("progressionState")?.toString() ?: "{}"), null)
+                publishCoOpSaveResult(onComplete, CoOpPlayerSave(root.optString("worldName", "Aethelgrad Shared World"), root.optString("ownerAccountId").takeIf { it.isNotBlank() }, root.optInt("memberRevision"), root.optJSONObject("itemState")?.toString() ?: "{}", root.optJSONObject("progressionState")?.toString() ?: "{}"), null)
             } catch (_: Exception) {
                 publishCoOpSaveResult(onComplete, null, "Could not load your saved multiplayer state.")
             }
@@ -655,7 +655,7 @@ class AccountSessionManager {
                     return@execute
                 }
                 val root = JSONObject(response.body)
-                publishCoOpWorldSaveResult(onComplete, CoOpWorldSave(root.optString("worldName", "Aethelgard Shared World"), root.optString("ownerAccountId").takeIf { it.isNotBlank() }, root.optInt("saveRevision"), root.optJSONObject("worldState")?.toString() ?: "{}", root.optJSONArray("buildings")?.toString() ?: "[]"), null)
+                publishCoOpWorldSaveResult(onComplete, CoOpWorldSave(root.optString("worldName", "Aethelgrad Shared World"), root.optString("ownerAccountId").takeIf { it.isNotBlank() }, root.optInt("saveRevision"), root.optJSONObject("worldState")?.toString() ?: "{}", root.optJSONArray("buildings")?.toString() ?: "[]"), null)
             } catch (_: Exception) {
                 publishCoOpWorldSaveResult(onComplete, null, "Could not load the shared world save.")
             }
@@ -912,7 +912,7 @@ class AccountSessionManager {
             bossHealth = room.optInt("bossHealth", 100).coerceIn(0, 100),
             combatRevision = room.optLong("combatRevision", 0L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             participants = participants,
-            worldName = room.optString("worldName", "Aethelgard Shared World"),
+            worldName = room.optString("worldName", "Aethelgrad Shared World"),
             ownerAccountId = room.optString("ownerAccountId").takeIf { it.isNotBlank() }
         )
     }

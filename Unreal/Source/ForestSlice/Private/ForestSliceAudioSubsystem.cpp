@@ -4,7 +4,7 @@
 
 namespace
 {
-    const TCHAR* Section = TEXT("Aethelgard.Audio");
+    const TCHAR* Section = TEXT("Aethelgrad.Audio");
 }
 
 void UForestSliceAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection)

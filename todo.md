@@ -1,4 +1,4 @@
-# Aethelgard Game TODO
+# Aethelgrad Game TODO
 
 - [x] Define the original cinematic fantasy login composition and online-only interaction rules
 - [x] Replace the current onboarding layout with an original title crest, world vignette, region selector, account-status panel, and settings entry
@@ -6,19 +6,19 @@
 - [x] Keep guest mode unavailable in release builds and avoid copying supplied reference artwork, logo, or text
 - [x] Validate the redesigned Android APK through public CI and publish the milestone artifact
 - [x] Calculate the current Android debug signing SHA-1 and SHA-256 for Google OAuth registration
-- [x] Create an original, legally clean Aethelgard cinematic login background asset without using the supplied reference image
+- [x] Create an original, legally clean Aethelgrad cinematic login background asset without using the supplied reference image
 - [x] Integrate the original background asset into the Android login experience with a procedural fallback and dark UI-safe vignette
 - [x] Validate the packaged background asset in the Android release build and public CI
 - [x] Add a standard Google Sign-In backend contract for testing without Play Console, while preserving the future Play Games path
-- [x] Implement backend ID-token verification, game-account upsert, and secure rotating Aethelgard sessions
+- [x] Implement backend ID-token verification, game-account upsert, and secure rotating Aethelgrad sessions
 - [x] Replace the Android Play Games-only login attempt with a standard Google Sign-In token exchange flow
 - [x] Document the required Android and Web OAuth clients, backend secrets, deployment, and Play Games upgrade path
 - [x] Validate the standard Google Sign-In backend and Android release build through automated tests and CI
-- [x] Provision a managed HTTPS standard-Google-sign-in development backend with database-backed Aethelgard sessions
+- [x] Provision a managed HTTPS standard-Google-sign-in development backend with database-backed Aethelgrad sessions
 - [ ] Publish the managed backend on a stable production HTTPS domain before public release
 - [x] Inspect the Drive error evidence for the authenticated login flow that fails to advance
 - [x] Repair the post-authentication transition so the login page is sign-in only and authenticated players reach the next setup page
-- [x] Redesign the sign-in-only page with original Aethelgard artwork and layout informed only by the supplied reference’s high-level mood
+- [x] Redesign the sign-in-only page with original Aethelgrad artwork and layout informed only by the supplied reference’s high-level mood
 - [x] Connect authenticated Android characters to account-bound cloud-world manifest recovery and profile-avatar selection
 - [x] Implement client-side versioned cloud-save upload/download handling without storing session tokens on disk
 - [x] Render selectable built-in profile avatars and username identity in the authenticated character setup flow

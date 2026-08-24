@@ -7,7 +7,7 @@
 
 namespace
 {
-    const TCHAR* Section = TEXT("Aethelgard.Graphics");
+    const TCHAR* Section = TEXT("Aethelgrad.Graphics");
 
     const TCHAR* QualityLabel(int32 QualityLevel)
     {

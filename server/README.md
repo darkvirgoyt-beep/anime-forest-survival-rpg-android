@@ -1,6 +1,6 @@
-# Aethelgard online services
+# Aethelgrad online services
 
-This service is the online boundary for **Aethelgard: Wild Horizons – Crafting**. It supports verified Google account authentication, internal sessions, private four-player co-op room state, server-validated shared combat and inventory actions, and delivery of the required high-end content archive. It does not require a Google Play Console account to run the private backend. Full authoritative movement, hit detection, and high-frequency replication still belong in a dedicated game server.
+This service is the online boundary for **Aethelgrad: Wild Horizons – Crafting**. It supports verified Google account authentication, internal sessions, private four-player co-op room state, server-validated shared combat and inventory actions, and delivery of the required high-end content archive. It does not require a Google Play Console account to run the private backend. Full authoritative movement, hit detection, and high-frequency replication still belong in a dedicated game server.
 
 ## Local development
 
@@ -20,7 +20,7 @@ The health endpoint is `GET http://localhost:8080/healthz`. The Android app inte
 
 The Android app uses Credential Manager to receive a Google ID token for the configured **Web OAuth client ID**. It sends that token to `POST /v1/auth/google-id-token/exchange`. The service verifies the token signature, issuer, expiry, and audience using Google’s official Node authentication library before it associates the Google `sub` identifier with an internal account. This uses Google Cloud OAuth configuration, not Google Play Console.
 
-The backend returns a short-lived game access token plus a rotating refresh token. Google ID tokens and provider profile fields are never accepted as an Aethelgard session without this server-side verification.
+The backend returns a short-lived game access token plus a rotating refresh token. Google ID tokens and provider profile fields are never accepted as an Aethelgrad session without this server-side verification.
 
 ## Future Play Games authentication
 

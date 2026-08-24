@@ -571,13 +571,13 @@ class MainActivity : Activity(), SensorEventListener {
     private fun applyServerRegion(region: ServerRegion, serverButton: Button?) {
         selectedServer = region
         selectedServerLatencyMs = null
-        serverButton?.text = "◉  ${region.name.removePrefix("Aethelgard ").uppercase()}  ▾"
+        serverButton?.text = "◉  ${region.name.removePrefix("Aethelgrad ").uppercase()}  ▾"
         if (::onboardingStatus.isInitialized) {
             onboardingStatus.text = "${region.name} selected  •  MATCH REGION READY"
         }
         measureServerLatency(region) { summary ->
             if (::onboardingStatus.isInitialized && !authenticationTransitionStarted) {
-                onboardingStatus.text = "${region.name.removePrefix("Aethelgard ").uppercase()}  •  $summary"
+                onboardingStatus.text = "${region.name.removePrefix("Aethelgrad ").uppercase()}  •  $summary"
             }
         }
     }
@@ -608,7 +608,7 @@ class MainActivity : Activity(), SensorEventListener {
         }
         fun renderCandidate(checkRoute: Boolean) {
             val region = regions[candidateIndex]
-            locationLabel.text = region.name.removePrefix("Aethelgard ").uppercase()
+            locationLabel.text = region.name.removePrefix("Aethelgrad ").uppercase()
             routeLabel.text = if (checkRoute) "ROUTE CHECK  •  OPTIMIZING…" else serverLatencySummary(
                 if (region.id == selectedServer.id) selectedServerLatencyMs else null
             )
@@ -949,7 +949,7 @@ class MainActivity : Activity(), SensorEventListener {
             )
         }, FrameLayout.LayoutParams(-1, -1))
 
-        val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgard ").uppercase()}  ▾", false) {}
+        val serverButton = cinematicButton("◉  ${selectedServer.name.removePrefix("Aethelgrad ").uppercase()}  ▾", false) {}
         serverButton.setOnClickListener { showServerLocationPicker(serverButton) }
         overlay.addView(serverButton, FrameLayout.LayoutParams(dp(176), dp(42), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(18)
@@ -982,7 +982,7 @@ class MainActivity : Activity(), SensorEventListener {
             setShadowLayer(12f, 0f, 0f, Color.argb(180, 226, 184, 101))
         }
         val title = TextView(this).apply {
-            text = "AETHELGARD"
+            text = "AETHELGRAD"
             textSize = 35f
             gravity = Gravity.CENTER
             letterSpacing = 0.12f
@@ -1453,7 +1453,7 @@ class MainActivity : Activity(), SensorEventListener {
                 clipToOutline = true
             }, LinearLayout.LayoutParams(dp(76), dp(76)).apply { bottomMargin = dp(6) })
             panel.addView(TextView(this).apply {
-                text = "✦  AETHELGARD  ✦"
+                text = "✦  AETHELGRAD  ✦"
                 textSize = 15f
                 gravity = Gravity.CENTER
                 letterSpacing = 0.16f
@@ -1657,7 +1657,7 @@ class MainActivity : Activity(), SensorEventListener {
                                 worldStateReadyForWorld = true
                                 markWorldLoadingTaskReady("world")
                                 validation.setTextColor(Color.rgb(164, 231, 190))
-                                validation.text = "Cloud world protected. Entering Aethelgard…"
+                                validation.text = "Cloud world protected. Entering Aethelgrad…"
                                 rootContainer.postDelayed({
                                     enterWorldThroughCinematic {
                                         rootContainer.removeView(overlay)
@@ -2668,7 +2668,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun confirmLogout() {
         AlertDialog.Builder(this)
-            .setTitle("LOG OUT OF AETHELGARD?")
+            .setTitle("LOG OUT OF AETHELGRAD?")
             .setMessage("This removes the local session from this device. Your cloud world remains protected in your account.")
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("LOG OUT") { _, _ ->
@@ -3044,7 +3044,7 @@ class MainActivity : Activity(), SensorEventListener {
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(6) })
 
         dialog = AlertDialog.Builder(this)
-            .setTitle("AETHELGARD CONTROLS")
+            .setTitle("AETHELGRAD CONTROLS")
             .setView(panel)
             .setNegativeButton("‹ BACK", null)
             .create()
@@ -3075,7 +3075,7 @@ class MainActivity : Activity(), SensorEventListener {
         slider("Ambience", current.ambience, audio::setAmbience)
         slider("Voice", current.voice, audio::setVoice)
         AlertDialog.Builder(this)
-            .setTitle("AETHELGARD AUDIO")
+            .setTitle("AETHELGRAD AUDIO")
             .setView(panel)
             .setNegativeButton("‹ BACK", null)
             .show()

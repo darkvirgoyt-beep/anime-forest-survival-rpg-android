@@ -1,12 +1,12 @@
-# Aethelgard: Wild Horizons – Crafting
+# Aethelgrad: Wild Horizons – Crafting
 
-**Aethelgard: Wild Horizons – Crafting** is an original anime-inspired Android online game built around a third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
+**Aethelgrad: Wild Horizons – Crafting** is an original anime-inspired Android online game built around a third-person forest-survival loop. It is inspired by broad genre themes—exploration, gathering, crafting, animals, and light RPG combat—but does not copy any existing game's characters, names, story, models, textures, or proprietary assets.
 
-> This repository contains Aethelgard’s real AAA production game development path: a verified online mobile game layer, an active Unreal Engine production branch, and connected service foundations. The current playable Android build and the Unreal path have different packaging and asset requirements; those engineering facts do not change the game’s AAA production identity.
+> This repository contains Aethelgrad’s real AAA production game development path: a verified online mobile game layer, an active Unreal Engine production branch, and connected service foundations. The current playable Android build and the Unreal path have different packaging and asset requirements; those engineering facts do not change the game’s AAA production identity.
 
 ## Production package
 
-The complete end-to-end AAA production brief is in [`PREPRODUCTION_BIBLE.md`](PREPRODUCTION_BIBLE.md), with the visual generation brief in [`CONCEPT_ART_BRIEF.md`](CONCEPT_ART_BRIEF.md) and the generated concept-art index in [`CONCEPT_ART_README.md`](CONCEPT_ART_README.md). The concept-art set covers the Aethelgard vision key art, Aurora, Emberling, Wisteria Forest, Forest Warden, crafting props, mobile HUD/login direction, and lighting/weather targets.
+The complete end-to-end AAA production brief is in [`PREPRODUCTION_BIBLE.md`](PREPRODUCTION_BIBLE.md), with the visual generation brief in [`CONCEPT_ART_BRIEF.md`](CONCEPT_ART_BRIEF.md) and the generated concept-art index in [`CONCEPT_ART_README.md`](CONCEPT_ART_README.md). The concept-art set covers the Aethelgrad vision key art, Aurora, Emberling, Wisteria Forest, Forest Warden, crafting props, mobile HUD/login direction, and lighting/weather targets.
 
 ## Current milestone
 
@@ -14,11 +14,11 @@ The current online build renders a stylized Wisteria Forest launch region throug
 
 The intended player-facing product flow is **online-only** for every Android build: Google authentication, backend session exchange, server-region health/ping, cloud-save preflight, and co-op session validation must succeed before entering a production world. No build or launch path bypasses the online guest session boundary. After a successful sign-in, the rotating refresh session is stored in Android Keystore-backed encrypted storage so a game restart restores the account automatically; choosing **LOG OUT** clears it.
 
-The Aethelgard RPG layer now adds a deterministic progression loop: the **First Ember** quest tracks three resource caches, an ember-kit craft, and a Forest Warden defeat; gathering, combat hits, crafting, and the quest reward grant XP; level thresholds are surfaced in the live HUD; and the warden has a readable health bar, hit flash, defeat feedback, and quest completion state. The progression rules live in `app/src/main/cpp/rpg/progression.*` and are covered by a native regression test.
+The Aethelgrad RPG layer now adds a deterministic progression loop: the **First Ember** quest tracks three resource caches, an ember-kit craft, and a Forest Warden defeat; gathering, combat hits, crafting, and the quest reward grant XP; level thresholds are surfaced in the live HUD; and the warden has a readable health bar, hit flash, defeat feedback, and quest completion state. The progression rules live in `app/src/main/cpp/rpg/progression.*` and are covered by a native regression test.
 
 ## Brand and audio assets
 
-The launcher is branded as **Aethelgard: Wild Horizons – Crafting** and uses `assets/ui/aethelgard_game_icon.png`. The generated audio bank is cataloged in [`assets/audio/AUDIO_MANIFEST.md`](assets/audio/AUDIO_MANIFEST.md). The Android harness loads the forest exploration track and gameplay/UI Foley through `GameAudio`, with persistent Master, Music, Effects, Ambience, and Mute controls. The Unreal path uses `UForestSliceAudioSubsystem` as the settings boundary.
+The launcher is branded as **Aethelgrad: Wild Horizons – Crafting** and uses `assets/ui/aethelgard_game_icon.png`. The generated audio bank is cataloged in [`assets/audio/AUDIO_MANIFEST.md`](assets/audio/AUDIO_MANIFEST.md). The Android harness loads the forest exploration track and gameplay/UI Foley through `GameAudio`, with persistent Master, Music, Effects, Ambience, and Mute controls. The Unreal path uses `UForestSliceAudioSubsystem` as the settings boundary.
 
 The current image-service quota and external audio-service availability prevented final AI character sheets and a full AAA sound library in this run. The icon and procedural SFX are original interim assets and are intentionally marked for replacement by production-quality original or licensed content as the asset pipeline advances.
 
@@ -80,7 +80,7 @@ Contributors can propose improvements through feature branches and pull requests
 For Google Play Games authentication setup, see [`docs/GOOGLE_PLAY_GAMES_SETUP.md`](docs/GOOGLE_PLAY_GAMES_SETUP.md). The real online multiplayer target is documented in [`docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md`](docs/ONLINE_MULTIPLAYER_ARCHITECTURE.md). The first backend service is in [`server/README.md`](server/README.md).
 
 
-**Project collaboration:** Aethelgard: Wild Horizons – Crafting welcomes documented improvements to its Android online forest-survival RPG.
+**Project collaboration:** Aethelgrad: Wild Horizons – Crafting welcomes documented improvements to its Android online forest-survival RPG.
 
 
 ## 3D digging and farming slice

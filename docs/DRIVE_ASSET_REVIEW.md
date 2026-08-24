@@ -11,7 +11,7 @@ Reviewed the contents of the Google Drive folder `My game components` (folder ID
 | `1787476000911.png` | 1408x768 PNG | Brown-haired female archer in a bright garden/ruins setting; character portrait/reference and forest settlement mood reference. |
 | `1787476845599.png` | 1408x768 PNG | Purple-haired male archer/elf in a neon forest; character portrait/reference. |
 | `IMG-20260823-WA0004.jpg` | Portrait JPEG | Blue/white ice creature or boss; snow biome enemy reference. |
-| `file_00000000a3988211ac5fdb67308d3525.png` | UI screenshot | AETHELGARD login screen reference, not a runtime character asset. |
+| `file_00000000a3988211ac5fdb67308d3525.png` | UI screenshot | AETHELGRAD login screen reference, not a runtime character asset. |
 | `Screenshot_20260823-115635_Aethelgard_Wild_Horizons_Crafting.png` | UI screenshot | Crafting/login flow reference, not a runtime character asset. |
 
 ## Pack mapping recommendation

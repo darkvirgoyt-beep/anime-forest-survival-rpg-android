@@ -1,4 +1,4 @@
-# Aethelgard Art Direction
+# Aethelgrad Art Direction
 
 The user-provided board at [`docs/art_reference/game_visual_reference.png`](art_reference/game_visual_reference.png) is the shared visual reference for future game development. It is a direction reference rather than a request to copy any named game, character, logo, or proprietary asset.
 

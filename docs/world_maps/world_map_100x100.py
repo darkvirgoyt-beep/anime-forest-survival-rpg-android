@@ -90,7 +90,7 @@ for spine in ax.spines.values():
     spine.set_linewidth(1.4)
 ax.set_xlabel('World X (0–100 km)', color='#d8e6df', labelpad=12, fontsize=11)
 ax.set_ylabel('World Y (0–100 km)', color='#d8e6df', labelpad=12, fontsize=11)
-ax.set_title('AETHELGARD: WILD HORIZONS — 100 × 100 KM WORLD MAP', color='#f1d58b', fontsize=20, weight='bold', pad=18)
+ax.set_title('AETHELGRAD: WILD HORIZONS — 100 × 100 KM WORLD MAP', color='#f1d58b', fontsize=20, weight='bold', pad=18)
 
 legend = [
     Line2D([0], [0], marker='o', color='w', label='Settlement / major landmark', markerfacecolor='#75452f', markeredgecolor='white', markersize=9),

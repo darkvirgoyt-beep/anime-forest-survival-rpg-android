@@ -1,4 +1,4 @@
-# Aethelgard: Wild Horizons – Crafting
+# Aethelgrad: Wild Horizons – Crafting
 
 ## Blueprint 01: account to first world
 

@@ -1,6 +1,6 @@
-# Aethelgard small online backend
+# Aethelgrad small online backend
 
-Aethelgard uses a deliberately small Node.js and PostgreSQL HTTPS service for authentication, creator-owned persistent worlds, four-player co-op presence, server-validated combat and inventory actions, player saves, world saves, companions, camps, and village buildings. It is not the Unreal dedicated-server fleet; it is the lightweight account and co-op service used by the Android game layer.
+Aethelgrad uses a deliberately small Node.js and PostgreSQL HTTPS service for authentication, creator-owned persistent worlds, four-player co-op presence, server-validated combat and inventory actions, player saves, world saves, companions, camps, and village buildings. It is not the Unreal dedicated-server fleet; it is the lightweight account and co-op service used by the Android game layer.
 
 ## Free deployment shape
 

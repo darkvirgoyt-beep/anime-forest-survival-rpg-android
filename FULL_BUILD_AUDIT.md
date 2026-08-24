@@ -1,4 +1,4 @@
-# Aethelgard Full-Build Audit
+# Aethelgrad Full-Build Audit
 
 ## Executive finding
 
@@ -48,6 +48,6 @@ The strict full-content script correctly stops because no trusted cooked Unreal 
 
 ## References
 
-[1]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android "Aethelgard Android repository"
+[1]: https://github.com/darkvirgoyt-beep/anime-forest-survival-rpg-android "Aethelgrad Android repository"
 [2]: https://developer.android.com/guide/playcore/asset-delivery "Android Developers: Play Asset Delivery"
 [3]: https://dev.epicgames.com/documentation/unreal-engine/using-google-play-asset-delivery-in-unreal-engine?lang=en-US "Epic Games: Google Play Asset Delivery in Unreal Engine"

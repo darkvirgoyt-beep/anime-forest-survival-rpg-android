@@ -1,14 +1,14 @@
-# Video Graphics Reference and Aethelgard Adaptation
+# Video Graphics Reference and Aethelgrad Adaptation
 
 ## Reference analyzed
 
 The linked video documents a 30-day Unreal Engine 5 development process focused on a high-fidelity combat system and a detailed environment. Its visible production techniques include advanced locomotion, root-motion animation, IK retargeting, motion warping for attack alignment, trace-based hit detection, hit-stop and localized time dilation, animation-notify-synchronized VFX/SFX, procedural content generation for landscapes, dense foliage and high-resolution materials, and spline-guided paths.
 
-## Original Aethelgard adaptation
+## Original Aethelgrad adaptation
 
-Aethelgard should adapt the production principles rather than copy the reference game’s assets or identity. The mobile-friendly target is stylized anime-fantasy presentation with controlled silhouettes, efficient shaders, readable combat effects, and deterministic performance.
+Aethelgrad should adapt the production principles rather than copy the reference game’s assets or identity. The mobile-friendly target is stylized anime-fantasy presentation with controlled silhouettes, efficient shaders, readable combat effects, and deterministic performance.
 
-| Reference principle | Aethelgard implementation target |
+| Reference principle | Aethelgrad implementation target |
 |---|---|
 | Root motion | Use authored attack and dodge timing to reduce foot sliding in the hero and animal companions. |
 | Motion warping | Add a short, bounded attack lunge toward the selected target so touch combat feels responsive without teleporting. |
@@ -21,7 +21,7 @@ Aethelgard should adapt the production principles rather than copy the reference
 
 ## IP boundary
 
-The reference video is used only as a technique study. Aethelgard’s character designs, creatures, environment identity, materials, VFX language, names, and gameplay presentation remain original.
+The reference video is used only as a technique study. Aethelgrad’s character designs, creatures, environment identity, materials, VFX language, names, and gameplay presentation remain original.
 
 ## Sources
 

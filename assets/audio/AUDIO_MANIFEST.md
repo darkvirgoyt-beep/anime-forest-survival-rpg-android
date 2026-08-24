@@ -1,4 +1,4 @@
-# Aethelgard audio manifest
+# Aethelgrad audio manifest
 
 The audio bank is organized by runtime bus rather than by screen. `Music` contains exploration and future combat/boss tracks. `Effects` contains attacks, bow release, gathering, crafting, slide, footsteps, and UI feedback. `Ambience` is reserved for forest wind, rain, insects, caves, water, and biome beds. `Voice` is reserved for original character and companion performances.
 

@@ -2,7 +2,7 @@
 -- Existing coop_rooms remain the invite/access surface, but leaving no longer
 -- destroys a player's saved inventory or progression.
 ALTER TABLE coop_rooms
-    ADD COLUMN IF NOT EXISTS world_name TEXT NOT NULL DEFAULT 'Aethelgard Shared World';
+    ADD COLUMN IF NOT EXISTS world_name TEXT NOT NULL DEFAULT 'Aethelgrad Shared World';
 
 ALTER TABLE coop_members
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true,

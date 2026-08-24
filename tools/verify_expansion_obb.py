@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a standalone Aethelgard expansion OBB without extracting it."""
+"""Verify a standalone Aethelgrad expansion OBB without extracting it."""
 from __future__ import annotations
 
 import argparse

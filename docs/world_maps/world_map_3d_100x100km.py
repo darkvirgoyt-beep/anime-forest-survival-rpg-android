@@ -163,7 +163,7 @@ label(51, 8, 'SAND  •  OASIS  •  TRADE', color='#ffe0a0', size=14, z=45, box
 label(84, 8, 'SNOW  •  PREDATORS  •  100 HP', color='#d9fbff', size=14, z=45, box=True)
 
 # Title and explanatory callouts.
-ax.text(W/2, 54, 'AETHELGARD: WILD HORIZONS', color='#f6dc99', fontsize=25, weight='bold', ha='center', va='center', zorder=60)
+ax.text(W/2, 54, 'AETHELGRAD: WILD HORIZONS', color='#f6dc99', fontsize=25, weight='bold', ha='center', va='center', zorder=60)
 ax.text(W/2, 87, 'ORIGINAL 3D-STYLE WORLD MAP  •  100 × 100 KM  •  10,000 KM²', color='#d6e9df', fontsize=12, ha='center', va='center', zorder=60)
 ax.text(146, 875, 'OPEN OCEAN', color='#75d8ef', fontsize=13, weight='bold', ha='center', zorder=55)
 ax.text(1452, 392, 'N', color='#f6dc99', fontsize=17, weight='bold', ha='center', zorder=55)

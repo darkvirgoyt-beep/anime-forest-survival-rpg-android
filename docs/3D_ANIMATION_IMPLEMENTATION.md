@@ -1,4 +1,4 @@
-# Aethelgard 3D Animation Implementation
+# Aethelgrad 3D Animation Implementation
 
 ## Current playable slice
 

@@ -1,4 +1,4 @@
-# Aethelgard 100×100 km World Map
+# Aethelgrad 100×100 km World Map
 
 The world map uses a logical coordinate system from `X=0..100 km` and `Y=0..100 km`, covering **10,000 km²**. The current GLES prototype renders a normalized view for mobile safety, but biome state and future authored content should use kilometers as the stable design coordinate system.
 

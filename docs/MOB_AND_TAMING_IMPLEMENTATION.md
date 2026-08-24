@@ -1,6 +1,6 @@
-# Aethelgard Mob and Taming Pass
+# Aethelgrad Mob and Taming Pass
 
-Aethelgard now has an original wildlife layer alongside its humanoid enemy roster. Wildlife is presented as tamable rather than as another reskinned humanoid target, with separate silhouettes, movement rhythms, materials, glow accents, and resource costs.
+Aethelgrad now has an original wildlife layer alongside its humanoid enemy roster. Wildlife is presented as tamable rather than as another reskinned humanoid target, with separate silhouettes, movement rhythms, materials, glow accents, and resource costs.
 
 | Creature | Role | Animation direction | Taming cost |
 |---|---|---|---:|

@@ -1,14 +1,14 @@
-# Aethelgard: Wild Horizons – Crafting
+# Aethelgrad: Wild Horizons – Crafting
 
 ## Original survival-sandbox direction
 
-Aethelgard is an original anime-stylized third-person survival sandbox RPG for Android. Its systemic ambition is comparable to a large survival game: the player explores a seamless wilderness, manages health and environmental needs, gathers and processes resources, builds a persistent shelter, discovers creatures, forms bonds with companions, prepares for hostile encounters, defeats region bosses, and advances with a small co-op party. The identity remains Aethelgard’s own: a luminous wild-horizon setting, original creature ecology, modular equipment, readable mobile controls, and a world built around shelter, weather, ruins, and crafting rather than copied dinosaur or sci-fi themes.
+Aethelgrad is an original anime-stylized third-person survival sandbox RPG for Android. Its systemic ambition is comparable to a large survival game: the player explores a seamless wilderness, manages health and environmental needs, gathers and processes resources, builds a persistent shelter, discovers creatures, forms bonds with companions, prepares for hostile encounters, defeats region bosses, and advances with a small co-op party. The identity remains Aethelgrad’s own: a luminous wild-horizon setting, original creature ecology, modular equipment, readable mobile controls, and a world built around shelter, weather, ruins, and crafting rather than copied dinosaur or sci-fi themes.
 
 ## Core loop
 
 The first durable loop is **explore → observe → gather → prepare → build → survive → encounter → recover → expand**. Each action should create a useful state change: harvested nodes mutate the world, crafted gear changes available routes, shelter changes temperature and sleep safety, creature behavior changes when the player is noisy or threatening, and defeated bosses unlock new materials, recipes, and map regions.
 
-| System layer | Aethelgard design target | First production slice |
+| System layer | Aethelgrad design target | First production slice |
 |---|---|---|
 | Wilderness | Forest, river, cliff, ruin, cave, meadow, and later desert/snow/ashen biomes with authored landmarks and deterministic streaming support | One original forest micro-region with a camp, resource node, bed, and hostile creature |
 | Survival | Health, hunger, thirst, temperature, wetness, stamina, injury, shelter, sleep, status effects, and biome modifiers | Health, hunger, thirst, temperature, shelter, stamina, sleep recovery |

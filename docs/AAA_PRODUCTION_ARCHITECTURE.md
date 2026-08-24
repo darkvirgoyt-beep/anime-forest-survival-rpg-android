@@ -2,7 +2,7 @@
 
 ## Decision
 
-The requested target—high-end 3D anime characters, animation, open-world streaming, boss encounters, co-op multiplayer, large asset packs, mobile scalability, gyro aiming, and store distribution—uses **Unreal Engine 5.6+ with C++ gameplay modules** as Aethelgard’s AAA production presentation and dedicated-server path. The current Kotlin/C++ OpenGL ES application is the verified Android game layer and contract-validation path; it remains intentionally lightweight for mobile delivery while the Unreal path carries the high-end 3D content.
+The requested target—high-end 3D anime characters, animation, open-world streaming, boss encounters, co-op multiplayer, large asset packs, mobile scalability, gyro aiming, and store distribution—uses **Unreal Engine 5.6+ with C++ gameplay modules** as Aethelgrad’s AAA production presentation and dedicated-server path. The current Kotlin/C++ OpenGL ES application is the verified Android game layer and contract-validation path; it remains intentionally lightweight for mobile delivery while the Unreal path carries the high-end 3D content.
 
 Epic’s mobile documentation describes Unreal as a framework for optimized Android applications and provides dedicated guidance for Vulkan, OpenGL ES 3.2 fallback, frame pacing, device profiles, Android Asset Delivery, packaging, profiling, and release signing.[1] Android’s Unreal guidance also describes Vulkan as the preferred high-performance path with OpenGL ES 3.2 fallback and points to Play Asset Delivery for large asset packs.[2]
 
@@ -78,7 +78,7 @@ Development requires a machine with Unreal Engine 5.6+, Android SDK/NDK/JDK, and
 
 ## Honest milestone boundary
 
-This document is the production architecture for Aethelgard, the real AAA game. The current public repository contains a functioning online Android game layer with C++ physics, controller, combat, progression, delivery, and service foundations, plus an active Unreal C++ production path. The next production actions are to connect authored forest content and original hero assets, compile/cook the Unreal targets on an Unreal-capable runner, and validate the four-player dedicated-server slice before expanding the full world.
+This document is the production architecture for Aethelgrad, the real AAA game. The current public repository contains a functioning online Android game layer with C++ physics, controller, combat, progression, delivery, and service foundations, plus an active Unreal C++ production path. The next production actions are to connect authored forest content and original hero assets, compile/cook the Unreal targets on an Unreal-capable runner, and validate the four-player dedicated-server slice before expanding the full world.
 
 ## References
 

@@ -1,6 +1,6 @@
-# Aethelgard Concept-Art Pack
+# Aethelgrad Concept-Art Pack
 
-This folder contains the first coherent visual target for **Aethelgard: Wild Horizons — Crafting**. The images are original concept references for pre-production and should be treated as art-direction material until they pass the production asset pipeline described in `PREPRODUCTION_BIBLE.md`.
+This folder contains the first coherent visual target for **Aethelgrad: Wild Horizons — Crafting**. The images are original concept references for pre-production and should be treated as art-direction material until they pass the production asset pipeline described in `PREPRODUCTION_BIBLE.md`.
 
 | Order | Asset | Use |
 |---:|---|---|

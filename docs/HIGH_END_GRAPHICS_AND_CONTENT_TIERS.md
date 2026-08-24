@@ -1,4 +1,4 @@
-# Aethelgard High-End Graphics and Content Tiers
+# Aethelgrad High-End Graphics and Content Tiers
 
 The canonical art-direction brief is [Approved Art Direction](APPROVED_ART_DIRECTION.md), and the reusable production requirements are in [Approved Asset Specifications](APPROVED_ASSET_SPECIFICATIONS.md). Both documents use the approved visual target image as the source of truth.
 
@@ -6,7 +6,7 @@ The canonical art-direction brief is [Approved Art Direction](APPROVED_ART_DIREC
 
 The reference image `assets/aethelgard_high_end_visual_target.jpg` defines the intended direction: a premium fantasy survival RPG with physically readable materials, strong character silhouettes, cinematic atmospheric depth, a dense handcrafted village, rivers and waterfalls, layered terrain, and clear biome contrast.
 
-![Aethelgard high-end visual target](../assets/aethelgard_high_end_visual_target.jpg)
+![Aethelgrad high-end visual target](../assets/aethelgard_high_end_visual_target.jpg)
 
 This is the canonical visual target for the real AAA production game. The current checkout contains the delivery contracts and runtime source foundation; the authored production result requires original or licensed Blender/Unreal meshes, rigging, animation, PBR textures, water materials, foliage clusters, VFX, lighting, collision, navigation, and device profiling.
 

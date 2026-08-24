@@ -11,8 +11,8 @@ data class ServerRegion(
 
 object ServerDirectory {
     val regions = listOf(
-        ServerRegion("asia", "Aethelgard Asia", "asia.game.aethelgard.example"),
-        ServerRegion("europe", "Aethelgard Europe", "eu.game.aethelgard.example"),
-        ServerRegion("north_america", "Aethelgard North America", "na.game.aethelgard.example")
+        ServerRegion("asia", "Aethelgrad Asia", "asia.game.aethelgard.example"),
+        ServerRegion("europe", "Aethelgrad Europe", "eu.game.aethelgard.example"),
+        ServerRegion("north_america", "Aethelgrad North America", "na.game.aethelgard.example")
     )
 }

@@ -235,7 +235,7 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
 
   app.post("/v1/worlds", requireSession, async (req, res) => {
     const region = typeof req.body?.region === "string" ? req.body.region.trim().slice(0, 32) : "asia";
-    const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 64) : "Aethelgard Forest";
+    const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 64) : "Aethelgrad Forest";
     if (!name) return res.status(400).json({ error: "world_name_required" });
     const result = await pool.query(
       "INSERT INTO worlds (region, name, status, max_players, current_players) VALUES ($1, $2, 'allocating', 4, 0) RETURNING id, region, name, status, max_players, current_players",
@@ -246,7 +246,7 @@ export function createOnlineService({ pool, config, fetchImpl = fetch, verifyGoo
 
   app.post("/v1/coop/rooms", requireSession, async (req, res) => {
     const region = typeof req.body?.region === "string" ? req.body.region.trim().slice(0, 32) : "asia";
-    const worldName = typeof req.body?.worldName === "string" ? req.body.worldName.trim().slice(0, 64) : "Aethelgard Shared World";
+    const worldName = typeof req.body?.worldName === "string" ? req.body.worldName.trim().slice(0, 64) : "Aethelgrad Shared World";
     if (!worldName) return res.status(400).json({ error: "world_name_required" });
     const code = await createCoOpRoom(pool, req.accountId, region, worldName);
     const room = await getCoOpRoom(pool, code, req.accountId);
@@ -849,7 +849,7 @@ function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-async function createCoOpRoom(pool, accountId, region, worldName = "Aethelgard Shared World") {
+async function createCoOpRoom(pool, accountId, region, worldName = "Aethelgrad Shared World") {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = randomBytes(3).toString("hex").toUpperCase();
     try {
@@ -903,7 +903,7 @@ async function getCoOpRoom(pool, code, accountId) {
     room: {
       code: room.code,
       region: room.region,
-      worldName: room.world_name || "Aethelgard Shared World",
+      worldName: room.world_name || "Aethelgrad Shared World",
       ownerAccountId: room.created_by,
       maxPlayers: MAX_COOP_PLAYERS,
       worldTime: Number(refreshed.rows[0]?.world_time || room.world_time || 0),
@@ -1067,6 +1067,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
   const port = Number(process.env.PORT || 8080);
   createOnlineService({ pool, config }).listen(port, () => {
-    console.log(`Aethelgard online services listening on :${port}`);
+    console.log(`Aethelgrad online services listening on :${port}`);
   });
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage real cooked Unreal runtime files for the standalone Aethelgard OBB.
+"""Stage real cooked Unreal runtime files for the standalone Aethelgrad OBB.
 
 The Unreal cook remains an offline build step. This tool only maps already-cooked
 runtime files into the directory consumed by build_expansion_obb.py. It never

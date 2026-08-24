@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 try {
   await import("./migrate.mjs");
 } catch (error) {
-  console.error("Aethelgard startup migration failed; API will not start.");
+  console.error("Aethelgrad startup migration failed; API will not start.");
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }
@@ -14,7 +14,7 @@ const api = spawn(process.execPath, ["src/server.mjs"], {
 });
 
 api.on("error", (error) => {
-  console.error("Aethelgard API process failed to start.");
+  console.error("Aethelgrad API process failed to start.");
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

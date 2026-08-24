@@ -127,7 +127,7 @@ Returns online world records after session validation:
     {
       "id": "<uuid>",
       "region": "asia",
-      "name": "Aethelgard Forest",
+      "name": "Aethelgrad Forest",
       "status": "online",
       "max_players": 4,
       "current_players": 2
@@ -143,11 +143,11 @@ Creates an allocating world record. This is a world-service contract and does no
 ```json
 {
   "region": "asia",
-  "name": "Aethelgard Forest"
+  "name": "Aethelgrad Forest"
 }
 ```
 
-The default region is `asia`, and the default name is `Aethelgard Forest`.
+The default region is `asia`, and the default name is `Aethelgrad Forest`.
 
 ## 5. Co-op room endpoints
 

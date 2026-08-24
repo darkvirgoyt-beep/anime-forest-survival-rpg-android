@@ -23,7 +23,7 @@ python3 tools/publish_internal_test.py \
   --aab path/to/app-release.aab \
   --package-name com.darkvirgoyt.aethelgrad \
   --track qa \
-  --release-name "Aethelgard internal build" \
+  --release-name "Aethelgrad internal build" \
   --release-notes "Resource center and 540-class camera test build"
 ```
 
@@ -39,7 +39,7 @@ python3 tools/publish_internal_test.py \
   --package-name com.darkvirgoyt.aethelgrad \
   --track qa \
   --service-account /secure/credentials/play-publisher.json \
-  --release-name "Aethelgard internal build" \
+  --release-name "Aethelgrad internal build" \
   --release-notes "Resource center and 540-class camera test build" \
   --commit --yes
 ```

@@ -1,6 +1,6 @@
 # Unreal production branch
 
-This directory is the long-term 3D production path for Aethelgard, the real AAA production game. It is intentionally paired with the `app/` Android/OpenGL ES game layer: the Android layer keeps mobile controls, delivery, and gameplay contracts testable while Unreal Engine 5.6+ provides the high-end 3D presentation and dedicated-server path.
+This directory is the long-term 3D production path for Aethelgrad, the real AAA production game. It is intentionally paired with the `app/` Android/OpenGL ES game layer: the Android layer keeps mobile controls, delivery, and gameplay contracts testable while Unreal Engine 5.6+ provides the high-end 3D presentation and dedicated-server path.
 
 ## Required local toolchain
 

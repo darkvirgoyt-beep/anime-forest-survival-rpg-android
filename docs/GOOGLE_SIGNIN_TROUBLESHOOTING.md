@@ -5,7 +5,7 @@ The required `SIGN IN WITH GOOGLE` control uses Android Credential Manager and t
 | Player-facing diagnostic | Most likely next action |
 |---|---|
 | No usable Google account | Add or reauthenticate a Google account on the phone, then retry. |
-| Google credential services unavailable | Update Google Play services and the Aethelgard APK. |
+| Google credential services unavailable | Update Google Play services and the Aethelgrad APK. |
 | Google sign-in ended before the game server | Copy the package name and SHA-1 fingerprint shown in the app’s error message into the Android OAuth client in Google Cloud Console, then retry. Do not enable the custom URI scheme. |
 | Interrupted | Re-open the app and retry once. |
 
@@ -21,7 +21,7 @@ The current build workflow falls back to an Android debug certificate when prote
 
 ## Use the Correct GitHub Artifact
 
-Install the matching AETHELGARD AAB through Play internal testing, or use the workflow’s bundletool local-testing APK set when testing Play Asset Delivery. The release package is `com.darkvirgoyt.aethelgrad`; it requires Google sign-in and the selected full resource tier before world entry. Register the SHA-1 from the `aethelgard-android-signing-certificate` artifact against the same package in the Android OAuth client. A direct APK is limited to installation and configuration smoke checks because it cannot fetch Play Asset Delivery packs.
+Install the matching AETHELGRAD AAB through Play internal testing, or use the workflow’s bundletool local-testing APK set when testing Play Asset Delivery. The release package is `com.darkvirgoyt.aethelgrad`; it requires Google sign-in and the selected full resource tier before world entry. Register the SHA-1 from the `aethelgard-android-signing-certificate` artifact against the same package in the Android OAuth client. A direct APK is limited to installation and configuration smoke checks because it cannot fetch Play Asset Delivery packs.
 
 ## Mobile Control Direction
 

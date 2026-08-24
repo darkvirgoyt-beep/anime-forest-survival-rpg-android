@@ -1,6 +1,6 @@
-# Aethelgard Crafting and Building Catalog
+# Aethelgrad Crafting and Building Catalog
 
-This document defines an original survival-RPG crafting and base-building system for **Aethelgard: Wild Horizons**. It uses familiar genre patterns—resource gathering, processing stations, equipment progression, farming, storage, shelter, and biome-specific materials—but does not copy another game’s proprietary recipes, names, UI, models, or progression.
+This document defines an original survival-RPG crafting and base-building system for **Aethelgrad: Wild Horizons**. It uses familiar genre patterns—resource gathering, processing stations, equipment progression, farming, storage, shelter, and biome-specific materials—but does not copy another game’s proprietary recipes, names, UI, models, or progression.
 
 ## Design assumptions
 

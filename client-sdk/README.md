@@ -23,7 +23,7 @@ The current server validates room membership, combat target/range/cooldown, reso
 ## Unity example
 
 ```csharp
-var client = new Aethelgard.Net.AethelgardCoopClient("https://api.example.com");
+var client = new Aethelgrad.Net.AethelgardCoopClient("https://api.example.com");
 var room = await client.CreateRoomAsync("asia");
 var combat = await client.CombatAsync(room.room.code, "attack");
 Debug.Log($"Warden health: {combat.bossHealth}");

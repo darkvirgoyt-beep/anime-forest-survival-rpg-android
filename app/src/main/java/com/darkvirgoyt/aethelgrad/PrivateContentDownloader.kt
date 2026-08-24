@@ -152,7 +152,7 @@ class PrivateContentDownloader(
             readTimeout = 30_000
             requestMethod = "GET"
             setRequestProperty("Accept", "application/json, application/octet-stream")
-            setRequestProperty("User-Agent", "Aethelgard-Android-PrivateContent/1")
+            setRequestProperty("User-Agent", "Aethelgrad-Android-PrivateContent/1")
         }
     }
 

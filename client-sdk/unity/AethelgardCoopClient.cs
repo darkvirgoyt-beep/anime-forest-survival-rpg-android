@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Aethelgard.Net
+namespace Aethelgrad.Net
 {
     [Serializable]
     public sealed class AuthBundle

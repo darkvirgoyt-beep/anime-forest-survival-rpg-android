@@ -1,14 +1,14 @@
-# Aethelgard Approved Art Direction
+# Aethelgrad Approved Art Direction
 
 ## Status
 
-**Approved visual direction:** use `assets/aethelgard_high_end_visual_target.jpg` as the canonical mood, composition, material, lighting, and world-presentation reference for Aethelgard: Wild Horizons – Crafting.
+**Approved visual direction:** use `assets/aethelgard_high_end_visual_target.jpg` as the canonical mood, composition, material, lighting, and world-presentation reference for Aethelgrad: Wild Horizons – Crafting.
 
-![Approved Aethelgard visual direction](../assets/aethelgard_high_end_visual_target.jpg)
+![Approved Aethelgrad visual direction](../assets/aethelgard_high_end_visual_target.jpg)
 
 ## Visual statement
 
-Aethelgard is a cinematic fantasy survival RPG with a premium anime heroine, handcrafted frontier villages, readable rivers and waterfalls, layered mountain silhouettes, and strong biome contrast. The scene should feel like a high-end Blender and Unreal production while remaining readable on Android through scalable materials, LODs, effects, and frame-time budgets.
+Aethelgrad is a cinematic fantasy survival RPG with a premium anime heroine, handcrafted frontier villages, readable rivers and waterfalls, layered mountain silhouettes, and strong biome contrast. The scene should feel like a high-end Blender and Unreal production while remaining readable on Android through scalable materials, LODs, effects, and frame-time budgets.
 
 ## Non-negotiable visual anchors
 

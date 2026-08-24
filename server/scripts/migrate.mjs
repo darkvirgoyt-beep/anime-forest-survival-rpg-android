@@ -45,7 +45,7 @@ try {
       }
     }
 
-    console.log(`Aethelgard database migrations ready (${files.length} files).`);
+    console.log(`Aethelgrad database migrations ready (${files.length} files).`);
   } finally {
     client.release();
   }

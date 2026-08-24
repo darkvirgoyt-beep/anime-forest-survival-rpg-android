@@ -1,4 +1,4 @@
-# Aethelgard One-GiB Runtime Content Package
+# Aethelgrad One-GiB Runtime Content Package
 
 The optional `aethelgard-authored-runtime-v1` archive targets **1,024 MiB** of real runtime material. It is not padding and does not block the bundled Android world. Every incoming binary must have a source file, a license or ownership receipt, and a cooked mobile runtime output.
 

@@ -11,7 +11,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.ImageView
 
-/** Shows the supplied Aethelgard launch artwork before the sign-in-first game shell. */
+/** Shows the supplied Aethelgrad launch artwork before the sign-in-first game shell. */
 class LaunchActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val openGame = Runnable {
@@ -36,7 +36,7 @@ class LaunchActivity : Activity() {
         setContentView(ImageView(this).apply {
             setImageResource(R.drawable.aethelgard_launch_art)
             scaleType = ImageView.ScaleType.CENTER_CROP
-            contentDescription = "Aethelgard launch artwork"
+            contentDescription = "Aethelgrad launch artwork"
             setBackgroundColor(android.graphics.Color.BLACK)
         })
         handler.postDelayed(openGame, 900L)

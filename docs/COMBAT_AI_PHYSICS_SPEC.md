@@ -1,6 +1,6 @@
 # Combat, Durability, Enemy AI, and Physics Specification
 
-This is an original systems design for **Aethelgard: Wild Horizons**. It is inspired by broad survival-RPG patterns but does not copy another game’s characters, assets, animations, names, maps, UI, or proprietary behavior.
+This is an original systems design for **Aethelgrad: Wild Horizons**. It is inspired by broad survival-RPG patterns but does not copy another game’s characters, assets, animations, names, maps, UI, or proprietary behavior.
 
 ## System goals
 

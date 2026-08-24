@@ -1,7 +1,7 @@
 package com.darkvirgoyt.aethelgrad
 
 /**
- * Required high-end runtime-content envelope for the cooked 3D Aethelgard
+ * Required high-end runtime-content envelope for the cooked 3D Aethelgrad
  * experience. The private archive must be mounted before the online world opens.
  */
 object ContentDownloadPlan {

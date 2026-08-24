@@ -1,4 +1,4 @@
-# Aethelgard: Wild Horizons — Complete Pre-Production Bible
+# Aethelgrad: Wild Horizons — Complete Pre-Production Bible
 
 **Project type:** Original anime-fantasy third-person survival RPG for Android, with a future Unreal Engine 5.6 production path.
 
@@ -8,7 +8,7 @@
 
 ## 1. Executive vision
 
-Aethelgard is a landscape mobile survival RPG about rebuilding a frontier life at the edge of a living magical wilderness. The player arrives as **Aurora**, a practical young wayfarer carrying a short sword, a half-remembered map, and the responsibility to relight the Heartfire at a ruined frontier camp. Exploration, gathering, crafting, survival preparation, and combat are not separate modes; they are one repeating rhythm of deciding what the wild requires next.
+Aethelgrad is a landscape mobile survival RPG about rebuilding a frontier life at the edge of a living magical wilderness. The player arrives as **Aurora**, a practical young wayfarer carrying a short sword, a half-remembered map, and the responsibility to relight the Heartfire at a ruined frontier camp. Exploration, gathering, crafting, survival preparation, and combat are not separate modes; they are one repeating rhythm of deciding what the wild requires next.
 
 The intended experience is **warm, readable, and adventurous rather than grim**. The world can be dangerous, but the player should always understand the immediate goal, the source of danger, the value of preparation, and the reward for taking a risk. The game’s visual language is bright anime-fantasy with clean silhouettes, controlled saturation, soft atmospheric lighting, and localized warm lights that keep nighttime playable. This follows the project’s established art direction and its requirement that all final characters, maps, interface art, dialogue, music, and assets remain original.[1]
 
@@ -18,7 +18,7 @@ The intended experience is **warm, readable, and adventurous rather than grim**.
 
 | Field | Decision |
 |---|---|
-| Working title | Aethelgard: Wild Horizons — Crafting |
+| Working title | Aethelgrad: Wild Horizons — Crafting |
 | Genre | Mobile third-person survival RPG with light action combat, crafting, building, exploration, and optional four-player co-op |
 | Primary platform | Android phones and tablets in landscape orientation |
 | Long-term engine | Unreal Engine 5.6+ with C++ gameplay modules and mobile-optimized rendering |
@@ -51,7 +51,7 @@ The client should feel responsive, but the server owns damage, loot, progression
 
 ### 3.5 Original identity over imitation
 
-Reference material may inform pacing, interaction hierarchy, or broad genre expectations, but Aethelgard must not reproduce another game’s recognizable characters, logos, maps, screenshots, UI artwork, or proprietary assets.[1]
+Reference material may inform pacing, interaction hierarchy, or broad genre expectations, but Aethelgrad must not reproduce another game’s recognizable characters, logos, maps, screenshots, UI artwork, or proprietary assets.[1]
 
 ## 4. World and story foundation
 
@@ -240,7 +240,7 @@ Each feature handoff contains a one-page brief, player goal, rules, state diagra
 
 ## 15. QA and acceptance gates
 
-Aethelgard requires automated tests, host tests, device tests, reconnect tests, save migration tests, visual review, memory capture, frame-time capture, crash-free sessions, and asset-budget checks at every milestone.[2]
+Aethelgrad requires automated tests, host tests, device tests, reconnect tests, save migration tests, visual review, memory capture, frame-time capture, crash-free sessions, and asset-budget checks at every milestone.[2]
 
 | Gate | Question |
 |---|---|
@@ -258,6 +258,6 @@ The game is ready for release only when a first-time player can install the base
 
 ## References
 
-[1]: docs/ART_DIRECTION.md "Aethelgard Art Direction"
-[2]: AAA_PRODUCTION_MASTER_PLAN.md "Aethelgard AAA Production Master Plan"
-[3]: docs/AETHELGARD_REFERENCE_GAMEPLAY_REQUIREMENTS.md "Aethelgard Reference Gameplay Requirements"
+[1]: docs/ART_DIRECTION.md "Aethelgrad Art Direction"
+[2]: AAA_PRODUCTION_MASTER_PLAN.md "Aethelgrad AAA Production Master Plan"
+[3]: docs/AETHELGARD_REFERENCE_GAMEPLAY_REQUIREMENTS.md "Aethelgrad Reference Gameplay Requirements"

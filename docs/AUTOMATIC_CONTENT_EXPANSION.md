@@ -1,6 +1,6 @@
-# Automatic Aethelgard Content Expansion
+# Automatic Aethelgrad Content Expansion
 
-Aethelgard uses two independent systems: **server-backed account/world saves** and **device-backed content expansion**. Google login identifies the account, while the cloud snapshot stores compact progress such as character identity, inventory, quest state, companion state, position, and discovered-sector flags. Large files are never placed inside the cloud save.
+Aethelgrad uses two independent systems: **server-backed account/world saves** and **device-backed content expansion**. Google login identifies the account, while the cloud snapshot stores compact progress such as character identity, inventory, quest state, companion state, position, and discovered-sector flags. Large files are never placed inside the cloud save.
 
 | Distribution path | Expansion behavior | Player action |
 |---|---|---|

@@ -1,4 +1,4 @@
-# Aethelgard Approved Asset Specifications
+# Aethelgrad Approved Asset Specifications
 
 These specifications turn the approved visual target into reusable production requirements. They are intended for original Blender models, Substance-style texture authoring, Unreal materials, and Android-ready cooked asset packs.
 

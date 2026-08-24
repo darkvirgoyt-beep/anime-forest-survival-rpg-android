@@ -21,19 +21,19 @@ struct FForestSliceTerrainSourceRecord
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     EForestSliceTerrainSourceKind SourceKind = EForestSliceTerrainSourceKind::PlanningBoundaryOnly;
 
     /** Human-readable data source, version, provider, and acquisition date. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     FString Citation;
 
     /** URL or internal record for the applicable data license or public-domain notice. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     FString LicenseRecord;
 
     /** Must remain false: Google Earth imagery, tiles, meshes, and elevation output are not game inputs. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     bool bDerivedFromGoogleEarthContent = false;
 };
 
@@ -47,29 +47,29 @@ class FORESTSLICE_API UForestSliceTerrainDefinition : public UDataAsset
     GENERATED_BODY()
 
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     FForestSliceTerrainSourceRecord SourceRecord;
 
     /** The original editable KML/KMZ boundary is stored outside packaged content and is not Google imagery. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     FString PlanningBoundaryId;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     TSoftObjectPtr<UTexture2D> Heightmap16Bit;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain", meta = (ClampMin = "256.0", ClampMax = "16000.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain", meta = (ClampMin = "256.0", ClampMax = "16000.0"))
     float PlayableWidthMeters = 8000.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain", meta = (ClampMin = "256.0", ClampMax = "16000.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain", meta = (ClampMin = "256.0", ClampMax = "16000.0"))
     float PlayableHeightMeters = 8000.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain", meta = (ClampMin = "0.01", ClampMax = "10.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain", meta = (ClampMin = "0.01", ClampMax = "10.0"))
     float VerticalScale = 1.0f;
 
     /** Original biome masks generated from the independently licensed DEM and hand-authored design. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgard|Terrain")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aethelgrad|Terrain")
     TArray<TSoftObjectPtr<UTexture2D>> OriginalBiomeMasks;
 
-    UFUNCTION(BlueprintCallable, Category = "Aethelgard|Terrain")
+    UFUNCTION(BlueprintCallable, Category = "Aethelgrad|Terrain")
     bool ValidateForLandscapeImport(FText& OutFailure) const;
 };

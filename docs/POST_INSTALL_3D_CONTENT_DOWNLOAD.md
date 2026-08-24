@@ -1,6 +1,6 @@
 # Optional One-GiB Authored Content Download
 
-Aethelgard starts from a **bundled playable world**. The player may enter the world while sign-in, cloud sync, co-op, and high-detail content reconnect in the background. The optional private HTTPS archive enhances presentation and later sectors; it never blocks the first playable world entry.
+Aethelgrad starts from a **bundled playable world**. The player may enter the world while sign-in, cloud sync, co-op, and high-detail content reconnect in the background. The optional private HTTPS archive enhances presentation and later sectors; it never blocks the first playable world entry.
 
 | Stage | What is present | What happens next |
 |---|---|---|

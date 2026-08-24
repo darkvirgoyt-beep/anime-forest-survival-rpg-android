@@ -137,7 +137,7 @@ class LocalMultiplayerManager(
         displayName = normalizeName(name)
         stopTransportOnly()
         val room = LocalRoom(
-            name = "$displayName’s Aethelgard Room",
+            name = "$displayName’s Aethelgrad Room",
             address = localIpv4Address(),
             port = PORT,
             code = randomRoomCode(),
@@ -575,7 +575,7 @@ class LocalMultiplayerManager(
             manager.requestPeers(wifiChannel ?: initializeWifiChannel()) { list: WifiP2pDeviceList ->
                 wifiPeers.clear()
                 list.deviceList.forEach { device ->
-                    val peer = LocalWifiPeer(device.deviceName.ifBlank { "Nearby Aethelgard device" }, device.deviceAddress)
+                    val peer = LocalWifiPeer(device.deviceName.ifBlank { "Nearby Aethelgrad device" }, device.deviceAddress)
                     wifiPeers[peer.address] = peer
                 }
                 val values = wifiPeers.values.toList()

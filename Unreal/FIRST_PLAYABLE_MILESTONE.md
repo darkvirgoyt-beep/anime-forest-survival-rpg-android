@@ -2,7 +2,7 @@
 
 ## Scope
 
-This milestone is an **original Aethelgard** vertical slice, not a claim that the full open-world game or final AAA asset set is complete. It keeps the existing `app/` Kotlin/OpenGL Android game as the active harness and adds Unreal only under `Unreal/`.
+This milestone is an **original Aethelgrad** vertical slice, not a claim that the full open-world game or final AAA asset set is complete. It keeps the existing `app/` Kotlin/OpenGL Android game as the active harness and adds Unreal only under `Unreal/`.
 
 | Player-visible step | C++ owner | Authority and save boundary |
 |---|---|---|
