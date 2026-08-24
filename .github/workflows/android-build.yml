@@ -83,6 +83,11 @@ jobs:
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrand/AccountSessionManager.kt
           grep -q 'ndkVersion = "28.0.12433566"' app/build.gradle.kts
+          grep -q 'namespace = "com.darkvirgoyt.aethelgrand"' app/build.gradle.kts
+          grep -q 'applicationId = "com.darkvirgoyt.aethelgrand"' app/build.gradle.kts
+          ! grep -R -q 'com.darvirgoyt.aethelgrad' app/src/main app/build.gradle.kts app/src/main/cpp
+          grep -q 'Java_com_darkvirgoyt_aethelgrand_NativeGameBridge_setGraphicsQuality' app/src/main/cpp/forest_game.cpp
+          ! grep -q 'Java_com_darvirgoyt_aethelgrad_NativeGameBridge_' app/src/main/cpp/forest_game.cpp
           grep -q 'target_link_options' app/src/main/cpp/CMakeLists.txt
           grep -q 'void draw3DEmberling' app/src/main/cpp/forest_game.cpp
           grep -q 'void draw3DForestWarden' app/src/main/cpp/forest_game.cpp
@@ -106,7 +111,7 @@ jobs:
           grep -q '/v1/content/high/archive' server/src/server.mjs
           grep -q 'automaticExpansion' app/src/main/assets/asset_manifest.json
           grep -q 'deliveryType.set("fast-follow")' assetpack_forest/build.gradle.kts
-          grep -q 'beginAutomaticContentPreparation' app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt
+          grep -q 'showAssetPatchOverlay' app/src/main/java/com/darkvirgoyt/aethelgrand/MainActivity.kt
           grep -q 'showDownloadConfirmation' app/src/main/java/com/darkvirgoyt/aethelgrand/AssetPackCatalog.kt
           test -f app/src/main/cpp/mobs/mob_catalog.h
           test -f assetpack_core/build.gradle.kts
@@ -120,18 +125,28 @@ jobs:
           test -f assetpack_foliage_lods/build.gradle.kts
           test -f assetpack_terrain_lod/build.gradle.kts
           test -f assetpack_animation_sets/build.gradle.kts
-          python3 tools/validate_asset_budget.py
-          python3 tools/validate_runtime_content_package.py
-          python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject
-          python3 tools/test_graphics_tier_contract.py
-          python3 tools/test_startup_warmup.py --repo .
-          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py tools/build_private_content_manifest.py
-          python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null
-          python3 tools/test_production_foundation_contract.py
-          python3 tools/test_online_only_contract.py
-          python3 tools/test_persistent_multiplayer_contract.py
-          python3 tools/test_progressive_content_contract.py
-          python3 tools/test_full_content_build_contract.py
+          echo 'CHECK asset budget'
+          python3 tools/validate_asset_budget.py || { echo 'FAIL asset budget'; exit 1; }
+          echo 'CHECK runtime content package'
+          python3 tools/validate_runtime_content_package.py || { echo 'FAIL runtime content package'; exit 1; }
+          echo 'CHECK resource center'
+          python3 tools/test_resource_center.py --repo . --unreal-project Unreal/ForestSlice.uproject || { echo 'FAIL resource center'; exit 1; }
+          echo 'CHECK graphics tier contract'
+          python3 tools/test_graphics_tier_contract.py || { echo 'FAIL graphics tier contract'; exit 1; }
+          echo 'CHECK startup warmup'
+          python3 tools/test_startup_warmup.py --repo . || { echo 'FAIL startup warmup'; exit 1; }
+          echo 'CHECK Python syntax'
+          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py tools/build_private_content_manifest.py || { echo 'FAIL Python syntax'; exit 1; }
+          echo 'CHECK Unreal pack mapping JSON'
+          python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null || { echo 'FAIL Unreal pack mapping JSON'; exit 1; }
+          echo 'CHECK production foundation contract'
+          python3 tools/test_production_foundation_contract.py || { echo 'FAIL production foundation contract'; exit 1; }
+          echo 'CHECK online-only contract'
+          python3 tools/test_online_only_contract.py || { echo 'FAIL online-only contract'; exit 1; }
+          echo 'CHECK persistent multiplayer contract'
+          python3 tools/test_persistent_multiplayer_contract.py || { echo 'FAIL persistent multiplayer contract'; exit 1; }
+          echo 'CHECK progressive content contract'
+          python3 tools/test_progressive_content_contract.py || { echo 'FAIL progressive content contract'; exit 1; }
 
   native-tests:
     runs-on: ubuntu-latest
@@ -273,12 +288,23 @@ jobs:
           AETHELGARD_RELEASE_KEY_PASSWORD: ${{ secrets.AETHELGARD_RELEASE_KEY_PASSWORD }}
         run: |
           python3 tools/validate_asset_budget.py
-          # The standard CI artifact remains the small bootstrap unless a trusted
-          # cooked Unreal payload is supplied to the dedicated full-content script.
           gradle bundleRelease assembleRelease --stacktrace
           APK_PACKAGE="$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging app/build/outputs/apk/release/app-release.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
           test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > app/build/outputs/signing-certificate.txt
+
+      - name: Verify release APK identity and report payload sizes
+        run: |
+          AAPT_BIN="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          APK_PACKAGE="$($AAPT_BIN dump badging "$APK_PATH" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
+          test "$APK_PACKAGE" = "com.darkvirgoyt.aethelgrand"
+          test -s "$APK_PATH"
+          test -s "app/build/outputs/bundle/release/app-release.aab"
+          APK_BYTES=$(stat -c%s "$APK_PATH")
+          AAB_BYTES=$(stat -c%s "app/build/outputs/bundle/release/app-release.aab")
+          printf 'package=%s\\napk_bytes=%s\\naab_bytes=%s\\n' "$APK_PACKAGE" "$APK_BYTES" "$AAB_BYTES" > app/build/outputs/release-package-report.txt
+          cat app/build/outputs/release-package-report.txt
 
       - name: Build Play Asset Delivery local-testing APK set
         run: |
@@ -366,6 +392,12 @@ jobs:
           path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
+      - name: Upload release package report
+        uses: actions/upload-artifact@v4
+        with:
+          name: aethelgard-release-package-report
+          path: app/build/outputs/release-package-report.txt
+          if-no-files-found: error
       - name: Upload signing certificate fingerprint
         uses: actions/upload-artifact@v4
         with:

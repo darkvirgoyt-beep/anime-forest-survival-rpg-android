@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: aethelgard-api
+    name: aethelgard-api-v2
     runtime: docker
     region: singapore
     plan: free
@@ -26,7 +26,7 @@ services:
       - key: GAME_REFRESH_TOKEN_TTL_SECONDS
         value: "2592000"
       - key: ALLOWED_ORIGIN
-        value: https://aethelgard-api.onrender.com
+        value: https://aethelgard-api-v2.onrender.com
       - key: GOOGLE_GAME_SERVER_CLIENT_ID
         sync: false
       - key: GOOGLE_GAME_SERVER_CLIENT_SECRET

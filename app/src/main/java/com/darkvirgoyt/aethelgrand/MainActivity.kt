@@ -169,7 +169,6 @@ class MainActivity : Activity(), SensorEventListener {
         LoadingLore("TRAIL NOTE", "A gold-lit root path marks restoration. Violet light marks a memory that has not yet found its way home."),
         LoadingLore("WAYFARER'S BREATH", "Dodge with intent. Saving breath before a Warden strike matters more than winning a race through the undergrowth.")
     )
-    private val fullContentBuild = BuildConfig.FULL_CONTENT_BUILD
     private var resourcePreparationComplete = false
     private var pendingWorldEntry: (() -> Unit)? = null
     private lateinit var standaloneExpansionFile: StandaloneExpansionFile
@@ -205,7 +204,6 @@ class MainActivity : Activity(), SensorEventListener {
     private var networkOnline = false
     private var pingProbeInFlight = false
     private var latestPingMs: Int? = null
-    private var guestSignInAttempted = false
     private var googleLoginInFlight = false
     private var currentPlayerProfile: PlayerProfile? = null
     private lateinit var networkStatusLabel: TextView
@@ -322,9 +320,6 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(onboardingOverlay)
         setContentView(rootContainer)
         loadHeroineCharacterTexture()
-        // Bootstrap builds can enter immediately. Full-content builds must mount
-        // every real asset pack before the account/world flow can continue.
-        if (!fullContentBuild) markProductionContentReady()
         updateGyroButton()
         registerGyro()
         networkMonitor = NetworkConnectivityMonitor(this)
@@ -332,14 +327,14 @@ class MainActivity : Activity(), SensorEventListener {
         // the monitor can report immediately on a warm network.
         accountSession.initialize(this, ::applyAccountSnapshot)
         networkMonitor.start(::applyConnectivitySnapshot)
-        // Online services authenticate in the background; bundled gameplay does
-        // not wait for a large production archive or a server-side content gate.
         onboardingOverlay.visibility = View.VISIBLE
+        // The private high-end archive is a hard gate before Google sign-in and
+        // online world entry. No bundled or optional gameplay path exists.
+        showAssetPatchOverlay { beginOnlineStartup() }
         if (networkOnline) beginOnlineStartup()
     }
 
     private fun markProductionContentReady() {
-        if (fullContentBuild && (!::assetPacks.isInitialized || !assetPacks.productionContentReady(selectedResourceTier))) return
         if (resourcePreparationComplete) return
         resourcePreparationComplete = true
         markWorldLoadingTaskReady("content")
@@ -360,20 +355,17 @@ class MainActivity : Activity(), SensorEventListener {
     private fun beginOnlineStartup() {
         if (!networkOnline) {
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = if (fullContentBuild) {
-                    "CONNECTION RESTORING  •  FULL CONTENT REQUIRED"
-                } else {
-                    "CONNECTION RESTORING  •  BUNDLED WORLD READY"
-                }
+                onboardingStatus.text = "NETWORK REQUIRED  •  HIGH-END CONTENT AND ONLINE PLAY ARE LOCKED"
             }
             return
         }
-        if (fullContentBuild) {
-            beginAutomaticContentPreparation()
-        } else {
-            markProductionContentReady()
-            continuePendingWorldEntry()
+        if (!resourcePreparationComplete) {
+            if (::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "HIGH-END GRAPHICS DOWNLOAD REQUIRED BEFORE SIGN-IN"
+            }
+            return
         }
+        continuePendingWorldEntry()
         when (accountSession.snapshot.state) {
             SessionState.SIGNED_OUT, SessionState.NETWORK_ERROR -> {
                 if (::onboardingStatus.isInitialized) {
@@ -387,16 +379,6 @@ class MainActivity : Activity(), SensorEventListener {
         }
     }
 
-    private fun beginAutomaticContentPreparation() {
-        if (resourcePreparationComplete) return
-        if (!fullContentBuild) {
-            markProductionContentReady()
-            continuePendingWorldEntry()
-            return
-        }
-        showAssetPatchOverlay()
-    }
-
     private fun applyConnectivitySnapshot(snapshot: ConnectivitySnapshot) {
         networkOnline = snapshot.isOnline
         if (!networkOnline) {
@@ -408,7 +390,7 @@ class MainActivity : Activity(), SensorEventListener {
                 coOpStatusLabel.text = "CO-OP: RECONNECTING"
             }
             if (::onboardingStatus.isInitialized) {
-                onboardingStatus.text = "CONNECTION RESTORING  •  BUNDLED WORLD READY"
+                onboardingStatus.text = "NETWORK REQUIRED  •  HIGH-END CONTENT AND ONLINE PLAY ARE LOCKED"
             }
             return
         }
@@ -923,6 +905,15 @@ class MainActivity : Activity(), SensorEventListener {
             authenticationTransitionStarted = false
         }
         if (!networkOnline) return
+        if (snapshot.state == SessionState.AUTHENTICATED && snapshot.isGuest) {
+            authenticationTransitionStarted = false
+            accountSession.signOut()
+            if (::onboardingStatus.isInitialized) {
+                onboardingStatus.text = "GOOGLE SIGN-IN REQUIRED  •  TEMPORARY SESSIONS ARE NOT SUPPORTED"
+                onboardingStatus.setTextColor(Color.rgb(255, 180, 150))
+            }
+            return
+        }
         if (snapshot.state == SessionState.AUTHENTICATED && !authenticationTransitionStarted) {
             authenticationTransitionStarted = true
             val continueToCharacterSetup = {
@@ -2366,13 +2357,13 @@ class MainActivity : Activity(), SensorEventListener {
             alpha = 0.92f
         }
         val title = TextView(this).apply {
-            text = if (fullContentBuild) "REQUIRED ${resourceTier.name} FULL CONTENT" else "OPTIONAL ${resourceTier.name} VISUAL CONTENT"
+            text = "PREPARE ${resourceTier.name} GRAPHICS"
             textSize = 18f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(244, 218, 155))
         }
         val status = TextView(this).apply {
-            text = if (fullContentBuild) "REAL COOKED CONTENT REQUIRED BEFORE WORLD ENTRY" else "BUNDLED WORLD READY  •  EXTRA VISUALS DOWNLOAD IN BACKGROUND"
+            text = "HIGH-END GRAPHICS REQUIRED BEFORE SIGN-IN"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(205, 223, 220))
@@ -2392,11 +2383,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(12), 0, 0)
         }
         val note = TextView(this).apply {
-            text = if (fullContentBuild) {
-                "This build is configured as a complete-content release. All signed cooked packs must finish before the game enters the world."
-            } else {
-                "The bundled world starts immediately. Optional high-detail visuals can download later without interrupting play."
-            }
+            text = "The complete private high-end archive must be verified before Google sign-in and online world entry."
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(146, 168, 171))
@@ -2450,20 +2437,12 @@ class MainActivity : Activity(), SensorEventListener {
                 if (event.failed) {
                     if (!failureShown) {
                         failureShown = true
-                        if (fullContentBuild) {
-                            status.text = "FULL CONTENT BUILD BLOCKED"
-                            details.text = "A signed cooked asset pack could not be mounted. World entry remains locked until the complete content set is available."
-                            note.text = "Fix the delivery source or network, then retry. This build will not silently fall back to the 30 MB bootstrap."
-                            note.setTextColor(Color.rgb(255, 180, 150))
-                            retry.visibility = View.VISIBLE
-                        } else {
-                            status.text = "OPTIONAL VISUAL CONTENT UNAVAILABLE"
-                            details.text = "The bundled world is ready to play. High-detail visuals can be retried later from settings."
-                            note.text = "Online play and world entry continue without this optional download."
-                            note.setTextColor(Color.rgb(167, 214, 232))
-                            progress.progress = 100
-                            finishPreparation()
-                        }
+                        status.text = "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED"
+                        details.text = event.failedPack ?: "Private high-end content service could not start for this installation."
+                        note.text = "The complete high-end archive is required before sign-in and world entry. Check the private HTTPS service, then retry."
+                        note.setTextColor(Color.rgb(255, 188, 142))
+                        progress.progress = 0
+                        retry.visibility = View.VISIBLE
                     }
                 } else {
                     val downloaded = event.bytesDownloaded / (1024 * 1024)
@@ -2474,46 +2453,23 @@ class MainActivity : Activity(), SensorEventListener {
                             status.text = "${envelope.id.uppercase()} CONTENT READY"
                             details.text = "${resourceTier.storageLabel} mounted: ${envelope.textureLabel}, ${envelope.foliageDensity}% foliage, ${envelope.waterQuality}. Starting the game…"
                         }
-                        event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
-                            if (fullContentBuild) {
-                                status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
-                                    "WAITING FOR WI-FI  •  FULL CONTENT REQUIRED"
-                                } else {
-                                    "DOWNLOAD CONFIRMATION REQUIRED  •  FULL CONTENT REQUIRED"
-                                }
-                                details.text = "World entry is locked until all signed cooked packs finish downloading."
-                                note.text = "Accept the download and retry. The full-content build never substitutes the small bootstrap scene."
-                                note.setTextColor(Color.rgb(255, 205, 145))
-                                retry.visibility = View.VISIBLE
+                                                event.status == AssetPackStatus.WAITING_FOR_WIFI || event.status == AssetPackStatus.REQUIRES_USER_CONFIRMATION -> {
+                            status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
+                                "WAITING FOR WI-FI  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
                             } else {
-                                status.text = if (event.status == AssetPackStatus.WAITING_FOR_WIFI) {
-                                    "WAITING FOR WI-FI  •  BUNDLED WORLD READY"
-                                } else {
-                                    "OPTIONAL DOWNLOAD PAUSED  •  BUNDLED WORLD READY"
-                                }
-                                details.text = "Continue into the bundled world now. Optional visual content can be resumed later."
-                                finishPreparation()
+                                "CONFIRM LARGE DOWNLOAD  •  GAME LOCKED  •  DOWNLOAD READY TO RESUME"
                             }
+                            details.text = "The complete high-end archive is required before sign-in and gameplay. Connect to Wi-Fi or approve the download, then retry."
+                            retry.visibility = View.VISIBLE
+
                         }
                         event.status == AssetPackStatus.CANCELED -> {
-                            if (fullContentBuild) {
-                                status.text = "FULL CONTENT DOWNLOAD CANCELED"
-                                details.text = "World entry remains locked until the complete cooked content set is downloaded."
-                                note.text = "Retry the full-content preparation to continue."
-                                note.setTextColor(Color.rgb(255, 180, 150))
-                                retry.visibility = View.VISIBLE
-                            } else {
-                                status.text = "OPTIONAL DOWNLOAD CANCELED  •  BUNDLED WORLD READY"
-                                details.text = "The bundled world continues without the optional visual download."
-                                finishPreparation()
-                            }
+                            status.text = "DOWNLOAD CANCELED  •  GAME LOCKED"
+                            details.text = "The complete high-end archive is required before sign-in and gameplay. Press retry to resume."
+                            retry.visibility = View.VISIBLE
                         }
                         else -> {
-                            status.text = if (fullContentBuild) {
-                                "MOUNTING ${resourceTier.name} FULL CONTENT  •  ${event.percent}%"
-                            } else {
-                                "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
-                            }
+                            status.text = "COMPILING ${resourceTier.name} GRAPHICS  •  ${event.percent}%"
                             details.text = if (total > 0) "$downloaded MB / $total MB downloaded  •  compiled graphics, world sectors, shaders, and gameplay resources" else "Preparing the selected ${resourceTier.storageLabel} package of compiled graphics, world sectors, shaders, and gameplay resources…"
                         }
                     }

@@ -26,10 +26,10 @@ def main() -> None:
 
     packs = manifest["resourceTiers"][0]["packs"]
     require(len(packs) == 18, "high tier must declare all 18 physical packs")
-    require("FULL_CONTENT_BUILD" in app_gradle and "fullContent" in app_gradle, "Gradle must expose the full-content build flag")
-    require("fullContentPackNamesFor" in plan and "BuildConfig.FULL_CONTENT_BUILD" in plan, "content plan must select all packs in full mode")
-    require("fullContentPackNamesFor" in catalog and "expectedPacks.isNotEmpty()" in catalog, "runtime readiness must not succeed on an empty pack list")
-    require("FULL CONTENT REQUIRED" in activity and "FULL CONTENT BUILD BLOCKED" in activity, "full mode must lock entry on unavailable content")
+    require("assetPacks += listOf" in app_gradle and "assetpack_animation_sets" in app_gradle, "Gradle must include the complete physical pack set")
+    require('requiredBeforeStart: Boolean = true' in plan and 'requiredPackNames' in plan, "content plan must require the complete pack set")
+    require("expectedPacks.isNotEmpty()" in catalog and "expectedPacks.all(::isReady)" in catalog, "runtime readiness must not succeed on an empty pack list")
+    require("GAME LOCKED" in activity and "HIGH-END CONTENT" in activity, "startup must lock entry on unavailable content")
     require("sync_gradle_asset_packs" in staging and "--gradle-root" in staging, "staging must populate Gradle asset-pack modules")
     require(build_script_path.is_file() and build_script_path.stat().st_mode & 0o111, "full-content build script must be executable")
     require("--require-nonempty" in validator and "--require-target" in build_script, "full builds must reject empty or undersized packs")

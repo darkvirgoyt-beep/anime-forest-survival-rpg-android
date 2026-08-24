@@ -47,13 +47,9 @@ class AssetPackCatalog(context: Context) {
     )
 
     companion object {
-        /** The full-content build requests every physical pack; bootstrap builds request only their required subset. */
+        /** The online world requires every declared high-end pack before entry. */
         val productionPackNames: List<String>
-            get() = if (BuildConfig.FULL_CONTENT_BUILD) {
-                ContentDownloadPlan.fullContentPackNamesFor(ContentDownloadPlan.ResourceTier.HIGH)
-            } else {
-                ContentDownloadPlan.requiredPackNames
-            }
+            get() = ContentDownloadPlan.requiredPackNames
     }
 
     private val appContext = context.applicationContext
@@ -143,17 +139,8 @@ class AssetPackCatalog(context: Context) {
             }
             return
         }
-        val requestedPackNames = if (BuildConfig.FULL_CONTENT_BUILD) {
-            ContentDownloadPlan.fullContentPackNamesFor(tier)
-        } else {
-            ContentDownloadPlan.startupPackNamesFor(tier)
-        }
-        val requestedMiB = if (BuildConfig.FULL_CONTENT_BUILD) {
-            ContentDownloadPlan.totalMiBFor(tier)
-        } else {
-            ContentDownloadPlan.startupMiBFor(tier)
-        }
-        requestPackSet(requestedPackNames, requestedMiB, onProgress)
+        val requestedPackNames = ContentDownloadPlan.startupPackNamesFor(tier)
+        requestPackSet(requestedPackNames, ContentDownloadPlan.startupMiBFor(tier), onProgress)
     }
 
     /** Requests the immutable pack group associated with a newly discovered sector. */
@@ -308,11 +295,7 @@ class AssetPackCatalog(context: Context) {
 
     fun productionContentReady(tier: ContentDownloadPlan.ResourceTier): Boolean {
         if (standaloneExpansionFile.inspect().ready) return true
-        val expectedPacks = if (BuildConfig.FULL_CONTENT_BUILD) {
-            ContentDownloadPlan.fullContentPackNamesFor(tier)
-        } else {
-            ContentDownloadPlan.startupPackNamesFor(tier)
-        }
+        val expectedPacks = ContentDownloadPlan.startupPackNamesFor(tier)
         return expectedPacks.isNotEmpty() && expectedPacks.all(::isReady)
     }
 

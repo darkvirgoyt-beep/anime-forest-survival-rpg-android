@@ -9,7 +9,7 @@ Aethelgard starts from a **bundled playable world**. The player may enter the wo
 | Verification | Exact byte count and SHA-256 match the private manifest for the installed APK version | The archive mounts atomically after verification |
 | Failure or pause | Missing service, wrong version, network/storage issue, or checksum mismatch | The bundled world stays playable and the optional download can be retried later |
 
-The one-gibibyte plan is a **content target, not padding**. Every binary shipped into the archive must have its source file and a license or ownership receipt recorded in `assets/runtime_content/receipts.json`. `tools/validate_runtime_content_package.py --require-authored-payload` refuses a release package until the licensed authored payload reaches the 1,024 MiB target.
+The high-end plan is a **content target, not padding**. Every binary shipped into the archive must have its source file and a license or ownership receipt recorded in `assets/runtime_content/receipts.json`. `tools/validate_runtime_content_package.py --require-authored-payload` refuses a release package until the licensed authored payload reaches the 1,024 MiB target.
 
 The private archive uses cooked Unreal `.pak`/`.ucas`/`.utoc` output, platform-qualified textures, compiled shader libraries, original meshes, rigs, animation, audio, and signed release metadata. Reference images and screenshots are not runtime content.
 

@@ -56,7 +56,7 @@ AETHELGARD_COOKED_ROOT=/absolute/path/to/Saved/StagedBuilds/Android/ForestSlice/
   ./tools/build_full_content.sh
 ```
 
-The script stages all eighteen mapped packs into their Gradle modules, rejects empty packs and undersized authored content, runs `clean bundleRelease assembleRelease -PfullContent=true`, and creates/verifies the matching OBB when Android `aapt` is available. It never creates filler data. If Unreal is installed locally, `AETHELGARD_RUN_UAT=1 UE_ROOT=/path/to/Unreal ./tools/build_full_content.sh` can run the cook before staging. The current checkout does not contain the required cooked Unreal payload, so this command is expected to stop at the missing-cook check until that external build output exists.
+The script stages all eighteen mapped packs into their Gradle modules, rejects empty packs and undersized authored content, runs `clean bundleRelease assembleRelease`, and creates/verifies the matching OBB when Android `aapt` is available. It never creates filler data. If Unreal is installed locally, `AETHELGARD_RUN_UAT=1 UE_ROOT=/path/to/Unreal ./tools/build_full_content.sh` can run the cook before staging. The current checkout does not contain the required cooked Unreal payload, so this command is expected to stop at the missing-cook check until that external build output exists.
 
 ## Controls
 

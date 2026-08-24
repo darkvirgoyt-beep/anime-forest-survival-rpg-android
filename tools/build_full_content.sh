@@ -45,7 +45,7 @@ python3 "$ROOT/tools/validate_asset_budget.py" \
   --require-nonempty \
   --require-target
 
-"$GRADLE_BIN" clean bundleRelease assembleRelease -PfullContent=true --stacktrace
+"$GRADLE_BIN" clean bundleRelease assembleRelease --stacktrace
 
 if [[ -n "${ANDROID_HOME:-}" && -x "$ANDROID_HOME/build-tools/35.0.0/aapt" ]]; then
   APK_PATH="$ROOT/app/build/outputs/apk/release/app-release.apk"

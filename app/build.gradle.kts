@@ -18,14 +18,6 @@ android {
         buildConfig = true
     }
 
-    // The default build is the small online bootstrap. A full-content build is
-    // opt-in and must be paired with real cooked asset-pack payloads.
-    val fullContentBuild = providers.gradleProperty("fullContent")
-        .map { it.equals("true", ignoreCase = true) }
-        .orElse(false)
-    buildTypes.configureEach {
-        buildConfigField("boolean", "FULL_CONTENT_BUILD", fullContentBuild.get().toString())
-    }
 
     defaultConfig {
         applicationId = "com.darkvirgoyt.aethelgrand"

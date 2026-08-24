@@ -18,9 +18,9 @@ A direct APK is not the complete Play Asset Delivery product. For a real large b
 
 ## Changes made
 
-The Android build now exposes an explicit `-PfullContent=true` mode. In this mode, the runtime selects all eighteen packs, requests them as a complete set, rejects an empty readiness set, and keeps world entry locked when real content is unavailable, canceled, or waiting for confirmation. The default build remains a small bootstrap so development can continue without the external cook.
+The Android branch now enforces the complete high-end content gate before online sign-in and world entry. The runtime selects all eighteen packs, requests them as a complete set, rejects an empty readiness set, and keeps world entry locked when real content is unavailable, canceled, or waiting for confirmation. The direct base APK can still remain small because Play Asset Delivery packs are separate AAB splits; the content gate prevents a small bootstrap from being misreported as the complete game.
 
-The new executable `tools/build_full_content.sh` is the complete rebuild rule. It can run a real Unreal Android cook when `AETHELGARD_RUN_UAT=1` and `UE_ROOT` are provided, or consume an existing trusted cook through `AETHELGARD_COOKED_ROOT`. It stages every mapped `pakchunk0`–`pakchunk17`, copies each pack into its Gradle module, rejects empty or undersized authored packs, runs `clean bundleRelease assembleRelease -PfullContent=true`, and creates/verifies the matching OBB when Android `aapt` is available.
+The new executable `tools/build_full_content.sh` is the complete rebuild rule. It can run a real Unreal Android cook when `AETHELGARD_RUN_UAT=1` and `UE_ROOT` are provided, or consume an existing trusted cook through `AETHELGARD_COOKED_ROOT`. It stages every mapped `pakchunk0`–`pakchunk17`, copies each pack into its Gradle module, rejects empty or undersized authored packs, runs `clean bundleRelease assembleRelease`, and creates/verifies the matching OBB when Android `aapt` is available.
 
 The staging tool now accepts `--gradle-root`, allowing the same cooked files to populate the AAB asset-pack modules and the private OBB staging tree. CI also runs `tools/test_full_content_build_contract.py`, which protects the full-content selection, fail-closed startup, staging, and validation rules from regression.
 

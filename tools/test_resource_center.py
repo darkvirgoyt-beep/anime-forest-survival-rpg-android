@@ -50,7 +50,7 @@ class PackState:
 class ResourceCenterModel:
     """Small mirror of the aggregate state exposed by AssetPackCatalog."""
 
-    def __init__(self, packs: tuple[str, ...] = PACKS, envelope_total: int = 1024 * 1024 * 1024) -> None:
+    def __init__(self, packs: tuple[str, ...] = PACKS, envelope_total: int = 6750 * 1024 * 1024) -> None:
         self.states = {name: PackState() for name in packs}
         self.envelope_total = envelope_total
         self.retry_count = 0
@@ -97,8 +97,8 @@ def assert_source_contract(repo: Path) -> None:
     manifest = json.loads((repo / "app/src/main/assets/asset_manifest.json").read_text())
     cpp = (repo / "app/src/main/cpp/controller/third_person_controller.cpp").read_text()
     required = (
-        ("optional visual-content title", "OPTIONAL ${resourceTier.name} VISUAL CONTENT", main),
-        ("bundled world fallback", "BUNDLED WORLD READY", main),
+        ("high-end preparation title", "PREPARE ${resourceTier.name} GRAPHICS", main),
+        ("locked failure state", "GRAPHICS DOWNLOAD FAILED  •  GAME LOCKED", main),
         ("high-end content description", "resourceTier.description", main),
         ("tier-aware production request", "requestProductionContent(resourceTier)", main),
         ("tier pack selection", "startupPackNamesFor(tier)", catalog),
@@ -111,17 +111,17 @@ def assert_source_contract(repo: Path) -> None:
         ("all packs in app bundle", ":assetpack_animation_sets", app_build),
         ("progress bar", "progress.progress = event.percent", main),
         ("retry control", "RETRY ASSET PREPARATION", main),
-        ("one-gib optional plan", "full3dTargetMiB", json.dumps(manifest)),
+        ("6.6 GB high-end plan", "full3dTargetMiB", json.dumps(manifest)),
         ("wide pitch clamp", "1.52f", cpp),
     )
     missing = [label for label, needle, haystack in required if needle not in haystack]
     if missing:
         raise AssertionError("missing source contract: " + ", ".join(missing))
-    if manifest.get("contentDelivery", {}).get("full3dTargetMiB") != 1024:
-        raise AssertionError("manifest target must remain 1024 MiB")
+    if manifest.get("contentDelivery", {}).get("full3dTargetMiB") != 6750:
+        raise AssertionError("manifest target must remain 6750 MiB")
     tiers = {item.get("id"): item for item in manifest.get("resourceTiers", [])}
-    if set(tiers) != {"high"} or tiers["high"].get("targetMiB") != 1024:
-        raise AssertionError("manifest must declare only the 1024 MiB optional tier")
+    if set(tiers) != {"high"} or tiers["high"].get("targetMiB") != 6750:
+        raise AssertionError("manifest must declare only the 6750 MiB high-end tier")
     if set(tiers["high"].get("packs", [])) != set(PACKS):
         raise AssertionError("high-end pack set is inconsistent")
     if manifest.get("contentDelivery", {}).get("mode") != "private-https-archive":
