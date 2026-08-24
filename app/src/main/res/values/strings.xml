@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AETHELGRAD</string>
+    <string name="app_name">AETHELGARD: Wild Horizons</string>
     <string name="audio_settings_title">Audio Settings</string>
     <string name="music_volume">Music Volume</string>
     <string name="effects_volume">Effects Volume</string>

@@ -90,6 +90,7 @@ def main() -> None:
             ("Manifest", "Version"): "1",
             ("Identity", "AndroidPackage"): "com.darvirgoyt.aethelgrad",
             ("Identity", "JniPrefix"): "Java_com_darvirgoyt_aethelgrad_",
+            ("Identity", "LauncherLabel"): "AETHELGARD: Wild Horizons",
             ("Platform", "MinSdk"): "30",
             ("Online", "Mode"): "online-only",
             ("Online", "GameAuthBase"): "https://aethelservs-g7pzbnwp.manus.space/api/game-auth",
@@ -106,6 +107,7 @@ def main() -> None:
         source_checks = (
             ("app/build.gradle.kts", expected_lock[("Identity", "AndroidPackage")]),
             ("app/build.gradle.kts", "minSdk = " + expected_lock[("Platform", "MinSdk")]),
+            ("app/src/main/res/values/strings.xml", f">{expected_lock[("Identity", "LauncherLabel")]}</string>"),
             ("app/src/main/cpp/forest_game.cpp", expected_lock[("Identity", "JniPrefix")]),
             ("app/src/main/res/values/strings.xml", game_auth_base),
             ("app/src/main/res/values/strings.xml", game_auth_base + expected_lock[("Online", "GameAuthExchange")]),
