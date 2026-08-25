@@ -166,6 +166,15 @@ def assert_source_contract(repo: Path) -> None:
         raise AssertionError("cinematic asset-pack state must not claim a cooked payload before publication")
     if "High-end sector packs, including cinematics, are unavailable" not in catalog:
         raise AssertionError("high-tier sectors must be gated before any unpublished cinematic pack request")
+    dungeon_pack = next(pack for pack in manifest.get("packs", []) if pack.get("name") == "assetpack_dungeons")
+    dungeon_state = json.loads((repo / "assetpack_dungeons/DUNGEON_PACK_STATE.json").read_text())
+    if dungeon_pack.get("published") is not False or dungeon_pack.get("measuredBytes") != 0:
+        raise AssertionError("dungeon pack must remain unpublished with zero measured bytes until real cooked maps exist")
+    if dungeon_state.get("published") is not False or dungeon_state.get("measuredPayloadBytes") != 0:
+        raise AssertionError("dungeon asset-pack state must not claim a cooked payload before publication")
+    dungeon_verification = dungeon_state.get("verification", {})
+    if dungeon_verification.get("assetBudgetReportsExactBytes") is not True or dungeon_verification.get("highTierPublicationRequired") is not True:
+        raise AssertionError("dungeon asset-pack state must retain its exact-byte and publication verification")
 
 
 def test_initial_state() -> None:

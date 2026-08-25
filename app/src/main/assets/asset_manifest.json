@@ -78,7 +78,7 @@
     {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": false, "contents": "music, ambience, combat sounds, wildlife and high-quality mixes"},
     {"name": "assetpack_cinematics", "delivery": "on-demand", "targetMiB": 450, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original story scenes, sequences and camera animation data; no cooked cinematic payload is published"},
     {"name": "assetpack_hd_textures", "delivery": "on-demand", "targetMiB": 500, "requiredBeforeStart": false, "contents": "PBR textures, virtual-texture pages and decals"},
-    {"name": "assetpack_dungeons", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "dungeon cells, props, traps, encounter data and lighting data", "expansionTrigger": "reach_root_dungeon_gate"},
+    {"name": "assetpack_dungeons", "delivery": "on-demand", "targetMiB": 400, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original dungeon cells, props, traps, encounter data and lighting data; no cooked dungeon payload is published", "expansionTrigger": "reach_root_dungeon_gate"},
     {"name": "assetpack_vfx", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": false, "contents": "weather, impact and river visual effects"},
     {"name": "assetpack_voice", "delivery": "on-demand", "targetMiB": 250, "requiredBeforeStart": false, "contents": "dialogue, localization voice banks and subtitle metadata"},
     {"name": "assetpack_shaders_vulkan", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": false, "contents": "compiled Vulkan shader libraries and pipeline-state resources"},
