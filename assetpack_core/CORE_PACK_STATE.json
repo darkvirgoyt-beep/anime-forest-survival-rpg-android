@@ -1,0 +1,13 @@
+{
+  "packName": "assetpack_core",
+  "delivery": "install-time",
+  "published": true,
+  "measuredPayloadBytes": 254,
+  "plannedBudgetMiB": 96,
+  "content": "AETHELGRAD forest launch-slice contract metadata only",
+  "notIncluded": [
+    "cooked Unreal pak",
+    "deferred high-end Unreal cooked archive",
+    "future biomes"
+  ]
+}

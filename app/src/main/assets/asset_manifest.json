@@ -62,6 +62,7 @@
     }
   ],
   "packs": [
+    {"name": "assetpack_core", "delivery": "install-time", "targetMiB": 96, "measuredBytes": 254, "published": true, "requiredBeforeStart": true, "contents": "AETHELGRAD forest launch-slice contract metadata only; no cooked Unreal payload or future biome data"},
     {"name": "assetpack_graphics_base", "delivery": "on-demand", "targetMiB": 450, "requiredBeforeStart": true, "contents": "compiled materials, base shaders, shared meshes and mobile render resources"},
     {"name": "assetpack_forest", "delivery": "fast-follow", "targetMiB": 350, "requiredBeforeStart": true, "contents": "forest launch region, village, foliage, water, collision and navigation"},
     {"name": "assetpack_sand", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "sand biome terrain, settlements, rocks, foliage and weather", "expansionTrigger": "discover_sand_frontier"},
