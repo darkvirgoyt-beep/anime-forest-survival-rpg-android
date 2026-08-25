@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the reference-inspired Android HUD layout and gameplay bindings."""
+"""Validate the original compact Android HUD layout and gameplay bindings."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,7 +19,7 @@ def main() -> None:
     views = VIEWS.read_text(encoding="utf-8")
 
     for needle in (
-        "private fun circularControlButton",
+        "private fun compactControlButton",
         "private fun quickSlotBackground",
         "val quickSlots = LinearLayout(this)",
         "slotSymbols = listOf",
@@ -27,12 +27,12 @@ def main() -> None:
         "TOWER",
         "TELEPORT",
         "MENU",
-        'circularControlButton("⚔", "ATTACK")',
-        'circularControlButton("↟", "JUMP")',
-        'circularControlButton("◆", "DODGE")',
-        'circularControlButton("♞", "SPRINT")',
-        'circularControlButton("✧", "GATHER")',
-        'circularControlButton("⌂", "CRAFT")',
+        'compactControlButton("⚔", "ATTACK")',
+        'compactControlButton("↟", "JUMP")',
+        'compactControlButton("◆", "DODGE")',
+        'compactControlButton("♞", "SPRINT")',
+        'compactControlButton("✧", "GATHER")',
+        'compactControlButton("⌂", "CRAFT")',
         'NativeGameBridge.setSprintHeld(true)',
         'NativeGameBridge.setSprintHeld(false)',
         'submitAuthoritativeCombat("attack")',
@@ -48,8 +48,9 @@ def main() -> None:
     ):
         require(needle in main, f"missing HUD marker: {needle}")
 
-    require('text = "$symbol\\n$label"' in main, "circular buttons must have two-line symbol labels")
+    require('text = "$symbol\\n$label"' in main, "compact buttons must have two-line symbol labels")
     require('text = "${index + 1}\\n$symbol"' in main, "quick slots must have numbered labels")
+    require('jump.setOnTouchListener' in main and 'MotionEvent.ACTION_DOWN' in main, "jump must dispatch on touch-down instead of waiting for click release")
     require("nextHunger: Int = 100" in views, "vital meter must support hunger")
     require('drawMeter(canvas, "HP"' in views, "health bar missing")
     require('drawMeter(canvas, "STA"' in views, "stamina bar missing")
@@ -57,7 +58,7 @@ def main() -> None:
     require("onMove(x, y)" in main or "setMove(x, y)" in main, "joystick movement binding missing")
     require("LookPadView" in main, "look pad must remain present for camera control")
     print("HUD_CONTRACT_PASS=1")
-    print("CIRCULAR_ACTIONS=enabled")
+    print("COMPACT_GROUPED_ACTIONS=enabled")
     print("QUICK_SLOTS=8")
     print("SURVIVAL_BARS=health,stamina,hunger")
     print("PLAYER_AND_GAMEPLAY_BINDINGS=preserved")

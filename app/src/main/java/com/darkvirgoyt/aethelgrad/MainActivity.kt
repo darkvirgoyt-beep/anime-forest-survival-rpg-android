@@ -2540,7 +2540,9 @@ class MainActivity : Activity(), SensorEventListener {
             topMargin = dp(136)
             leftMargin = dp(18)
         })
-        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(62), dp(62), Gravity.CENTER))
+        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER).apply {
+            leftMargin = dp(46)
+        })
         overlay.addView(questLabel, FrameLayout.LayoutParams(dp(370), dp(48), Gravity.TOP or Gravity.START).apply {
             topMargin = dp(72)
             leftMargin = dp(16)
@@ -2685,12 +2687,12 @@ class MainActivity : Activity(), SensorEventListener {
             rightMargin = dp(154)
         })
 
-        val actions = LinearLayout(this).apply {
+        val combatActions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.END
-            setPadding(dp(3), dp(3), dp(3), dp(3))
+            setPadding(dp(2), dp(2), dp(2), dp(2))
         }
-        val sprintSlide = circularControlButton("♞", "SPRINT") { }
+        val sprintSlide = compactControlButton("♞", "SPRINT") { }
         sprintSlide.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> gameView.queueEvent { NativeGameBridge.setSprintHeld(true) }
@@ -2699,43 +2701,67 @@ class MainActivity : Activity(), SensorEventListener {
             }
             true
         }
-        val attack = circularControlButton("⚔", "ATTACK") { submitAuthoritativeCombat("attack") }
-        val heavy = circularControlButton("✦", "HEAVY") { submitAuthoritativeCombat("heavy_attack") }
-        val jump = circularControlButton("↟", "JUMP") { audio.playEffect("ui"); gameView.queueEvent { NativeGameBridge.jump() } }
-        val dodge = circularControlButton("◆", "DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
-        val gather = circularControlButton("✧", "GATHER") { submitAuthoritativeInventory("gather") }
-        val craft = circularControlButton("⌂", "CRAFT") { submitAuthoritativeInventory("craft") }
-        val companion = circularControlButton("✦", "COMMAND") {
+        val attack = compactControlButton("⚔", "ATTACK") { submitAuthoritativeCombat("attack") }
+        val heavy = compactControlButton("✦", "HEAVY") { submitAuthoritativeCombat("heavy_attack") }
+        val jump = compactControlButton("↟", "JUMP") { }
+        jump.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    audio.playEffect("ui")
+                    gameView.queueEvent { NativeGameBridge.jump() }
+                    view.isPressed = true
+                }
+                MotionEvent.ACTION_UP -> {
+                    view.isPressed = false
+                    view.performClick()
+                }
+                MotionEvent.ACTION_CANCEL -> view.isPressed = false
+            }
+            true
+        }
+        val dodge = compactControlButton("◆", "DODGE") { audio.playEffect("slide"); gameView.queueEvent { NativeGameBridge.dodge() } }
+        val gather = compactControlButton("✧", "GATHER") { submitAuthoritativeInventory("gather") }
+        val craft = compactControlButton("⌂", "CRAFT") { submitAuthoritativeInventory("craft") }
+        val companion = compactControlButton("✦", "COMMAND") {
             audio.playEffect("ui")
             submitAuthoritativeCompanionCommand()
         }
-        val capture = circularControlButton("◎", "TAME") {
+        val capture = compactControlButton("◎", "TAME") {
             audio.playEffect("ui")
             submitAuthoritativeCapture()
         }
         capture.contentDescription = "TAME ANIMAL"
-        val camp = circularControlButton("⌂", "CAMP") {
+        val camp = compactControlButton("⌂", "CAMP") {
             audio.playEffect("craft")
             submitAuthoritativeCamp()
         }
-        fun controlRow(vararg controls: View): LinearLayout = LinearLayout(this).apply {
+        fun compactRow(vararg controls: View): LinearLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
             controls.forEach { control ->
-                addView(control, LinearLayout.LayoutParams(dp(72), dp(72)).apply {
+                addView(control, LinearLayout.LayoutParams(dp(58), dp(52)).apply {
                     leftMargin = dp(3)
                     rightMargin = dp(3)
                 })
             }
         }
-        fun rowParams(): LinearLayout.LayoutParams = LinearLayout.LayoutParams(-1, dp(78)).apply { bottomMargin = dp(3) }
-        actions.addView(controlRow(sprintSlide, attack), rowParams())
-        actions.addView(controlRow(jump, dodge, heavy), rowParams())
-        actions.addView(controlRow(craft, gather, companion), rowParams())
-        actions.addView(controlRow(capture, camp), LinearLayout.LayoutParams(-1, dp(78)))
-        overlay.addView(actions, FrameLayout.LayoutParams(dp(252), -2, Gravity.BOTTOM or Gravity.END).apply {
-            rightMargin = dp(8)
-            bottomMargin = dp(12)
+        fun compactRowParams(): LinearLayout.LayoutParams = LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(4) }
+        combatActions.addView(compactRow(attack, heavy), compactRowParams())
+        combatActions.addView(compactRow(jump, dodge, sprintSlide), compactRowParams())
+        overlay.addView(combatActions, FrameLayout.LayoutParams(dp(194), -2, Gravity.BOTTOM or Gravity.END).apply {
+            rightMargin = dp(14)
+            bottomMargin = dp(86)
+        })
+        val utilityActions = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+            setPadding(dp(2), dp(2), dp(2), dp(2))
+        }
+        listOf(gather, craft, companion, capture, camp).forEach { control ->
+            utilityActions.addView(control, LinearLayout.LayoutParams(dp(58), dp(50)).apply { bottomMargin = dp(4) })
+        }
+        overlay.addView(utilityActions, FrameLayout.LayoutParams(dp(62), -2, Gravity.CENTER_VERTICAL or Gravity.END).apply {
+            rightMargin = dp(14)
         })
 
         val quickSlots = LinearLayout(this).apply {
@@ -3488,6 +3514,40 @@ class MainActivity : Activity(), SensorEventListener {
         elevation = dp(3).toFloat()
     }
 
+    private fun compactControlButton(symbol: String, label: String, onClick: () -> Unit): Button = Button(this).apply {
+        text = "$symbol\n$label"
+        textSize = 9f
+        gravity = Gravity.CENTER
+        isAllCaps = false
+        minHeight = 0
+        minimumHeight = 0
+        minWidth = 0
+        minimumWidth = 0
+        includeFontPadding = false
+        setPadding(dp(3), dp(3), dp(3), dp(2))
+        setTextColor(Color.rgb(249, 239, 211))
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        contentDescription = label
+        setOnClickListener { onClick() }
+        background = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(193, 137, 71), Color.rgb(113, 61, 47))
+            ).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(2), Color.rgb(255, 235, 165))
+            })
+            addState(intArrayOf(), GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(236, 26, 50, 57), Color.argb(230, 8, 20, 27))
+            ).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.argb(210, 202, 170, 102))
+            })
+        }
+        elevation = dp(2).toFloat()
+    }
+
     private fun gameplayButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
         text = label
         textSize = 11f
@@ -3887,7 +3947,7 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         alpha = 0.94f
         // A bottom movement zone allows the player to touch anywhere under the
         // left thumb instead of forcing a fixed stick position.
-        layoutParams = FrameLayout.LayoutParams(-1, dp(290), Gravity.BOTTOM or Gravity.START)
+        layoutParams = FrameLayout.LayoutParams(-1, dp(220), Gravity.BOTTOM or Gravity.START)
         isClickable = true
     }
 
@@ -3900,7 +3960,7 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         baseY = height * 0.57f
         knobX = baseX
         knobY = baseY
-        radius = (width.coerceAtMost(dp(360)) * 0.115f).coerceAtLeast(dp(62).toFloat())
+        radius = (width.coerceAtMost(dp(360)) * 0.095f).coerceAtLeast(dp(50).toFloat())
     }
 
     override fun onDraw(canvas: android.graphics.Canvas) {

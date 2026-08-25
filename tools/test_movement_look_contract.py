@@ -31,6 +31,10 @@ def main() -> None:
     require("velocity.x += (targetX - velocity.x) * response" in physics, "horizontal movement must use smooth acceleration")
     require("velocity.y += (targetY - velocity.y) * response" in physics, "depth movement must use smooth acceleration")
     require("cameraRelative" in controller and "input.moveX * cosYaw" in controller, "movement must be camera-relative")
+    require("const bool pursuing = !mobProfile.tameable && distance < 0.34f" in game, "only nearby hostile creatures may pursue the player")
+    require("mob.spawn.x + std::cos(phase)" in game, "non-engaged creatures must use deterministic home wandering")
+    require("if (gJumpBufferSeconds > 0.0f)" in game and "if (gController.jump()) gJumpBufferSeconds = 0.0f" in game, "jump must use a buffered native request")
+    require(game.index("if (gJumpBufferSeconds > 0.0f)") < game.index("gController.tick(input"), "buffered jump must be evaluated before movement simulation")
     require("activePointerId" in main and "findPointerIndex(activePointerId)" in main, "look pad must track one touch pointer")
     require("ACTION_POINTER_UP" in main and "ACTION_CANCEL" in main, "touch cancellation must be handled")
 

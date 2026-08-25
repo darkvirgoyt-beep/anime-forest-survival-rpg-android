@@ -2181,7 +2181,8 @@ void drawForestWarden(float x, float y, float scale, bool combatTarget) {
 
 
 void updateMobs(float deltaSeconds) {
-    for (MobState& mob : gMobs) {
+    for (int index = 0; index < forest::mobs::kProfileCount; ++index) {
+        MobState& mob = gMobs[index];
         const forest::mobs::MobProfile& mobProfile = forest::mobs::profile(mob.type);
         mob.hitFlash = std::max(0.0f, mob.hitFlash - deltaSeconds);
         mob.attackCooldown = std::max(0.0f, mob.attackCooldown - deltaSeconds);
@@ -2191,13 +2192,22 @@ void updateMobs(float deltaSeconds) {
         const float dx = gPlayerX - mob.position.x;
         const float dy = gPlayerY - mob.position.y;
         const float distance = std::sqrt(dx * dx + dy * dy);
-        if (distance > mobProfile.attackRange * 0.82f && distance > 0.001f) {
-            const float travel = mobProfile.moveSpeed * deltaSeconds;
-            mob.position.x += dx / distance * travel;
-            mob.position.y += dy / distance * travel;
+        const bool pursuing = !mobProfile.tameable && distance < 0.34f;
+        const float phase = gTime * (0.34f + 0.018f * index) + 0.91f * index;
+        const forest::physics::Vec2 target = pursuing
+            ? forest::physics::Vec2{gPlayerX, gPlayerY}
+            : forest::physics::Vec2{mob.spawn.x + std::cos(phase) * 0.055f, mob.spawn.y + std::sin(phase * 0.82f) * 0.040f};
+        const float targetX = target.x - mob.position.x;
+        const float targetY = target.y - mob.position.y;
+        const float targetDistance = std::sqrt(targetX * targetX + targetY * targetY);
+        const float stopDistance = pursuing ? mobProfile.attackRange * 0.82f : 0.006f;
+        if (targetDistance > stopDistance) {
+            const float travel = mobProfile.moveSpeed * deltaSeconds * (pursuing ? 1.0f : 0.32f);
+            mob.position.x += targetX / targetDistance * travel;
+            mob.position.y += targetY / targetDistance * travel;
             mob.position.x = std::clamp(mob.position.x, kSimulationMinX + 0.03f, kSimulationMaxX - 0.03f);
             mob.position.y = std::clamp(mob.position.y, kSimulationMinY + 0.03f, kSimulationMaxY - 0.03f);
-        } else if (!gAuthoritativeOnline && distance <= mobProfile.attackRange && mob.attackCooldown <= 0.0f) {
+        } else if (pursuing && !gAuthoritativeOnline && distance <= mobProfile.attackRange && mob.attackCooldown <= 0.0f) {
             gController.health = std::max(0.0f, gController.health - mobProfile.attackDamage / 100.0f);
             mob.attackCooldown = mobProfile.attackCooldown;
             gQuestPulse = std::max(gQuestPulse, 12);
@@ -2251,12 +2261,15 @@ void simulatePhysicsStep() {
     // plane. Do not mirror them here: the thumb direction must match traversal
     // direction on screen, while CharacterBody applies smooth acceleration.
     const forest::controller::InputFrame input{gMoveX, gMoveY, gController.camera.yaw, gSprintHeld};
+    if (gJumpBufferSeconds > 0.0f) {
+        gJumpBufferSeconds = std::max(0.0f, gJumpBufferSeconds - kPhysicsStep);
+        if (gController.jump()) gJumpBufferSeconds = 0.0f;
+    }
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
     updateMobs(kPhysicsStep);
     gCombat.tick(kPhysicsStep);
     if (gJumpBufferSeconds > 0.0f) {
-        gJumpBufferSeconds = std::max(0.0f, gJumpBufferSeconds - kPhysicsStep);
         if (gController.jump()) gJumpBufferSeconds = 0.0f;
     }
     gEnemyHitFlash = std::max(0.0f, gEnemyHitFlash - kPhysicsStep);
