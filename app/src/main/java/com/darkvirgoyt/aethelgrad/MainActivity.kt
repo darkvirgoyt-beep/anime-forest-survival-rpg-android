@@ -816,11 +816,11 @@ class MainActivity : Activity(), SensorEventListener {
         if (!::gyroButton.isInitialized) return
         if (gyroSensor == null) {
             gyroEnabled = false
-            gyroButton.text = "GYRO: UNSUPPORTED"
+            gyroButton.text = "⊘\nNO GYRO"
             gyroButton.isEnabled = false
             gyroButton.alpha = 0.45f
         } else {
-            gyroButton.text = if (gyroEnabled) "GYRO: ON" else "GYRO: OFF"
+            gyroButton.text = if (gyroEnabled) "◈\nGYRO ON" else "◈\nGYRO OFF"
             gyroButton.isEnabled = true
             gyroButton.alpha = 1.0f
         }
@@ -2478,76 +2478,6 @@ class MainActivity : Activity(), SensorEventListener {
 
     private fun buildHud(): View {
         val overlay = FrameLayout(this)
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(10), dp(0))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.argb(188, 8, 18, 23), Color.argb(132, 10, 22, 26), Color.argb(22, 8, 18, 23))
-            ).apply {
-                cornerRadius = dp(16).toFloat()
-                setStroke(dp(1), Color.argb(130, 221, 186, 105))
-            }
-        }
-        val title = TextView(this).apply {
-            text = "AETHELGRAD"
-            textSize = 15f
-            letterSpacing = 0.10f
-            setTextColor(Color.rgb(255, 226, 151))
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            setShadowLayer(5f, 0f, 2f, Color.argb(180, 0, 0, 0))
-        }
-        hudPlayerTitle = title
-        stateLabel = TextView(this).apply {
-            text = "FOREST  •  DAY 1  •  DAY  •  CLEAR  •  HP 100  •  STA 100  •  LV 1"
-            textSize = 12f
-            letterSpacing = 0.035f
-            setTextColor(Color.rgb(235, 244, 238))
-            setShadowLayer(5f, 1f, 2f, Color.argb(210, 0, 0, 0))
-            setSingleLine(true)
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        questLabel = TextView(this).apply {
-            text = "THE FIRST EMBER  -  Aurora arrives - gather 3 caches for the camp"
-            textSize = 12f
-            letterSpacing = 0.025f
-            setTextColor(Color.rgb(255, 226, 164))
-            setShadowLayer(5f, 1f, 2f, Color.argb(210, 0, 0, 0))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(10).toFloat()
-                setColor(Color.argb(150, 8, 17, 21))
-                setStroke(dp(1), Color.argb(120, 220, 182, 96))
-            }
-            setPadding(dp(12), dp(4), dp(18), dp(4))
-            setSingleLine(true)
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }
-        gyroButton = actionButton("GYRO: OFF") {
-            audio.playEffect("ui")
-            gyroEnabled = gyroSensor != null && !gyroEnabled
-            gameView.queueEvent { NativeGameBridge.setGyroEnabled(gyroEnabled) }
-            updateGyroButton()
-        }
-        setPlayerName(currentPlayerName)
-        top.addView(title, LinearLayout.LayoutParams(-2, -1))
-        top.addView(stateLabel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = dp(16); rightMargin = dp(10) })
-        overlay.addView(top, FrameLayout.LayoutParams(dp(438), dp(54), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(10)
-            leftMargin = dp(16)
-        })
-        overlay.addView(gyroButton, FrameLayout.LayoutParams(dp(118), dp(34), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(136)
-            leftMargin = dp(18)
-        })
-        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER).apply {
-            leftMargin = dp(46)
-        })
-        overlay.addView(questLabel, FrameLayout.LayoutParams(dp(370), dp(48), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(72)
-            leftMargin = dp(16)
-        })
-
         val profileBadge = ImageView(this).apply {
             setImageResource(R.drawable.aethelgard_profile_gold)
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -2560,29 +2490,84 @@ class MainActivity : Activity(), SensorEventListener {
             clipToOutline = true
             setOnClickListener { showCharacterInventoryPanel() }
         }
-        overlay.addView(profileBadge, FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(88)
-            rightMargin = dp(154)
+        val profilePanel = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(7), dp(5), dp(12), dp(5))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.argb(220, 8, 18, 23), Color.argb(172, 10, 22, 26), Color.argb(36, 8, 18, 23))
+            ).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.argb(170, 221, 186, 105))
+            }
+        }
+        val title = TextView(this).apply {
+            text = "AETHELGRAD"
+            textSize = 15f
+            letterSpacing = 0.10f
+            setTextColor(Color.rgb(255, 226, 151))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setShadowLayer(5f, 0f, 2f, Color.argb(180, 0, 0, 0))
+        }
+        hudPlayerTitle = title
+        stateLabel = TextView(this).apply {
+            text = "VERDANT VEIL  •  DAY 1  •  CLEAR"
+            textSize = 10f
+            letterSpacing = 0.035f
+            setTextColor(Color.rgb(202, 225, 216))
+            setSingleLine(true)
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        questLabel = TextView(this).apply {
+            text = "THE FIRST EMBER\nGather 3 caches for the camp"
+            textSize = 11f
+            letterSpacing = 0.025f
+            setTextColor(Color.rgb(255, 226, 164))
+            setShadowLayer(5f, 1f, 2f, Color.argb(210, 0, 0, 0))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(Color.argb(150, 8, 17, 21))
+                setStroke(dp(1), Color.argb(120, 220, 182, 96))
+            }
+            setPadding(dp(12), dp(5), dp(14), dp(5))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        gyroButton = compactControlButton("◈", "GYRO") {
+            audio.playEffect("ui")
+            gyroEnabled = gyroSensor != null && !gyroEnabled
+            gameView.queueEvent { NativeGameBridge.setGyroEnabled(gyroEnabled) }
+            updateGyroButton()
+        }
+        setPlayerName(currentPlayerName)
+        val profileText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
+        profileText.addView(title, LinearLayout.LayoutParams(-1, dp(24)))
+        profileText.addView(stateLabel, LinearLayout.LayoutParams(-1, dp(18)))
+        profilePanel.addView(profileBadge, LinearLayout.LayoutParams(dp(42), dp(42)).apply { rightMargin = dp(9) })
+        profilePanel.addView(profileText, LinearLayout.LayoutParams(0, dp(46), 1f))
+        overlay.addView(profilePanel, FrameLayout.LayoutParams(dp(286), dp(56), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(10)
+            leftMargin = dp(16)
+        })
+        overlay.addView(AimCrosshairView(this), FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER).apply {
+            leftMargin = dp(46)
+        })
+        overlay.addView(questLabel, FrameLayout.LayoutParams(dp(320), dp(52), Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(72)
+            leftMargin = dp(16)
         })
         vitalMeter = VitalMeterView(this)
         overlay.addView(vitalMeter, FrameLayout.LayoutParams(dp(272), dp(78), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(18)
-            rightMargin = dp(132)
+            bottomMargin = dp(82)
         })
 
-        var firstPerson = false
         var worldMapDialog: AlertDialog? = null
         val navigation = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val viewModeButton = circularControlButton("◌", "VIEW") { }
-        viewModeButton.setOnClickListener {
-            firstPerson = !firstPerson
-            viewModeButton.text = if (firstPerson) "◌\nFIRST" else "◌\nTHIRD"
-            gameView.queueEvent { NativeGameBridge.toggleViewMode() }
-        }
-        val mapButton = circularControlButton("◉", "MAP") { }
+        val mapButton = compactControlButton("◉", "MAP") { }
         mapButton.setOnClickListener {
             val openDialog = worldMapDialog
             if (openDialog?.isShowing == true) {
@@ -2603,89 +2588,37 @@ class MainActivity : Activity(), SensorEventListener {
             setOnClickListener { mapButton.performClick() }
         }
         miniMapView = miniMap
-        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(112), dp(112), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(86)
+        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(96), dp(96), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(70)
             rightMargin = dp(18)
         })
-        val towerButton = circularControlButton("♜", "TOWER") {
+        val towerButton = compactControlButton("♜", "TOWER") {
             audio.playEffect("ui")
             stateLabel.text = "TOWER LANDMARK READY  •  USE TELEPORT TO RETURN"
         }
-        val teleportButton = circularControlButton("✦", "TELEPORT") {
+        val teleportButton = compactControlButton("✦", "TELEPORT") {
             audio.playEffect("ui")
             gameView.queueEvent { NativeGameBridge.teleportToTower() }
         }
-        val controlsButton = circularControlButton("☰", "MENU") { showControlSettings() }
-        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(62), dp(62)).apply { rightMargin = dp(4) })
-        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(62), dp(62)).apply { rightMargin = dp(4) })
-        navigation.addView(teleportButton, LinearLayout.LayoutParams(dp(62), dp(62)).apply { rightMargin = dp(4) })
-        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(62), dp(62)))
-        overlay.addView(navigation, FrameLayout.LayoutParams(-2, dp(66), Gravity.TOP or Gravity.END).apply {
+        val controlsButton = compactControlButton("☰", "MENU") { showControlSettings() }
+        navigation.addView(mapButton, LinearLayout.LayoutParams(dp(52), dp(48)).apply { rightMargin = dp(3) })
+        navigation.addView(towerButton, LinearLayout.LayoutParams(dp(52), dp(48)).apply { rightMargin = dp(3) })
+        navigation.addView(teleportButton, LinearLayout.LayoutParams(dp(58), dp(48)).apply { rightMargin = dp(3) })
+        navigation.addView(gyroButton, LinearLayout.LayoutParams(dp(56), dp(48)).apply { rightMargin = dp(3) })
+        navigation.addView(controlsButton, LinearLayout.LayoutParams(dp(52), dp(48)))
+        overlay.addView(navigation, FrameLayout.LayoutParams(-2, dp(52), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(12)
             rightMargin = dp(16)
         })
-        overlay.addView(viewModeButton, FrameLayout.LayoutParams(dp(62), dp(62), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(136)
-            leftMargin = dp(144)
-        })
-        val orbitHint = TextView(this).apply {
-            text = "DRAG LOOK PAD TO ORBIT 540°  •  FULL HORIZONTAL + VERTICAL LOOK  •  GYRO OPTIONAL"
-            textSize = 10f
-            letterSpacing = 0.08f
-            setTextColor(Color.rgb(229, 211, 167))
-            setShadowLayer(4f, 1f, 1f, Color.BLACK)
-        }
-        overlay.addView(orbitHint, FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP).apply {
-            topMargin = dp(142)
-            leftMargin = dp(24)
-        })
         coOpStatusLabel = TextView(this).apply {
-            text = "CO-OP SYNC PENDING  •  WEATHER LOCAL"
-            textSize = 10f
-            setTextColor(Color.rgb(183, 218, 208))
-            setShadowLayer(4f, 1f, 1f, Color.BLACK)
+            visibility = View.GONE
         }
-        overlay.addView(coOpStatusLabel, FrameLayout.LayoutParams(-1, dp(24), Gravity.TOP).apply {
-            topMargin = dp(168)
-            leftMargin = dp(24)
-            rightMargin = dp(214)
-        })
         networkStatusLabel = TextView(this).apply {
-            text = "NETWORK: CONNECTING"
-            textSize = 10f
-            setTextColor(Color.rgb(255, 205, 145))
-            setShadowLayer(4f, 1f, 1f, Color.BLACK)
-            setSingleLine(true)
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = View.GONE
         }
-        overlay.addView(networkStatusLabel, FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP).apply {
-            topMargin = dp(190)
-            leftMargin = dp(24)
-            rightMargin = dp(214)
-        })
         identityStatusLabel = TextView(this).apply {
-            text = "PLAYER: PLAYER NAME  •  ID: PENDING"
-            textSize = 10f
-            setTextColor(Color.rgb(229, 211, 167))
-            setShadowLayer(4f, 1f, 1f, Color.BLACK)
-            setSingleLine(true)
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = View.GONE
         }
-        overlay.addView(identityStatusLabel, FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP).apply {
-            topMargin = dp(211)
-            leftMargin = dp(24)
-            rightMargin = dp(214)
-        })
-        val coOpButton = actionButton("CO-OP ROOM") { showCoOpDialog() }
-        overlay.addView(coOpButton, FrameLayout.LayoutParams(dp(138), dp(38), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(204)
-            rightMargin = dp(24)
-        })
-        val logoutButton = actionButton("LOG OUT") { confirmLogout() }
-        overlay.addView(logoutButton, FrameLayout.LayoutParams(dp(108), dp(34), Gravity.TOP or Gravity.END).apply {
-            topMargin = dp(142)
-            rightMargin = dp(154)
-        })
 
         val combatActions = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -2847,7 +2780,7 @@ class MainActivity : Activity(), SensorEventListener {
         val discoveredSectors = number(26)
         requestDiscoveredSectorContent(discoveredSectors)
         if (::vitalMeter.isInitialized) vitalMeter.updateVitals(health, stamina, hunger)
-        stateLabel.text = "$biome  •  DAY $daysPlayed  •  $phase  •  $weather  •  $viewMode  •  TARGET $target  •  HP $health  •  STA $stamina  •  LV $level"
+        stateLabel.text = "$biome  •  DAY $daysPlayed  •  $weather"
         stateLabel.setTextColor(
             when {
                 levelPulse -> Color.rgb(255, 236, 157)
@@ -2858,7 +2791,7 @@ class MainActivity : Activity(), SensorEventListener {
         )
         val recoveryNotice = cloudRecoveryNotice
         val localContent = progressiveContentNotice
-        questLabel.text = recoveryNotice ?: localContent ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective  •  WARDEN HP $warden/100  •  $locomotion  •  $companionState" else if (target != "NO TARGET") "$objective  •  TARGET $target  •  $biome  •  $weather  •  W $wood  F $fiber  S $stone  •  $companionState  •  $campState" else "$objective  •  $biome  •  $weather  •  $water  •  W $wood  F $fiber  S $stone  •  $xpLabel  •  $companionState  •  $campState"
+        questLabel.text = recoveryNotice ?: localContent ?: if (warden > 0 && objective.contains("Forest Warden")) "$objective\nWarden $warden/100  •  $locomotion" else if (target != "NO TARGET") "$objective\nTarget $target  •  $companionState" else "$objective\n$xpLabel  •  $companionState"
         questLabel.setTextColor(if (recoveryNotice != null) Color.rgb(255, 180, 150) else if (questPulse) Color.rgb(255, 236, 157) else Color.rgb(255, 226, 164))
     }
 

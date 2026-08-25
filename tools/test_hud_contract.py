@@ -20,7 +20,6 @@ def main() -> None:
 
     for needle in (
         "private fun compactControlButton",
-        "private fun quickSlotBackground",
         "val quickSlots = LinearLayout(this)",
         "slotSymbols = listOf",
         "WORLD MAP",
@@ -43,8 +42,10 @@ def main() -> None:
         'NativeGameBridge.dodge()',
         'Gravity.BOTTOM or Gravity.END',
         'Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL',
-        'setPadding(dp(16), dp(8), dp(10), dp(0))',
+        'setPadding(dp(7), dp(5), dp(12), dp(5))',
         'text = "AETHELGRAD"',
+        'val profilePanel = LinearLayout(this)',
+        'visibility = View.GONE',
     ):
         require(needle in main, f"missing HUD marker: {needle}")
 
@@ -57,6 +58,7 @@ def main() -> None:
     require('drawMeter(canvas, "HUN"' in views, "hunger bar missing")
     require("onMove(x, y)" in main or "setMove(x, y)" in main, "joystick movement binding missing")
     require("LookPadView" in main, "look pad must remain present for camera control")
+    require('stateLabel.text = "$biome  •  DAY $daysPlayed  •  $weather"' in main, "region header must avoid gameplay debug clutter")
     print("HUD_CONTRACT_PASS=1")
     print("COMPACT_GROUPED_ACTIONS=enabled")
     print("QUICK_SLOTS=8")
