@@ -61,7 +61,7 @@ def main() -> int:
 
     actual_total = 0
     print(f"AETHELGRAD asset budget: planned={planned_total} MiB ({mib(planned_total * 1024 * 1024):.2f} MiB)")
-    print("pack,delivery,target_mib,actual_mib,status")
+    print("pack,delivery,target_mib,actual_bytes,actual_mib,status")
     for pack in packs:
         pack_path = root / pack["module"] / "src" / "main" / "assets"
         actual_bytes = directory_bytes(pack_path)
@@ -71,13 +71,14 @@ def main() -> int:
             status = "EMPTY"
         else:
             status = "OK" if actual_mib <= float(pack["target_mib"]) else "OVER_BUDGET"
-        print(f"{pack['module']},{pack['delivery']},{pack['target_mib']},{actual_mib:.3f},{status}")
+        print(f"{pack['module']},{pack['delivery']},{pack['target_mib']},{actual_bytes},{actual_mib:.3f},{status}")
         if status == "EMPTY":
             print(f"ERROR: {pack['module']} has no authored runtime payload; full-content builds require real cooked files.")
             return 4
         if status == "OVER_BUDGET":
             return 2
 
+    print(f"actual_authored_total_bytes={actual_total}")
     print(f"actual_authored_total_mib={mib(actual_total):.3f}")
     if args.require_target and actual_total < planned_total * 1024 * 1024:
         print("ERROR: authored resources are below the planned target; add real licensed/generated assets, never padding files.")
