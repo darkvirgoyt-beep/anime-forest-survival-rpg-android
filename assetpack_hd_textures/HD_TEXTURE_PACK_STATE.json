@@ -1,0 +1,17 @@
+{
+  "packName": "assetpack_hd_textures",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 500,
+  "content": "Planned original PBR textures, virtual-texture pages, and decals",
+  "notIncluded": [
+    "cooked Unreal texture packages",
+    "deferred high-end Unreal cooked archive",
+    "licensed or original HD texture payload"
+  ],
+  "verification": {
+    "assetBudgetReportsExactBytes": true,
+    "highTierPublicationRequired": true
+  }
+}

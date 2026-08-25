@@ -175,6 +175,15 @@ def assert_source_contract(repo: Path) -> None:
     dungeon_verification = dungeon_state.get("verification", {})
     if dungeon_verification.get("assetBudgetReportsExactBytes") is not True or dungeon_verification.get("highTierPublicationRequired") is not True:
         raise AssertionError("dungeon asset-pack state must retain its exact-byte and publication verification")
+    hd_texture_pack = next(pack for pack in manifest.get("packs", []) if pack.get("name") == "assetpack_hd_textures")
+    hd_texture_state = json.loads((repo / "assetpack_hd_textures/HD_TEXTURE_PACK_STATE.json").read_text())
+    if hd_texture_pack.get("published") is not False or hd_texture_pack.get("measuredBytes") != 0:
+        raise AssertionError("HD-texture pack must remain unpublished with zero measured bytes until real cooked textures exist")
+    if hd_texture_state.get("published") is not False or hd_texture_state.get("measuredPayloadBytes") != 0:
+        raise AssertionError("HD-texture asset-pack state must not claim a cooked payload before publication")
+    hd_texture_verification = hd_texture_state.get("verification", {})
+    if hd_texture_verification.get("assetBudgetReportsExactBytes") is not True or hd_texture_verification.get("highTierPublicationRequired") is not True:
+        raise AssertionError("HD-texture asset-pack state must retain its exact-byte and publication verification")
 
 
 def test_initial_state() -> None:
