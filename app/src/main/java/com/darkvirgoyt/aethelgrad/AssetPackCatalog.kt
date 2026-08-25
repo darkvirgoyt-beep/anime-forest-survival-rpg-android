@@ -165,6 +165,20 @@ class AssetPackCatalog(context: Context) {
         sector: ContentDownloadPlan.WorldSector,
         onProgress: (ProductionProgress) -> Unit
     ) {
+        if (tier == ContentDownloadPlan.ResourceTier.HIGH && !privateContentDownloader.published) {
+            onProgress(
+                ProductionProgress(
+                    status = AssetPackStatus.FAILED,
+                    percent = 0,
+                    bytesDownloaded = 0L,
+                    totalBytes = 0L,
+                    sizeVerified = false,
+                    failedPack = "High-end sector packs, including cinematics, are unavailable until a signed cooked release is published.",
+                    errorCode = -30
+                )
+            )
+            return
+        }
         val requestedPackNames = ContentDownloadPlan.packNamesForSector(tier, sector)
         if (requestedPackNames.isEmpty()) {
             onProgress(ProductionProgress(AssetPackStatus.COMPLETED, 100, 0L, 0L, true))

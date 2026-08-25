@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_cinematics",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "planningBudgetMiB": 450,
+  "contentStatus": "no-cooked-cinematic-payload",
+  "releaseGate": "Publish only original or licensed cooked cinematic media with a signed manifest and measured bytes.",
+  "runtimePolicy": "The Android harness must not request this pack while high-end content publication is disabled."
+}

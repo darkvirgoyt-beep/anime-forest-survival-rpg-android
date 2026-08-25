@@ -42,7 +42,7 @@ def payload_files(pack: str) -> list[Path]:
     return sorted(
         path
         for path in root.rglob("*")
-        if path.is_file() and path.name not in {".gitkeep", "content_receipt.json"} and path.suffix.lower() in PAYLOAD_SUFFIXES
+        if path.is_file() and path.name not in {".gitkeep", "content_receipt.json", "CINEMATIC_PACK_STATE.json"} and path.suffix.lower() in PAYLOAD_SUFFIXES
     )
 
 
