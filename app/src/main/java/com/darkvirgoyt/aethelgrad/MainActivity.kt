@@ -438,8 +438,8 @@ class MainActivity : Activity(), SensorEventListener {
         rootContainer.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         rootContainer.addView(LookPadView(this) { dx, dy ->
             // Direct manipulation: the camera follows the finger instead of
-            // orbiting against it. Both axes use the same intuitive mapping.
-            gameView.queueEvent { NativeGameBridge.orbitCamera(-dx * 0.0048f * lookSensitivity, -dy * 0.0032f * lookSensitivity) }
+            // orbiting against it. Both axes preserve the finger's direction.
+            gameView.queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f * lookSensitivity, dy * 0.0032f * lookSensitivity) }
         })
         rootContainer.addView(buildHud())
         joystickView = JoystickView(this) { x, y ->
@@ -3704,7 +3704,7 @@ private class GameSurfaceView(context: Context, onRendererReady: () -> Unit) : G
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                if (event.x >= width * 0.42f) {
+                if (event.x >= width * 0.50f) {
                     activeLookPointerId = event.getPointerId(event.actionIndex)
                     lastLookX = event.x
                     lastLookY = event.y
@@ -3712,7 +3712,7 @@ private class GameSurfaceView(context: Context, onRendererReady: () -> Unit) : G
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 val index = event.actionIndex
-                if (activeLookPointerId == MotionEvent.INVALID_POINTER_ID && event.getX(index) >= width * 0.42f) {
+                if (activeLookPointerId == MotionEvent.INVALID_POINTER_ID && event.getX(index) >= width * 0.50f) {
                     activeLookPointerId = event.getPointerId(index)
                     lastLookX = event.getX(index)
                     lastLookY = event.getY(index)
@@ -3727,7 +3727,7 @@ private class GameSurfaceView(context: Context, onRendererReady: () -> Unit) : G
                         if (kotlin.math.abs(dx) >= 0.35f || kotlin.math.abs(dy) >= 0.35f) {
                             // Keep the fallback surface path consistent with the
                             // LookPadView direct-manipulation sign convention.
-                            queueEvent { NativeGameBridge.orbitCamera(-dx * 0.0048f, -dy * 0.0032f) }
+                            queueEvent { NativeGameBridge.orbitCamera(dx * 0.0048f, dy * 0.0032f) }
                         }
                         lastLookX = event.getX(index)
                         lastLookY = event.getY(index)
@@ -3800,7 +3800,7 @@ private class LookPadView(context: Context, private val onOrbit: (Float, Float) 
     }
 
     private fun isLookRegion(x: Float, y: Float): Boolean =
-        x >= width * 0.43f && y >= height * 0.23f
+        x >= width * 0.50f && y >= height * 0.23f
 
     private fun begin(event: MotionEvent, index: Int): Boolean {
         val x = event.getX(index)
@@ -3863,7 +3863,7 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     private var activePointerId = MotionEvent.INVALID_POINTER_ID
     private val density = context.resources.displayMetrics.density
     private val deadZone = 0.10f
-    private val leftZoneFraction = 0.46f
+    private val leftZoneFraction = 0.38f
     private var sensitivity = 1.0f
     private var responseCurve = 1.12f
 
@@ -3878,10 +3878,11 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     init {
         setWillNotDraw(false)
         alpha = 0.94f
-        // A bottom movement zone allows the player to touch anywhere under the
-        // left thumb instead of forcing a fixed stick position.
+        // The movement stick remains visibly and physically fixed at the
+        // lower-left anchor; other left-side taps never relocate it.
         layoutParams = FrameLayout.LayoutParams(-1, dp(220), Gravity.BOTTOM or Gravity.START)
         isClickable = true
+        contentDescription = "Fixed movement joystick"
     }
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
@@ -3889,11 +3890,11 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     }
 
     private fun resetStickOrigin() {
-        baseX = width * 0.16f
-        baseY = height * 0.57f
+        radius = (width.coerceAtMost(dp(360)) * 0.075f).coerceAtLeast(dp(36).toFloat())
+        baseX = (width * 0.15f).coerceAtLeast(radius * 1.70f)
+        baseY = (height - radius * 1.70f).coerceAtLeast(radius * 1.70f)
         knobX = baseX
         knobY = baseY
-        radius = (width.coerceAtMost(dp(360)) * 0.095f).coerceAtLeast(dp(50).toFloat())
     }
 
     override fun onDraw(canvas: android.graphics.Canvas) {
@@ -3946,11 +3947,16 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         invalidate()
     }
 
+    private fun isAnchoredTouch(x: Float, y: Float): Boolean {
+        if (x > width * leftZoneFraction) return false
+        val dx = x - baseX
+        val dy = y - baseY
+        return dx * dx + dy * dy <= (radius * 1.70f) * (radius * 1.70f)
+    }
+
     private fun beginPointer(event: MotionEvent, index: Int): Boolean {
-        if (event.getX(index) > width * leftZoneFraction || event.getY(index) < height * 0.08f) return false
+        if (!isAnchoredTouch(event.getX(index), event.getY(index))) return false
         activePointerId = event.getPointerId(index)
-        baseX = event.getX(index).coerceIn(radius * 1.55f, width - radius * 1.55f)
-        baseY = event.getY(index).coerceIn(radius * 1.55f, height - radius * 1.55f)
         emitMove(event, index)
         invalidate()
         return true
