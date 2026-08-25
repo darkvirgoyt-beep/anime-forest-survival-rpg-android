@@ -79,4 +79,4 @@
 - [x] Update and verify the app-side content contract so the GitHub `app` folder header points to a current passing commit instead of the historical failed `b584b81` commit.
 - [x] Update and verify the truthful zero-byte `assetpack_dungeons` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
 - [x] Update and verify the truthful zero-byte `assetpack_hd_textures` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
-- [ ] Update and verify the truthful zero-byte `assetpack_pipeline_cache` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
+- [x] Update and verify the truthful zero-byte `assetpack_pipeline_cache` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
