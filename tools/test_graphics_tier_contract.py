@@ -26,7 +26,10 @@ def main() -> None:
     tiers = {tier["id"]: tier for tier in manifest["resourceTiers"]}
     require(set(tiers) == {"stage-1", "high"}, "manifest must define Stage 1 and the preserved high-end tier")
     declared_packs = {pack["name"] for pack in manifest["packs"]}
-    require(declared_packs == set(tiers["high"]["packs"]), "high-end tier must cover every manifest pack exactly once")
+    install_time_packs = {pack["name"] for pack in manifest["packs"] if pack.get("delivery") == "install-time"}
+    high_end_packs = declared_packs - install_time_packs
+    require(install_time_packs == {"assetpack_core"}, "core bootstrap must be the only install-time asset pack")
+    require(high_end_packs == set(tiers["high"]["packs"]), "high-end tier must cover every non-bootstrap manifest pack exactly once")
     require(tiers["stage-1"]["plannedBudgetMiB"] == 1024, "Stage 1 must use the 1 GiB planning envelope")
     require(tiers["stage-1"]["measuredBytes"] == manifest["contentDelivery"]["launchSlice"]["measuredBytes"], "Stage 1 measured bytes must match the launch slice")
     require(set(tiers["stage-1"]["packs"]) == set(manifest["contentDelivery"]["launchSlice"]["startupPacks"] + manifest["contentDelivery"]["launchSlice"]["authoredOnDemandPacks"]), "Stage 1 must cover exactly the authored launch-slice packs")
