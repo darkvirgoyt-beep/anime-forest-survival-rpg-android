@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_shaders_gles",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 453,
+  "plannedBudgetMiB": 250,
+  "highTierPublished": false,
+  "content": "Authored OpenGL ES shader-library and pipeline-state launch metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

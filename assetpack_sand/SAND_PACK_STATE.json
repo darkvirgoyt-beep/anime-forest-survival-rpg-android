@@ -1,0 +1,11 @@
+{
+  "packName": "assetpack_sand",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 400,
+  "highTierPublished": false,
+  "content": "Planned original sand-biome terrain, settlements, rocks, foliage, and weather",
+  "notIncluded": ["cooked Unreal sand-biome content", "high-end published archive"],
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

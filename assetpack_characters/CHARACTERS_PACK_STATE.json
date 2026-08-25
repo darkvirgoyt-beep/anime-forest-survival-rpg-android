@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_characters",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 4821178,
+  "plannedBudgetMiB": 500,
+  "highTierPublished": false,
+  "content": "Authored original character launch-slice assets and animation-binding metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

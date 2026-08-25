@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_world_streaming",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 141,
+  "plannedBudgetMiB": 400,
+  "highTierPublished": false,
+  "content": "Authored world-streaming descriptor metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

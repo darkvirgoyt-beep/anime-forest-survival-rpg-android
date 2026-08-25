@@ -1,0 +1,11 @@
+{
+  "packName": "assetpack_vfx",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 300,
+  "highTierPublished": false,
+  "content": "Planned original weather, impact, and river visual effects",
+  "notIncluded": ["cooked Unreal visual-effect payload", "high-end published archive"],
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

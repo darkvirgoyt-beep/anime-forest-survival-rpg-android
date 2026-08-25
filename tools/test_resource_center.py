@@ -202,6 +202,45 @@ def assert_source_contract(repo: Path) -> None:
     vulkan_shader_verification = vulkan_shader_state.get("verification", {})
     if vulkan_shader_verification.get("assetBudgetReportsExactBytes") is not True or vulkan_shader_verification.get("highTierPublicationRequired") is not True:
         raise AssertionError("Vulkan shader asset-pack state must retain its exact-byte and publication verification")
+    managed_pack_states = {
+        "assetpack_graphics_base": "GRAPHICS_BASE_PACK_STATE.json",
+        "assetpack_forest": "FOREST_PACK_STATE.json",
+        "assetpack_sand": "SAND_PACK_STATE.json",
+        "assetpack_snow": "SNOW_PACK_STATE.json",
+        "assetpack_characters": "CHARACTERS_PACK_STATE.json",
+        "assetpack_audio_hd": "AUDIO_HD_PACK_STATE.json",
+        "assetpack_vfx": "VFX_PACK_STATE.json",
+        "assetpack_voice": "VOICE_PACK_STATE.json",
+        "assetpack_shaders_gles": "GLES_SHADER_PACK_STATE.json",
+        "assetpack_world_streaming": "WORLD_STREAMING_PACK_STATE.json",
+        "assetpack_foliage_lods": "FOLIAGE_LODS_PACK_STATE.json",
+        "assetpack_terrain_lod": "TERRAIN_LOD_PACK_STATE.json",
+        "assetpack_animation_sets": "ANIMATION_SETS_PACK_STATE.json",
+    }
+    manifest_packs = {pack.get("name"): pack for pack in manifest.get("packs", [])}
+    for pack_name, state_name in managed_pack_states.items():
+        pack = manifest_packs.get(pack_name)
+        state_path = repo / pack_name / state_name
+        if not pack or not state_path.is_file():
+            raise AssertionError(f"missing published-state record for {pack_name}")
+        state = json.loads(state_path.read_text())
+        measured_bytes = sum(
+            path.stat().st_size
+            for path in (repo / pack_name / "src/main/assets").rglob("*")
+            if path.is_file() and path.name != ".gitkeep"
+        )
+        expected_published = measured_bytes > 0
+        if state.get("packName") != pack_name or state.get("delivery") != pack.get("delivery"):
+            raise AssertionError(f"state identity mismatch for {pack_name}")
+        if state.get("measuredPayloadBytes") != measured_bytes or pack.get("measuredBytes") != measured_bytes:
+            raise AssertionError(f"measured payload mismatch for {pack_name}")
+        if state.get("published") is not expected_published or pack.get("published") is not expected_published:
+            raise AssertionError(f"publication state mismatch for {pack_name}")
+        if state.get("highTierPublished") is not False:
+            raise AssertionError(f"high-tier content must remain unpublished for {pack_name}")
+        state_verification = state.get("verification", {})
+        if state_verification.get("assetBudgetReportsExactBytes") is not True or state_verification.get("highTierPublicationRequired") is not True:
+            raise AssertionError(f"missing publication verification for {pack_name}")
 
 
 def test_initial_state() -> None:

@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_animation_sets",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 238,
+  "plannedBudgetMiB": 425,
+  "highTierPublished": false,
+  "content": "Authored locomotion, combat, traversal, emote, and montage metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

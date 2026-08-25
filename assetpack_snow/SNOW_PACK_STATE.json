@@ -1,0 +1,11 @@
+{
+  "packName": "assetpack_snow",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 400,
+  "highTierPublished": false,
+  "content": "Planned original snow-biome terrain, caves, ice materials, and weather",
+  "notIncluded": ["cooked Unreal snow-biome content", "high-end published archive"],
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

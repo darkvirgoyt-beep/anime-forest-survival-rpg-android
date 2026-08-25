@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_terrain_lod",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 15314,
+  "plannedBudgetMiB": 425,
+  "highTierPublished": false,
+  "content": "Authored terrain-heightfield, landscape-LOD, and shadow metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

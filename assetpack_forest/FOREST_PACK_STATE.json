@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_forest",
+  "delivery": "fast-follow",
+  "published": true,
+  "measuredPayloadBytes": 15985,
+  "plannedBudgetMiB": 350,
+  "highTierPublished": false,
+  "content": "Authored forest launch-region descriptors and mobile scene metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

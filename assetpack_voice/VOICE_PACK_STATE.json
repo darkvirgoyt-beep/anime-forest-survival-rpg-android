@@ -1,0 +1,11 @@
+{
+  "packName": "assetpack_voice",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 250,
+  "highTierPublished": false,
+  "content": "Planned dialogue, localization voice banks, and subtitle metadata",
+  "notIncluded": ["recorded dialogue payload", "high-end published archive"],
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

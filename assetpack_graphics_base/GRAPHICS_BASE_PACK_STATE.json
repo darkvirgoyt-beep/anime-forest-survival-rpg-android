@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_graphics_base",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 40249,
+  "plannedBudgetMiB": 450,
+  "highTierPublished": false,
+  "content": "Authored mobile shared materials, shaders, meshes, and render-resource metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

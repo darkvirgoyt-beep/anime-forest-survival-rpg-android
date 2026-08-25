@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_audio_hd",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 3277712,
+  "plannedBudgetMiB": 450,
+  "highTierPublished": false,
+  "content": "Authored launch-slice music, ambience, combat, and wildlife audio",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}

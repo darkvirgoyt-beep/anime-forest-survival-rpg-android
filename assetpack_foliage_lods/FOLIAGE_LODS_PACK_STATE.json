@@ -1,0 +1,10 @@
+{
+  "packName": "assetpack_foliage_lods",
+  "delivery": "on-demand",
+  "published": true,
+  "measuredPayloadBytes": 2795,
+  "plannedBudgetMiB": 400,
+  "highTierPublished": false,
+  "content": "Authored foliage-cluster, impostor, and mobile LOD metadata",
+  "verification": {"assetBudgetReportsExactBytes": true, "highTierPublicationRequired": true}
+}
