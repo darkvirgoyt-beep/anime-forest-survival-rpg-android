@@ -81,4 +81,4 @@
 - [x] Update and verify the truthful zero-byte `assetpack_hd_textures` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
 - [x] Update and verify the truthful zero-byte `assetpack_pipeline_cache` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
 - [x] Verify the current GitHub folder commits and workflow outcomes for `assetpack_dungeons`, `assetpack_hd_textures`, and `assetpack_pipeline_cache`, distinguishing the user’s historical screenshots from the current main branch.
-- [ ] Update and verify the truthful zero-byte `assetpack_shaders_vulkan` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
+- [x] Update and verify the truthful zero-byte `assetpack_shaders_vulkan` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
