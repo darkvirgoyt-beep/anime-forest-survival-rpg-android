@@ -184,6 +184,15 @@ def assert_source_contract(repo: Path) -> None:
     hd_texture_verification = hd_texture_state.get("verification", {})
     if hd_texture_verification.get("assetBudgetReportsExactBytes") is not True or hd_texture_verification.get("highTierPublicationRequired") is not True:
         raise AssertionError("HD-texture asset-pack state must retain its exact-byte and publication verification")
+    pipeline_cache_pack = next(pack for pack in manifest.get("packs", []) if pack.get("name") == "assetpack_pipeline_cache")
+    pipeline_cache_state = json.loads((repo / "assetpack_pipeline_cache/PIPELINE_CACHE_PACK_STATE.json").read_text())
+    if pipeline_cache_pack.get("published") is not False or pipeline_cache_pack.get("measuredBytes") != 0:
+        raise AssertionError("pipeline-cache pack must remain unpublished with zero measured bytes until real cooked cache data exists")
+    if pipeline_cache_state.get("published") is not False or pipeline_cache_state.get("measuredPayloadBytes") != 0:
+        raise AssertionError("pipeline-cache asset-pack state must not claim a cooked payload before publication")
+    pipeline_cache_verification = pipeline_cache_state.get("verification", {})
+    if pipeline_cache_verification.get("assetBudgetReportsExactBytes") is not True or pipeline_cache_verification.get("highTierPublicationRequired") is not True:
+        raise AssertionError("pipeline-cache asset-pack state must retain its exact-byte and publication verification")
 
 
 def test_initial_state() -> None:

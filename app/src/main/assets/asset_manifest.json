@@ -83,7 +83,7 @@
     {"name": "assetpack_voice", "delivery": "on-demand", "targetMiB": 250, "requiredBeforeStart": false, "contents": "dialogue, localization voice banks and subtitle metadata"},
     {"name": "assetpack_shaders_vulkan", "delivery": "on-demand", "targetMiB": 300, "requiredBeforeStart": false, "contents": "compiled Vulkan shader libraries and pipeline-state resources"},
     {"name": "assetpack_shaders_gles", "delivery": "on-demand", "targetMiB": 250, "requiredBeforeStart": true, "contents": "compiled OpenGL ES shader libraries and pipeline-state resources"},
-    {"name": "assetpack_pipeline_cache", "delivery": "on-demand", "targetMiB": 100, "requiredBeforeStart": false, "contents": "device-safe pipeline-cache seeds and shader warm-up data"},
+    {"name": "assetpack_pipeline_cache", "delivery": "on-demand", "targetMiB": 100, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned device-safe pipeline-cache seeds and shader warm-up data; no cooked pipeline-cache payload is published"},
     {"name": "assetpack_world_streaming", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": true, "contents": "world-partition descriptors, streamed sublevels and navigation data"},
     {"name": "assetpack_foliage_lods", "delivery": "on-demand", "targetMiB": 400, "requiredBeforeStart": false, "contents": "foliage clusters, impostors and mobile LODs"},
     {"name": "assetpack_terrain_lod", "delivery": "on-demand", "targetMiB": 425, "requiredBeforeStart": true, "contents": "terrain heightfields, landscape LODs and mobile shadow data"},

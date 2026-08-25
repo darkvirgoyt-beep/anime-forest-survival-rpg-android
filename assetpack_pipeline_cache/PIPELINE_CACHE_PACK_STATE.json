@@ -1,0 +1,17 @@
+{
+  "packName": "assetpack_pipeline_cache",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 100,
+  "content": "Planned device-safe pipeline-cache seeds and shader warm-up data",
+  "notIncluded": [
+    "cooked Unreal pipeline cache",
+    "deferred high-end Unreal cooked archive",
+    "device-specific shader cache payload"
+  ],
+  "verification": {
+    "assetBudgetReportsExactBytes": true,
+    "highTierPublicationRequired": true
+  }
+}
