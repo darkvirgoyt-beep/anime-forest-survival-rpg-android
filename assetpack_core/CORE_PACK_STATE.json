@@ -5,6 +5,11 @@
   "measuredPayloadBytes": 254,
   "plannedBudgetMiB": 96,
   "content": "AETHELGRAD forest launch-slice contract metadata only",
+  "verification": {
+    "assetBudgetReportsExactBytes": true,
+    "highTierExcludesInstallTimeCore": true,
+    "requiredChecks": ["asset-budget", "resource-center", "graphics-tier"]
+  },
   "notIncluded": [
     "cooked Unreal pak",
     "deferred high-end Unreal cooked archive",

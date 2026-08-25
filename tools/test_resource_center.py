@@ -144,6 +144,9 @@ def assert_source_contract(repo: Path) -> None:
         raise AssertionError("core asset-pack state must match the install-time bootstrap contract")
     if core_state.get("measuredPayloadBytes") != core_measured_bytes or core_pack.get("measuredBytes") != core_measured_bytes:
         raise AssertionError("core asset pack must report the exact measured launch-slice metadata bytes")
+    verification = core_state.get("verification", {})
+    if verification.get("assetBudgetReportsExactBytes") is not True or verification.get("highTierExcludesInstallTimeCore") is not True:
+        raise AssertionError("core asset-pack state must retain its exact-byte and high-tier boundary verification")
     if core_contract.get("status") != "authored-launch-slice" or "cooked Unreal pak" not in core_contract.get("notIncluded", []):
         raise AssertionError("core asset pack must identify itself as metadata without an Unreal cooked payload")
     cinematic_pack = next(pack for pack in manifest.get("packs", []) if pack.get("name") == "assetpack_cinematics")

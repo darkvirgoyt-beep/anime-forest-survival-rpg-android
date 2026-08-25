@@ -74,3 +74,4 @@
 - [ ] Perform physical-device follow-up for the revised joystick, look camera, control placement, and current release APK after CI validation; automated checks cannot confirm touch feel or device-specific layout.
 - [x] Inspect and repair `assetpack_core` registration, delivery mode, packaged-content boundary, manifest/runtime references, and budget-contract coverage; verify the current Android workflow stays green without inventing core payload size.
 - [x] Verify the exact truncated `assetpack_core` workflow log reported by the user, identify its post-resource-center result, and reconcile it with the current successful main-branch workflow.
+- [ ] Verify and clarify the `assetpack_core` GitHub folder-header status so the current passing commit is distinguishable from the historical failed `b584b81` commit shown in the user’s screenshot.
