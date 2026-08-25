@@ -136,7 +136,7 @@ def assert_source_contract(repo: Path) -> None:
     cinematic_pack = next(pack for pack in manifest.get("packs", []) if pack.get("name") == "assetpack_cinematics")
     if cinematic_pack.get("published") is not False or cinematic_pack.get("measuredBytes") != 0:
         raise AssertionError("cinematic pack must remain unpublished with zero measured bytes until real cooked media exists")
-    cinematic_state = json.loads((repo / "assetpack_cinematics/src/main/assets/CINEMATIC_PACK_STATE.json").read_text())
+    cinematic_state = json.loads((repo / "assetpack_cinematics/CINEMATIC_PACK_STATE.json").read_text())
     if cinematic_state.get("published") is not False or cinematic_state.get("measuredPayloadBytes") != 0:
         raise AssertionError("cinematic asset-pack state must not claim a cooked payload before publication")
     if "High-end sector packs, including cinematics, are unavailable" not in catalog:
