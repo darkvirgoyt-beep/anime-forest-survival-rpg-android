@@ -73,4 +73,4 @@
 - [x] Correct Android mobile input semantics: make a smaller left-side virtual joystick stay anchored to its configured touch zone, prevent any right-side look/camera input from being horizontally inverted, and add regression checks for movement, look, multi-touch separation, and safe placement.
 - [ ] Perform physical-device follow-up for the revised joystick, look camera, control placement, and current release APK after CI validation; automated checks cannot confirm touch feel or device-specific layout.
 - [x] Inspect and repair `assetpack_core` registration, delivery mode, packaged-content boundary, manifest/runtime references, and budget-contract coverage; verify the current Android workflow stays green without inventing core payload size.
-- [ ] Verify the exact truncated `assetpack_core` workflow log reported by the user, identify its post-resource-center result, and reconcile it with the current successful main-branch workflow.
+- [x] Verify the exact truncated `assetpack_core` workflow log reported by the user, identify its post-resource-center result, and reconcile it with the current successful main-branch workflow.
