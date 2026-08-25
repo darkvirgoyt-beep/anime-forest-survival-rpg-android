@@ -138,12 +138,21 @@ def assert_source_contract(repo: Path) -> None:
     core_contract_path = repo / "assetpack_core/src/main/assets/launch_slice/content_contract.json"
     core_contract = json.loads(core_contract_path.read_text())
     core_measured_bytes = core_contract_path.stat().st_size
+    core_bootstrap = content_delivery.get("launchSlice", {}).get("coreBootstrap", {})
     if core_pack.get("delivery") != "install-time" or core_pack.get("published") is not True:
         raise AssertionError("core asset pack must remain published install-time bootstrap metadata")
     if core_state.get("delivery") != "install-time" or core_state.get("published") is not True:
         raise AssertionError("core asset-pack state must match the install-time bootstrap contract")
     if core_state.get("measuredPayloadBytes") != core_measured_bytes or core_pack.get("measuredBytes") != core_measured_bytes:
         raise AssertionError("core asset pack must report the exact measured launch-slice metadata bytes")
+    if core_bootstrap != {
+        "packName": "assetpack_core",
+        "delivery": "install-time",
+        "published": True,
+        "measuredBytes": core_measured_bytes,
+        "highTierExcluded": True,
+    }:
+        raise AssertionError("app manifest core-bootstrap record must match the exact core asset-pack boundary")
     verification = core_state.get("verification", {})
     if verification.get("assetBudgetReportsExactBytes") is not True or verification.get("highTierExcludesInstallTimeCore") is not True:
         raise AssertionError("core asset-pack state must retain its exact-byte and high-tier boundary verification")

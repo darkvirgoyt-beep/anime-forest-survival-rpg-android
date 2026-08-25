@@ -11,6 +11,13 @@
       "mode": "authored-pad-slice",
       "published": true,
       "measuredBytes": 4803743,
+      "coreBootstrap": {
+        "packName": "assetpack_core",
+        "delivery": "install-time",
+        "published": true,
+        "measuredBytes": 254,
+        "highTierExcluded": true
+      },
       "plannedStageBudgetMiB": 1024,
       "stage": "stage-1-forest-launch",
       "startupPacks": ["assetpack_core", "assetpack_graphics_base", "assetpack_forest", "assetpack_characters", "assetpack_shaders_gles", "assetpack_world_streaming", "assetpack_terrain_lod", "assetpack_animation_sets"],
