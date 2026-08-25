@@ -1,0 +1,17 @@
+{
+  "packName": "assetpack_shaders_vulkan",
+  "delivery": "on-demand",
+  "published": false,
+  "measuredPayloadBytes": 0,
+  "plannedBudgetMiB": 300,
+  "content": "Planned compiled Vulkan shader libraries and pipeline-state resources",
+  "notIncluded": [
+    "cooked Vulkan shader libraries",
+    "deferred high-end Unreal cooked archive",
+    "device-specific Vulkan pipeline cache payload"
+  ],
+  "verification": {
+    "assetBudgetReportsExactBytes": true,
+    "highTierPublicationRequired": true
+  }
+}

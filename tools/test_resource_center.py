@@ -193,6 +193,15 @@ def assert_source_contract(repo: Path) -> None:
     pipeline_cache_verification = pipeline_cache_state.get("verification", {})
     if pipeline_cache_verification.get("assetBudgetReportsExactBytes") is not True or pipeline_cache_verification.get("highTierPublicationRequired") is not True:
         raise AssertionError("pipeline-cache asset-pack state must retain its exact-byte and publication verification")
+    vulkan_shader_pack = next(pack for pack in manifest.get("packs", []) if pack.get("name") == "assetpack_shaders_vulkan")
+    vulkan_shader_state = json.loads((repo / "assetpack_shaders_vulkan/VULKAN_SHADER_PACK_STATE.json").read_text())
+    if vulkan_shader_pack.get("published") is not False or vulkan_shader_pack.get("measuredBytes") != 0:
+        raise AssertionError("Vulkan shader pack must remain unpublished with zero measured bytes until real cooked shaders exist")
+    if vulkan_shader_state.get("published") is not False or vulkan_shader_state.get("measuredPayloadBytes") != 0:
+        raise AssertionError("Vulkan shader asset-pack state must not claim a cooked payload before publication")
+    vulkan_shader_verification = vulkan_shader_state.get("verification", {})
+    if vulkan_shader_verification.get("assetBudgetReportsExactBytes") is not True or vulkan_shader_verification.get("highTierPublicationRequired") is not True:
+        raise AssertionError("Vulkan shader asset-pack state must retain its exact-byte and publication verification")
 
 
 def test_initial_state() -> None:
