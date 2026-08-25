@@ -218,12 +218,39 @@ class AccountSessionManager {
         authRefreshUrl = activity.getString(R.string.auth_refresh_url)
         credentialManager = CredentialManager.create(activity)
 
+        if (restoreGuestSession()) return
         if (hasGoogleConfiguration() && restorePersistedSession()) return
         publish(
             SessionSnapshot(
                 SessionState.SIGNED_OUT,
-                message = if (hasGoogleConfiguration()) "Choose Google to continue to your cloud world and hosted co-op."
-                else "Google login is unavailable for this build."
+                message = if (hasGoogleConfiguration()) {
+                    "Choose Google for cloud worlds and hosted co-op, or continue as a guest for device-local play."
+                } else {
+                    "Google login is unavailable for this build. Guest device-local play remains available."
+                }
+            )
+        )
+    }
+
+    /** Starts a device-local profile without Gmail, a backend request, or a hosted session; cloud restoration remains unavailable. */
+    fun requestGuestSignIn(): SessionSnapshot {
+        val owner = activity
+            ?: return publish(SessionSnapshot(SessionState.ERROR, message = "Guest mode is still starting. Close and reopen the game, then try again."))
+        clearSession()
+        val guestId = owner.getSharedPreferences(GUEST_PREFS, Activity.MODE_PRIVATE)
+            .getString(GUEST_ACCOUNT_ID, null)
+            ?.takeIf { it.startsWith("guest-") }
+            ?: "guest-${UUID.randomUUID().toString().replace("-", "").take(20)}"
+        owner.getSharedPreferences(GUEST_PREFS, Activity.MODE_PRIVATE)
+            .edit()
+            .putString(GUEST_ACCOUNT_ID, guestId)
+            .apply()
+        return publish(
+            SessionSnapshot(
+                SessionState.AUTHENTICATED,
+                accountId = guestId,
+                message = "Guest local play is ready. This device keeps the world locally; Google is required for cloud restore and hosted co-op.",
+                isGuest = true
             )
         )
     }

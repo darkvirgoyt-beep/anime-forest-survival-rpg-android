@@ -75,6 +75,7 @@ jobs:
           test -f tools/unreal_pack_mapping.json
           test -f tools/test_production_foundation_contract.py
           test -f tools/test_online_only_contract.py
+          test -f tools/test_dual_login_contract.py
           test -f tools/test_persistent_multiplayer_contract.py
           test -f tools/test_progressive_content_contract.py
           test -f tools/test_launch_slice_content.py
@@ -87,7 +88,7 @@ jobs:
           test -f tools/author_launch_slice_assets.py
           test -f tools/check_16kb_alignment.sh
           test -f tools/publish_internal_test.py
-          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/test_forest_warden_asset.py tools/test_hud_contract.py tools/test_movement_look_contract.py tools/test_world_map_contract.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
+          python3 -m py_compile tools/test_resource_center.py tools/test_graphics_tier_contract.py tools/test_production_foundation_contract.py tools/test_online_only_contract.py tools/test_dual_login_contract.py tools/test_persistent_multiplayer_contract.py tools/test_progressive_content_contract.py tools/test_launch_slice_content.py tools/test_forest_prop_kit.py tools/test_forest_warden_asset.py tools/test_hud_contract.py tools/test_movement_look_contract.py tools/test_world_map_contract.py tools/author_launch_slice_assets.py tools/publish_internal_test.py
           bash -n tools/check_16kb_alignment.sh
           grep -q 'Log.w("AethelgardAuth"' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
           grep -q 'describeGoogleCredentialFailure' app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt
@@ -164,6 +165,8 @@ jobs:
           python3 tools/test_production_foundation_contract.py || { echo 'FAIL production foundation contract'; exit 1; }
           echo 'CHECK online-only contract'
           python3 tools/test_online_only_contract.py || { echo 'FAIL online-only contract'; exit 1; }
+          echo 'CHECK guest local-play contract'
+          python3 tools/test_dual_login_contract.py || { echo 'FAIL guest local-play contract'; exit 1; }
           echo 'CHECK persistent multiplayer contract'
           python3 tools/test_persistent_multiplayer_contract.py || { echo 'FAIL persistent multiplayer contract'; exit 1; }
           echo 'CHECK hosted multiplayer contract'

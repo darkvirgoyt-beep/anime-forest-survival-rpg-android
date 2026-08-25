@@ -390,8 +390,11 @@ class MainActivity : Activity(), SensorEventListener {
     }
     private val cloudSaveUpdater = object : Runnable {
         override fun run() {
+            if (accountSession.snapshot.isGuest && worldStateReadyForWorld) {
+                saveGuestWorldState()
+            }
             val world = activeCloudWorld
-            if (world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
+            if (!accountSession.snapshot.isGuest && world != null && networkOnline && !cloudSaveInFlight && ::gameView.isInitialized) {
                 cloudSaveInFlight = true
                 gameView.queueEvent {
                     val nativeState = NativeGameBridge.getCloudState()
@@ -690,6 +693,16 @@ class MainActivity : Activity(), SensorEventListener {
                 applyServerRegion(regions[candidateIndex], serverButton)
             }
             .show()
+    }
+
+    private fun requestGuestEntry() {
+        if (googleLoginInFlight) return
+        authenticationTransitionStarted = false
+        val immediate = accountSession.requestGuestSignIn()
+        if (immediate.state == SessionState.AUTHENTICATED && immediate.isGuest && ::onboardingStatus.isInitialized) {
+            onboardingStatus.text = "GUEST LOCAL PLAY  •  THIS DEVICE ONLY  •  GOOGLE UNLOCKS CLOUD AND CO-OP"
+            onboardingStatus.setTextColor(Color.rgb(164, 231, 190))
+        }
     }
 
     private fun requestGoogleAccountLink() {
@@ -1127,14 +1140,14 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, dp(8), 0, dp(2))
         }
         val instruction = TextView(this).apply {
-            text = "REQUIRED ACCOUNT LINK  •  Google confirms your identity; cloud saves stay in Aethelgard’s game service."
+            text = "CHOOSE YOUR PATH  •  Google protects cloud worlds and co-op; Guest stays on this device only."
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 214, 218))
             setPadding(0, 0, 0, dp(6))
         }
         onboardingStatus = TextView(this).apply {
-            text = "SIGN IN WITH GOOGLE TO PROTECT YOUR CLOUD WORLD AND CONTINUE ONLINE"
+            text = "CHOOSE GOOGLE FOR CLOUD PLAY  OR  GUEST FOR DEVICE-LOCAL PLAY"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 205, 145))
@@ -1164,6 +1177,9 @@ class MainActivity : Activity(), SensorEventListener {
             if (!checked && ::onboardingStatus.isInitialized) {
                 onboardingStatus.text = "ACCOUNT-LINK CONSENT IS REQUIRED TO CONTINUE ONLINE"
             }
+        }
+        val guest = cinematicButton("CONTINUE AS GUEST  •  DEVICE-LOCAL PLAY", false) {
+            requestGuestEntry()
         }
         val trustRow = LinearLayout(this).apply {
             gravity = Gravity.CENTER
@@ -1195,6 +1211,7 @@ class MainActivity : Activity(), SensorEventListener {
         panel.addView(onboardingStatus, LinearLayout.LayoutParams(-1, dp(42)))
         panel.addView(consent, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
         panel.addView(google, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(2) })
+        panel.addView(guest, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
         panel.addView(trustRow, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(12) })
 
         val scroll = ScrollView(this).apply {

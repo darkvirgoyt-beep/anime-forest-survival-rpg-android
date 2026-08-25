@@ -9,7 +9,7 @@
 | Android minimum version | Android 11 / API 30 | The downloadable release is deliberately Android 11+; app-scoped OBB download storage needs no broad shared-storage permission. |
 | Android game category | `android:appCategory="game"` | Helps Android and compatible launchers identify the package as a game. OEM Game Space enrollment remains controlled by the device/user and cannot be forced by the app. |
 | Game authentication base | `https://aethelservs-g7pzbnwp.manus.space/api/game-auth` | The authenticated Google exchange and refresh flow require the matching managed HTTPS backend. |
-| Online mode | `online-only` | Do not add a guest or offline production bypass; cloud/session ownership is the game entry boundary. |
+| Entry mode | `dual-entry` | Google accounts own cloud restore and hosted co-op. Guest mode is device-local only: it has no cloud restoration, shared saves, or hosted co-op until the player explicitly switches to Google. |
 | High-graphics publication gate | `false` | Keep this false until real original/licensed Unreal Android cooked content has a measured signed archive or Play release. See `docs/VERIFIED_CONTENT_PUBLICATION.md`. |
 | Unreal Engine source | `external-private-only` | Epic-licensed engine source stays outside this public game repository. Commit only project code and original/licensed assets. |
 

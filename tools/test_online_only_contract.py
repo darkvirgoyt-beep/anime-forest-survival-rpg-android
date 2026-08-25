@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate that the Android release has one production online launch path."""
+"""Validate the Android release’s Google-backed and device-local guest launch paths."""
 from __future__ import annotations
 
 import configparser
@@ -10,6 +10,12 @@ REQUIRED = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "beginOnlineStartup", "automatic online startup"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGoogleSignIn", "Google production login"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "SIGN IN WITH GOOGLE", "visible Google login control"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "CONTINUE AS GUEST", "visible guest local-play control"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGuestEntry", "guest local-play entry action"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "HOSTED CO-OP UNAVAILABLE", "guest hosted-co-op restriction"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "saveGuestWorldState", "guest device-local world persistence"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "requestGuestSignIn", "device-local guest session"),
+    ("app/src/main/java/com/darkvirgoyt/aethelgrad/AccountSessionManager.kt", "cloud restore and hosted co-op", "guest capability boundary"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestProductionContent", "production content request"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "ENTER CORE ONLINE WORLD", "safe core-world entry when optional high graphics are unavailable"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "markCoreOnlineContentReady", "core-world content readiness boundary"),
@@ -64,9 +70,6 @@ FORBIDDEN = (
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "offlinePrototypeMode", "offline prototype runtime mode"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "PLAY OFFLINE PROTOTYPE", "offline prototype entry button"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "canUseBundledFreeFallback", "bundled graphics bypass"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "requestGuestSignIn", "automatic guest login"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "GUEST SESSION", "guest login UI"),
-    ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "OPTIONAL GOOGLE LINK", "optional login copy"),
 
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "FREE LOCAL GRAPHICS MODE READY", "bundled graphics mode"),
     ("app/src/main/java/com/darkvirgoyt/aethelgrad/MainActivity.kt", "activateOfflinePrototype", "offline prototype entry"),
@@ -98,7 +101,7 @@ def main() -> None:
             ("Identity", "JniPrefix"): "Java_com_darvirgoyt_aethelgrad_",
             ("Identity", "LauncherLabel"): "AETHELGARD: Wild Horizons",
             ("Platform", "MinSdk"): "30",
-            ("Online", "Mode"): "online-only",
+            ("Online", "Mode"): "dual-entry",
             ("Online", "GameAuthBase"): "https://aethelservs-g7pzbnwp.manus.space/api/game-auth",
             ("Online", "GameAuthExchange"): "/exchange",
             ("Online", "GameAuthRefresh"): "/refresh",
@@ -139,7 +142,7 @@ def main() -> None:
         for failure in failures:
             print(f"FAIL online_only_contract: {failure}")
         raise SystemExit(1)
-    print(f"ONLINE_ONLY_CONTRACT_PASS={len(REQUIRED) + len(FORBIDDEN)}")
+    print(f"DUAL_ENTRY_CONTRACT_PASS={len(REQUIRED) + len(FORBIDDEN)}")
 
 
 if __name__ == "__main__":
