@@ -96,3 +96,5 @@
 - [x] Run native C++ physics validation and repair Android repeated action-button presses plus buffered jump delivery; retain physical-device validation as a separate step.
 - [x] Expand the Android harness into a larger bounded plains-and-mountains terrain layout with physical collision features and updated live-map coverage; retain Unreal as the final production-world path.
 - [x] Add a terrain-aware smooth follow camera that widens across open plains and tightens near mountain barriers without changing direct right-side look control.
+- [x] Add a live minimap/radar for the expanded plains and mountains with player heading, nearby physical escarpments, and gameplay landmarks; preserve private-map boundaries.
+- [x] Diagnose and fix the device-reported joystick horizontal reversal so a rightward thumb movement produces rightward camera-relative character movement.

@@ -14,6 +14,7 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** Lightweight native-canvas HUD ornaments that do not block gameplay touch input. */
 class AimCrosshairView(context: Context) : View(context) {
@@ -257,14 +258,17 @@ class AethelgardWorldMapView(context: Context) : View(context) {
 class CircularMiniMapView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
-    private var playerXKm = 10f
-    private var playerYKm = 16f
-    private var yawDegrees = 0f
+    private var playerState = WorldMapPlayerState()
+    private val radarRangeKm = 18f
+    private val terrainRadarMarkers = listOf(
+        Triple("RIDGE", 15f, 74f), Triple("RIDGE", 25f, 84f), Triple("RIDGE", 80f, 76f),
+        Triple("RIDGE", 89f, 28f), Triple("RIDGE", 57f, 11f),
+        Triple("CAMP", 10f, 16f), Triple("GATE", 40f, 48f), Triple("OASIS", 55f, 69f),
+        Triple("FROST", 74f, 57f), Triple("ARENA", 88f, 83f)
+    )
 
     fun setPlayerState(state: WorldMapPlayerState) {
-        playerXKm = state.xKm.coerceIn(0f, 100f)
-        playerYKm = state.yKm.coerceIn(0f, 100f)
-        yawDegrees = state.yawDegrees
+        playerState = state.copy(xKm = state.xKm.coerceIn(0f, 100f), yKm = state.yKm.coerceIn(0f, 100f))
         invalidate()
     }
 
@@ -273,39 +277,74 @@ class CircularMiniMapView(context: Context) : View(context) {
         val cx = width / 2f
         val cy = height / 2f
         val radius = size * 0.44f
+        val radarRadius = radius * 0.84f
         paint.style = Paint.Style.FILL
         paint.color = Color.argb(225, 6, 20, 27)
         canvas.drawCircle(cx, cy, radius, paint)
         canvas.save()
-        canvas.clipPath(Path().apply { addCircle(cx, cy, radius * 0.90f, Path.Direction.CW) })
-        paint.color = Color.rgb(18, 83, 74)
-        canvas.drawRect(cx - radius, cy - radius, cx, cy + radius, paint)
-        paint.color = Color.rgb(96, 59, 46)
-        canvas.drawRect(cx, cy - radius, cx + radius, cy + radius, paint)
-        paint.color = Color.rgb(47, 91, 132)
-        canvas.drawRect(cx - radius * 0.18f, cy - radius, cx + radius * 0.10f, cy + radius, paint)
-        paint.color = Color.argb(160, 30, 120, 133)
-        canvas.drawRect(cx - radius * 0.55f, cy - radius, cx - radius * 0.35f, cy + radius, paint)
+        canvas.clipPath(Path().apply { addCircle(cx, cy, radarRadius, Path.Direction.CW) })
+        paint.color = Color.rgb(18, 62, 58)
+        canvas.drawRect(cx - radarRadius, cy - radarRadius, cx + radarRadius, cy + radarRadius, paint)
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = size * 0.018f
+        paint.strokeWidth = size * 0.010f
+        paint.color = Color.argb(115, 134, 207, 184)
+        canvas.drawLine(cx - radarRadius, cy, cx + radarRadius, cy, paint)
+        canvas.drawLine(cx, cy - radarRadius, cx, cy + radarRadius, paint)
+        paint.color = Color.argb(94, 208, 224, 185)
+        canvas.drawCircle(cx, cy, radarRadius * 0.33f, paint)
+        canvas.drawCircle(cx, cy, radarRadius * 0.66f, paint)
+
+        val heading = Math.toRadians(playerState.yawDegrees.toDouble())
+        val radarRotation = heading - Math.PI / 2.0
+        val radarCos = cos(radarRotation).toFloat()
+        val radarSin = sin(radarRotation).toFloat()
+        val scale = radarRadius / radarRangeKm
+        terrainRadarMarkers.forEachIndexed { index, marker ->
+            val dx = marker.second - playerState.xKm
+            val dy = marker.third - playerState.yKm
+            val distance = sqrt(dx * dx + dy * dy)
+            if (distance > radarRangeKm) return@forEachIndexed
+            val rawX = dx
+            val rawY = -dy
+            val radarX = rawX * radarCos - rawY * radarSin
+            val radarY = rawX * radarSin + rawY * radarCos
+            val markerX = cx + radarX * scale
+            val markerY = cy + radarY * scale
+            val ridge = marker.first == "RIDGE"
+            val discovered = ridge || index < 3 || (playerState.discoveredMask and (1 shl (index.coerceAtMost(3)))) != 0
+            paint.style = Paint.Style.FILL
+            paint.color = if (ridge) Color.rgb(213, 159, 94) else if (discovered) Color.rgb(122, 224, 205) else Color.argb(80, 185, 201, 187)
+            if (ridge) {
+                path.reset()
+                path.moveTo(markerX, markerY - size * 0.060f)
+                path.lineTo(markerX - size * 0.048f, markerY + size * 0.042f)
+                path.lineTo(markerX + size * 0.048f, markerY + size * 0.042f)
+                path.close()
+                canvas.drawPath(path, paint)
+            } else {
+                canvas.drawCircle(markerX, markerY, size * 0.033f, paint)
+            }
+        }
+
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(74, 255, 235, 171)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = size * 0.015f
         paint.color = Color.argb(170, 238, 199, 113)
         path.reset()
-        path.moveTo(cx - radius, cy + radius * 0.10f)
-        path.cubicTo(cx - radius * 0.40f, cy - radius * 0.06f, cx + radius * 0.25f, cy + radius * 0.20f, cx + radius, cy - radius * 0.12f)
+        path.moveTo(cx - radarRadius, cy + radarRadius * 0.10f)
+        path.cubicTo(cx - radarRadius * 0.40f, cy - radarRadius * 0.06f, cx + radarRadius * 0.25f, cy + radarRadius * 0.20f, cx + radarRadius, cy - radarRadius * 0.12f)
         canvas.drawPath(path, paint)
-        val px = cx - radius * 0.90f + radius * 1.80f * (playerXKm / 100f)
-        val py = cy + radius * 0.90f - radius * 1.80f * (playerYKm / 100f)
-        val heading = Math.toRadians(yawDegrees.toDouble())
         paint.style = Paint.Style.FILL
-        paint.color = Color.argb(80, 255, 235, 171)
+        paint.color = Color.argb(95, 255, 235, 171)
         path.reset()
-        path.moveTo(px, py)
-        path.lineTo(px + cos(heading).toFloat() * 18f, py - sin(heading).toFloat() * 18f)
-        path.lineTo(px + cos(heading + 2.55).toFloat() * 8f, py - sin(heading + 2.55).toFloat() * 8f)
+        path.moveTo(cx, cy - size * 0.095f)
+        path.lineTo(cx - size * 0.065f, cy + size * 0.065f)
+        path.lineTo(cx + size * 0.065f, cy + size * 0.065f)
         path.close()
         canvas.drawPath(path, paint)
         paint.color = Color.rgb(255, 235, 171)
-        canvas.drawCircle(px, py, radius * 0.095f, paint)
+        canvas.drawCircle(cx, cy, radius * 0.095f, paint)
         canvas.restore()
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = size * 0.035f
@@ -315,7 +354,10 @@ class CircularMiniMapView(context: Context) : View(context) {
         paint.color = Color.rgb(255, 228, 163)
         paint.textSize = size * 0.13f
         paint.textAlign = Paint.Align.CENTER
-        canvas.drawText("N", cx, cy - radius * 0.67f, paint)
+        canvas.drawText("FWD", cx, cy - radius * 0.67f, paint)
+        paint.textSize = size * 0.105f
+        paint.color = Color.rgb(190, 220, 208)
+        canvas.drawText("RADAR  •  18 KM", cx, cy + radius * 0.78f, paint)
     }
 }
 

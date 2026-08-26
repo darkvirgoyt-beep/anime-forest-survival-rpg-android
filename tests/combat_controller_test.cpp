@@ -77,8 +77,17 @@ int main() {
     controller.body.grounded = true;
     const forest::controller::InputFrame walkInput{1.0f, 0.0f, 0.0f, false};
     controller.tick(walkInput, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
-    assert(controller.body.velocity.x > 0.0f);
+    // The GLES view basis looks down +Z, so its screen-right basis is -X.
+    // This guards the device-reported case where a right thumb drag moved left.
+    assert(controller.body.velocity.x < 0.0f);
     assert(controller.state == forest::controller::LocomotionState::Walk);
+
+    controller = {};
+    controller.body.position = {0.0f, -0.50f};
+    controller.body.grounded = true;
+    const forest::controller::InputFrame forwardInput{0.0f, -1.0f, 0.0f, false};
+    controller.tick(forwardInput, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
+    assert(controller.body.velocity.y > 0.0f);
 
     const float staminaBeforeSprint = controller.stamina;
     const forest::controller::InputFrame sprintInput{1.0f, 0.0f, 0.0f, true};

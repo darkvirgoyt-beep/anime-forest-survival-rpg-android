@@ -2630,7 +2630,7 @@ class MainActivity : Activity(), SensorEventListener {
             setOnClickListener { mapButton.performClick() }
         }
         miniMapView = miniMap
-        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(96), dp(96), Gravity.TOP or Gravity.END).apply {
+        overlay.addView(miniMap, FrameLayout.LayoutParams(dp(112), dp(112), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(70)
             rightMargin = dp(18)
         })

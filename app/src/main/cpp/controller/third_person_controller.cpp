@@ -93,8 +93,8 @@ void ThirdPersonController::tick(const InputFrame& input, float deltaSeconds,
     const float cosYaw = std::cos(camera.yaw);
     const float sinYaw = std::sin(camera.yaw);
     physics::Vec2 cameraRelative{
-        input.moveX * cosYaw - input.moveY * sinYaw,
-        input.moveX * sinYaw + input.moveY * cosYaw
+        -input.moveX * cosYaw - input.moveY * sinYaw,
+        input.moveX * sinYaw - input.moveY * cosYaw
     };
     if (moving) {
         const float directionLength = std::sqrt(cameraRelative.x * cameraRelative.x + cameraRelative.y * cameraRelative.y);
