@@ -431,7 +431,12 @@ class MainActivity : Activity(), SensorEventListener {
         audio = GameAudio(this)
         audio.playMusic()
 
-        rootContainer = FrameLayout(this).apply { setBackgroundColor(Color.rgb(7, 16, 20)) }
+        rootContainer = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(7, 16, 20))
+            // Let a held left-stick pointer and a right-side action pointer reach
+            // their separate overlay children in the same gesture.
+            isMotionEventSplittingEnabled = true
+        }
         gameView = GameSurfaceView(this) { markWorldLoadingTaskReady("renderer") }
         assetPacks = AssetPackCatalog(this)
         standaloneExpansionFile = StandaloneExpansionFile(this)
@@ -2509,7 +2514,12 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     private fun buildHud(): View {
-        val overlay = FrameLayout(this)
+        val overlay = FrameLayout(this).apply {
+            // Buttons must receive their own pointer stream while the joystick
+            // remains held; otherwise Android routes the whole gesture to the
+            // first child and actions appear to work only once.
+            isMotionEventSplittingEnabled = true
+        }
         val profileBadge = ImageView(this).apply {
             setImageResource(R.drawable.aethelgard_profile_gold)
             scaleType = ImageView.ScaleType.CENTER_CROP

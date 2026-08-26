@@ -57,6 +57,12 @@ int main() {
     assert(controller.jump());
     assert(controller.state == forest::controller::LocomotionState::Jump);
     assert(!controller.jump());
+    for (int i = 0; i < 180; ++i) {
+        controller.tick({}, 1.0f / 60.0f, nullptr, 0, nullptr, 0);
+    }
+    assert(controller.body.grounded);
+    assert(controller.jump());
+    assert(controller.state == forest::controller::LocomotionState::Jump);
 
     controller = {};
     controller.body.position = {0.0f, -0.50f};

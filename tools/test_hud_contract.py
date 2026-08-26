@@ -52,6 +52,7 @@ def main() -> None:
     require('text = "$symbol\\n$label"' in main, "compact buttons must have two-line symbol labels")
     require('text = "${index + 1}\\n$symbol"' in main, "quick slots must have numbered labels")
     require('jump.setOnTouchListener' in main and 'MotionEvent.ACTION_DOWN' in main, "jump must dispatch on touch-down instead of waiting for click release")
+    require(main.count("isMotionEventSplittingEnabled = true") >= 2, "joystick and action buttons must receive split multi-touch streams")
     require("nextHunger: Int = 100" in views, "vital meter must support hunger")
     require('drawMeter(canvas, "HP"' in views, "health bar missing")
     require('drawMeter(canvas, "STA"' in views, "stamina bar missing")
