@@ -35,6 +35,7 @@ struct CameraState {
 
     void orbit(float deltaYaw, float deltaPitch);
     void resolveObstruction(float measuredDistance, float deltaSeconds);
+    void followTerrain(float desiredDistance, float deltaSeconds);
 };
 
 class ThirdPersonController {

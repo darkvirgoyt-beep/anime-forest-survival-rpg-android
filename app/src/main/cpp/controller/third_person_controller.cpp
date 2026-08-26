@@ -29,8 +29,14 @@ void CameraState::orbit(float deltaYaw, float deltaPitch) {
 }
 
 void CameraState::resolveObstruction(float measuredDistance, float deltaSeconds) {
-    targetDistance = std::clamp(measuredDistance, minDistance, maxDistance);
-    const float blend = 1.0f - std::exp(-18.0f * std::clamp(deltaSeconds, 0.0f, 0.05f));
+    followTerrain(measuredDistance, deltaSeconds);
+}
+
+void CameraState::followTerrain(float desiredDistance, float deltaSeconds) {
+    targetDistance = std::clamp(desiredDistance, minDistance, maxDistance);
+    // A slower, interruption-safe follow blend keeps distant plains readable
+    // without snapping when the player enters an escarpment or tight route.
+    const float blend = 1.0f - std::exp(-5.8f * std::clamp(deltaSeconds, 0.0f, 0.05f));
     distance += (targetDistance - distance) * blend;
 }
 

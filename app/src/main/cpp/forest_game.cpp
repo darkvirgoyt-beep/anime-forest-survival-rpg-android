@@ -362,6 +362,29 @@ const forest::physics::StaticObstacle gObstacles[] = {
     {{{0.22f, -0.78f}, {0.16f, 0.14f}}}
 };
 
+float terrainFollowDistance() {
+    // The broad plains use a wide view. Near the mountain escarpments or world
+    // boundary, the camera eases inward so the player remains readable and the
+    // clipping risk stays low on a small mobile display.
+    constexpr float openPlainsDistance = 5.15f;
+    constexpr float mountainDistance = 3.45f;
+    float nearestEscarpment = 10.0f;
+    for (size_t i = 2; i < sizeof(gObstacles) / sizeof(gObstacles[0]); ++i) {
+        const auto& escarpment = gObstacles[i].bounds;
+        const float dx = gController.body.position.x - escarpment.center.x;
+        const float dy = gController.body.position.y - escarpment.center.y;
+        nearestEscarpment = std::min(nearestEscarpment, std::sqrt(dx * dx + dy * dy));
+    }
+    const float escarpmentWeight = std::clamp(1.0f - nearestEscarpment / 0.72f, 0.0f, 1.0f);
+    const float xEdge = std::abs(gController.body.position.x) / kSimulationMaxX;
+    const float yEdge = std::abs(gController.body.position.y) / kSimulationMaxY;
+    const float boundaryWeight = std::clamp((std::max(xEdge, yEdge) - 0.72f) / 0.28f, 0.0f, 1.0f);
+    const float enclosedWeight = std::max(escarpmentWeight, boundaryWeight);
+    float desiredDistance = openPlainsDistance + (mountainDistance - openPlainsDistance) * enclosedWeight;
+    if (gController.body.water.overlapping) desiredDistance -= 0.28f;
+    return std::clamp(desiredDistance, gController.camera.minDistance, gController.camera.maxDistance);
+}
+
 // The central valley stream carries both visual flow and gameplay force. Its current
 // is updated every physics step so players feel a steady downstream pull with a
 // gentle cross-current, rather than a static water slowdown.
@@ -2313,6 +2336,7 @@ void simulatePhysicsStep() {
     }
     gController.tick(input, kPhysicsStep, gObstacles, static_cast<int>(sizeof(gObstacles) / sizeof(gObstacles[0])),
                       gWaterVolumes, static_cast<int>(sizeof(gWaterVolumes) / sizeof(gWaterVolumes[0])));
+    gController.camera.followTerrain(terrainFollowDistance(), kPhysicsStep);
     updateMobs(kPhysicsStep);
     gCombat.tick(kPhysicsStep);
     if (gJumpBufferSeconds > 0.0f) {

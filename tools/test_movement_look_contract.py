@@ -46,6 +46,9 @@ def main() -> None:
     require("x >= width * 0.50f" in main, "look controls must remain on the right half of the screen")
     require("NativeGameBridge.setMove(0f, 0f)" in main and "NativeGameBridge.setSprintHeld(false)" in main, "pause must clear held movement state")
     require("gMoveX = 0.0f;" in game and "gSprintHeld = false;" in game, "renderer initialization must clear stale movement state")
+    require("float terrainFollowDistance()" in game and "openPlainsDistance = 5.15f" in game, "open plains must request a wider follow camera")
+    require("gController.camera.followTerrain(terrainFollowDistance(), kPhysicsStep)" in game, "camera follow distance must update after fixed-step terrain physics")
+    require("void CameraState::followTerrain" in controller, "follow camera must use an interpolated native camera path")
 
     print("MOVEMENT_LOOK_CONTRACT_PASS=1")
     print("JOYSTICK_AXES=direct")

@@ -64,6 +64,14 @@ int main() {
     assert(controller.jump());
     assert(controller.state == forest::controller::LocomotionState::Jump);
 
+    controller.camera.distance = 3.8f;
+    controller.camera.followTerrain(5.15f, 1.0f / 60.0f);
+    assert(controller.camera.distance > 3.8f);
+    for (int i = 0; i < 90; ++i) controller.camera.followTerrain(5.15f, 1.0f / 60.0f);
+    assert(controller.camera.distance > 4.9f);
+    controller.camera.followTerrain(3.45f, 1.0f / 30.0f);
+    assert(controller.camera.distance < 5.15f);
+
     controller = {};
     controller.body.position = {0.0f, -0.50f};
     controller.body.grounded = true;
