@@ -191,6 +191,29 @@ class AssetPackCatalog(context: Context) {
     fun requestProductionContent(onProgress: (ProductionProgress) -> Unit) =
         requestProductionContent(ContentDownloadPlan.ResourceTier.STAGE_1, onProgress)
 
+    /**
+     * Expands the local Stage 1 footprint only with optional packs that are both
+     * published and measured in the embedded content manifest. No planned bytes,
+     * empty packs, or unpublished Unreal resources can start a download here.
+     */
+    fun requestAvailableStageEnhancements(onProgress: (ProductionProgress) -> Unit) {
+        val packNames = measuredPublishedPackNames(ContentDownloadPlan.optionalStagePackNames())
+        if (packNames.isEmpty()) {
+            onProgress(
+                ProductionProgress(
+                    status = AssetPackStatus.COMPLETED,
+                    percent = 100,
+                    bytesDownloaded = 0L,
+                    totalBytes = 0L,
+                    sizeVerified = true,
+                    source = "no-published-stage-enhancement"
+                )
+            )
+            return
+        }
+        requestPackSet(packNames, onProgress)
+    }
+
     private fun requestPackSet(
         requestedPackNames: List<String>,
         onProgress: (ProductionProgress) -> Unit
@@ -303,6 +326,20 @@ class AssetPackCatalog(context: Context) {
         val launchSlice = manifest.getJSONObject("contentDelivery").getJSONObject("launchSlice")
         if (!launchSlice.optBoolean("published", false)) 0L else launchSlice.optLong("measuredBytes", 0L).takeIf { it > 0L } ?: 0L
     }.getOrDefault(0L)
+
+    private fun measuredPublishedPackNames(requestedPackNames: List<String>): List<String> = runCatching {
+        val manifest = appContext.assets.open("asset_manifest.json").bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+        val packs = manifest.getJSONArray("packs")
+        buildList {
+            for (index in 0 until packs.length()) {
+                val pack = packs.getJSONObject(index)
+                val name = pack.optString("name")
+                if (name in requestedPackNames && pack.optBoolean("published", false) && pack.optLong("measuredBytes", 0L) > 0L) {
+                    add(name)
+                }
+            }
+        }
+    }.getOrDefault(emptyList())
 
     fun sectorContentReady(tier: ContentDownloadPlan.ResourceTier, sector: ContentDownloadPlan.WorldSector): Boolean =
         ContentDownloadPlan.packNamesForSector(tier, sector).all(::isReady)

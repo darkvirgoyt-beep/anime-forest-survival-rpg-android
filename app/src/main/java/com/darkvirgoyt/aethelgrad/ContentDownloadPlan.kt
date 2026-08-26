@@ -112,6 +112,11 @@ object ContentDownloadPlan {
 
     fun startupPackNamesFor(tier: ResourceTier): List<String> = startupPacksFor(tier).map { it.playPackName }
 
+    /** Real, non-blocking Stage 1 additions that may expand device storage after the world opens. */
+    fun optionalStagePackNames(): List<String> = stageOnePacks
+        .filterNot { it.requiredBeforeStart }
+        .map { it.playPackName }
+
     fun packsForSector(tier: ResourceTier, sector: WorldSector): List<Pack> = packsFor(tier)
         .filter { it.sector == sector }
 

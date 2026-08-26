@@ -11,7 +11,7 @@ A raw APK cannot silently install a separate OBB into Android’s protected expa
 
 ## Startup behavior
 
-On first launch, the app automatically chooses the highest resource tier that passes the storage preflight. It prepares only the compact launch slice, persists that choice, and monitors the launch pack set. If the user restarts the app, the state is checked again and an in-progress or paused request is resumed. If Play requires consent for a large mobile-data download, the app opens the Play confirmation dialog and resumes after acceptance. If the user declines, the request remains paused and can resume later.
+On first launch, the app automatically chooses the highest resource tier that passes the storage preflight. It prepares only the compact launch slice, persists that choice, and monitors the launch pack set. After the world opens, it may request measured, published optional Stage 1 additions in the background; the local footprint grows only when Play reports real downloaded bytes. If the user restarts the app, the state is checked again and an in-progress or paused request is resumed. If Play requires consent for a large mobile-data download, the app opens the Play confirmation dialog and resumes after acceptance. If the user declines, the request remains paused and can resume later.
 
 The launch forest is delivered as `fast-follow`. Shared launch dependencies are fetched as part of the launch preparation request. Sand, snow, dungeon, high-resolution texture, foliage, audio, VFX, cinematic, voice, and pipeline packs are `on-demand` and are requested after the native game reports the corresponding exploration/progression bit. The server receives only the small discovery bitmask through the ordinary revisioned cloud save.
 

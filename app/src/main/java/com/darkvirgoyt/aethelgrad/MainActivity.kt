@@ -191,6 +191,7 @@ class MainActivity : Activity(), SensorEventListener {
     private val requestedProgressiveSectors = mutableSetOf<ContentDownloadPlan.WorldSector>()
     private var progressiveContentNotice: String? = null
     private var progressiveConfirmationInFlight = false
+    private var optionalStageExpansionRequested = false
     private var cloudRecoveryNotice: String? = null
     private var activeCoOpRoom: CoOpRoomSnapshot? = null
     private var coOpHeartbeatInFlight = false
@@ -1056,6 +1057,32 @@ class MainActivity : Activity(), SensorEventListener {
                             "$label  •  WAITING FOR VERIFIED DOWNLOAD METADATA"
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /** Downloads only real, measured optional Stage 1 packs after gameplay has already opened. */
+    private fun requestAvailableStageExpansion() {
+        if (!resourcePreparationComplete || !networkOnline || optionalStageExpansionRequested) return
+        optionalStageExpansionRequested = true
+        assetPacks.requestAvailableStageEnhancements { event ->
+            runOnUiThread {
+                when {
+                    event.failed -> {
+                        optionalStageExpansionRequested = false
+                        progressiveContentNotice = "OPTIONAL RESOURCES PAUSED  •  RETRY WHEN ONLINE"
+                    }
+                    event.complete && event.totalBytes > 0L -> {
+                        progressiveContentNotice = "OPTIONAL RESOURCES READY  •  LOCAL WORLD SIZE INCREASED"
+                    }
+                    event.complete -> Unit
+                    event.sizeVerified && event.totalBytes > 0L -> {
+                        val downloaded = event.bytesDownloaded / (1024 * 1024)
+                        val total = event.totalBytes / (1024 * 1024)
+                        progressiveContentNotice = "OPTIONAL RESOURCES  •  ${event.percent}%  •  $downloaded / $total MB"
+                    }
+                    else -> progressiveContentNotice = "OPTIONAL RESOURCES  •  WAITING FOR VERIFIED DOWNLOAD METADATA"
                 }
             }
         }
@@ -3065,6 +3092,7 @@ class MainActivity : Activity(), SensorEventListener {
                 assetPatchOverlay = null
                 if (highResolution) markProductionContentReady() else markCoreOnlineContentReady()
                 onReady()
+                if (!highResolution) requestAvailableStageExpansion()
                 continuePendingWorldEntry()
             }, 450L)
         }

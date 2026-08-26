@@ -84,3 +84,6 @@
 - [x] Update and verify the truthful zero-byte `assetpack_shaders_vulkan` deferred-pack state so its GitHub folder header points to a current passing commit instead of the historical failed `a744758` commit.
 - [x] Audit every tracked repository folder whose latest GitHub-visible commit still carries a historical failed status, repair all remaining truthful module-state or validation gaps in one coordinated change, and verify the current main workflow is green.
 - [x] Audit Unreal project settings and all Android asset-pack manifests against declared memory budgets, verify exact packaged bytes and future-pack publication gates, and repair any reproducible budget violation.
+- [x] Prepare an evidence-based presenter script explaining Unreal memory limits, asset-pack ceilings, CI guardrails, and remaining Unreal cook/device-profiling boundaries.
+- [x] Prepare an evidence-based presenter script explaining Unreal memory limits, asset-pack ceilings, CI guardrails, and remaining Unreal cook/device-profiling boundaries.
+- [x] Implement a truthful real-resource download and optional OBB-style expansion contract with measured-byte progress, integrity checks, and no fake size inflation; publish only after original/licensed cooked payloads exist.
