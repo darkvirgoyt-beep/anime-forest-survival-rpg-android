@@ -137,6 +137,10 @@ jobs:
           test -f assetpack_animation_sets/build.gradle.kts
           echo 'CHECK asset budget'
           python3 tools/validate_asset_budget.py || { echo 'FAIL asset budget'; exit 1; }
+          echo 'CHECK future-content asset budget'
+          python3 tools/validate_asset_budget.py --manifest assets/full_content_budget.json || { echo 'FAIL future-content asset budget'; exit 1; }
+          echo 'CHECK Unreal memory budget'
+          python3 tools/test_unreal_memory_budget.py || { echo 'FAIL Unreal memory budget'; exit 1; }
           echo 'CHECK runtime content package'
           python3 tools/validate_runtime_content_package.py || { echo 'FAIL runtime content package'; exit 1; }
           echo 'CHECK authored launch-slice content'
