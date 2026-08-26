@@ -98,3 +98,4 @@
 - [x] Add a terrain-aware smooth follow camera that widens across open plains and tightens near mountain barriers without changing direct right-side look control.
 - [x] Add a live minimap/radar for the expanded plains and mountains with player heading, nearby physical escarpments, and gameplay landmarks; preserve private-map boundaries.
 - [x] Diagnose and fix the device-reported joystick horizontal reversal so a rightward thumb movement produces rightward camera-relative character movement.
+- [x] Add more authored radar landmark categories and user-selectable zoom levels while preserving live heading, map launch, and private-map boundaries.

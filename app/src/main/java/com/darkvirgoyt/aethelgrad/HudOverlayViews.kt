@@ -259,13 +259,33 @@ class CircularMiniMapView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
     private var playerState = WorldMapPlayerState()
-    private val radarRangeKm = 18f
+    private val radarZoomLevelsKm = floatArrayOf(12f, 18f, 28f)
+    private var radarZoomIndex = 1
+    private val radarRangeKm: Float get() = radarZoomLevelsKm[radarZoomIndex]
     private val terrainRadarMarkers = listOf(
         Triple("RIDGE", 15f, 74f), Triple("RIDGE", 25f, 84f), Triple("RIDGE", 80f, 76f),
         Triple("RIDGE", 89f, 28f), Triple("RIDGE", 57f, 11f),
-        Triple("CAMP", 10f, 16f), Triple("GATE", 40f, 48f), Triple("OASIS", 55f, 69f),
-        Triple("FROST", 74f, 57f), Triple("ARENA", 88f, 83f)
+        Triple("CAMP", 10f, 16f), Triple("VILLAGE", 14f, 40f), Triple("GATE", 40f, 48f),
+        Triple("CAVE", 26f, 78f), Triple("OASIS", 55f, 69f), Triple("FROST", 74f, 57f),
+        Triple("ARENA", 88f, 83f), Triple("SHRINE", 68f, 25f), Triple("DOCK", 34f, 62f),
+        Triple("HUNT", 21f, 57f), Triple("RUIN", 63f, 44f), Triple("KILN", 47f, 28f),
+        Triple("BASIN", 84f, 59f)
     )
+
+    fun zoomIn() {
+        radarZoomIndex = (radarZoomIndex - 1).coerceAtLeast(0)
+        invalidate()
+    }
+
+    fun zoomOut() {
+        radarZoomIndex = (radarZoomIndex + 1).coerceAtMost(radarZoomLevelsKm.lastIndex)
+        invalidate()
+    }
+
+    fun cycleZoom() {
+        radarZoomIndex = (radarZoomIndex + 1) % radarZoomLevelsKm.size
+        invalidate()
+    }
 
     fun setPlayerState(state: WorldMapPlayerState) {
         playerState = state.copy(xKm = state.xKm.coerceIn(0f, 100f), yKm = state.yKm.coerceIn(0f, 100f))
@@ -310,10 +330,19 @@ class CircularMiniMapView(context: Context) : View(context) {
             val radarY = rawX * radarSin + rawY * radarCos
             val markerX = cx + radarX * scale
             val markerY = cy + radarY * scale
-            val ridge = marker.first == "RIDGE"
+            val type = marker.first
+            val ridge = type == "RIDGE"
             val discovered = ridge || index < 3 || (playerState.discoveredMask and (1 shl (index.coerceAtMost(3)))) != 0
             paint.style = Paint.Style.FILL
-            paint.color = if (ridge) Color.rgb(213, 159, 94) else if (discovered) Color.rgb(122, 224, 205) else Color.argb(80, 185, 201, 187)
+            paint.color = when {
+                !discovered -> Color.argb(80, 185, 201, 187)
+                ridge -> Color.rgb(213, 159, 94)
+                type == "CAVE" || type == "RUIN" -> Color.rgb(190, 142, 224)
+                type == "OASIS" || type == "DOCK" || type == "BASIN" -> Color.rgb(83, 202, 224)
+                type == "FROST" -> Color.rgb(166, 215, 255)
+                type == "HUNT" -> Color.rgb(230, 142, 100)
+                else -> Color.rgb(122, 224, 205)
+            }
             if (ridge) {
                 path.reset()
                 path.moveTo(markerX, markerY - size * 0.060f)
@@ -321,6 +350,12 @@ class CircularMiniMapView(context: Context) : View(context) {
                 path.lineTo(markerX + size * 0.048f, markerY + size * 0.042f)
                 path.close()
                 canvas.drawPath(path, paint)
+            } else if (type == "VILLAGE" || type == "GATE" || type == "SHRINE") {
+                canvas.drawRect(markerX - size * 0.030f, markerY - size * 0.030f, markerX + size * 0.030f, markerY + size * 0.030f, paint)
+            } else if (type == "CAVE" || type == "RUIN") {
+                canvas.drawCircle(markerX, markerY, size * 0.042f, paint)
+                paint.color = Color.argb(210, 19, 28, 32)
+                canvas.drawCircle(markerX, markerY, size * 0.018f, paint)
             } else {
                 canvas.drawCircle(markerX, markerY, size * 0.033f, paint)
             }
@@ -357,7 +392,7 @@ class CircularMiniMapView(context: Context) : View(context) {
         canvas.drawText("FWD", cx, cy - radius * 0.67f, paint)
         paint.textSize = size * 0.105f
         paint.color = Color.rgb(190, 220, 208)
-        canvas.drawText("RADAR  •  18 KM", cx, cy + radius * 0.78f, paint)
+        canvas.drawText("RADAR  •  ${radarRangeKm.toInt()} KM  •  LONG-PRESS ZOOM", cx, cy + radius * 0.78f, paint)
     }
 }
 

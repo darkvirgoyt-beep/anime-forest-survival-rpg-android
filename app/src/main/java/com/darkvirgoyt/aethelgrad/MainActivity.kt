@@ -2626,8 +2626,12 @@ class MainActivity : Activity(), SensorEventListener {
         }
         val miniMap = CircularMiniMapView(this).apply {
             isClickable = true
-            contentDescription = "Open world map"
+            contentDescription = "Open world map; long-press to cycle radar zoom"
             setOnClickListener { mapButton.performClick() }
+            setOnLongClickListener {
+                cycleZoom()
+                true
+            }
         }
         miniMapView = miniMap
         overlay.addView(miniMap, FrameLayout.LayoutParams(dp(112), dp(112), Gravity.TOP or Gravity.END).apply {
