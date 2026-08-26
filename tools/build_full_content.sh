@@ -40,6 +40,13 @@ python3 "$ROOT/tools/stage_cooked_unreal_assets.py" \
   --mapping-file "$ROOT/tools/unreal_pack_mapping.json" \
   --gradle-root "$ROOT"
 
+python3 "$ROOT/tools/measure_cooked_asset_packs.py" \
+  --staging-root "$STAGING_ROOT" \
+  --budget-manifest "$ROOT/assets/full_content_budget.json" \
+  --mapping-file "$ROOT/tools/unreal_pack_mapping.json" \
+  --require-nonempty \
+  --report-json "$BUILD_ROOT/cooked-pack-budget.json"
+
 python3 "$ROOT/tools/validate_asset_budget.py" \
   --root "$ROOT" \
   --manifest assets/full_content_budget.json \

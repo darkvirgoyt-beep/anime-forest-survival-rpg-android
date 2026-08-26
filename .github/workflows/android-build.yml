@@ -379,6 +379,12 @@ jobs:
               --cook-root "$COOK_ROOT" \
               --output-dir build/obb-staging \
               --mapping-file tools/unreal_pack_mapping.json
+            python3 tools/measure_cooked_asset_packs.py \
+              --staging-root build/obb-staging \
+              --budget-manifest assets/full_content_budget.json \
+              --mapping-file tools/unreal_pack_mapping.json \
+              --require-nonempty \
+              --report-json build/cooked-pack-budget.json
           else
             echo "No trusted cooked Unreal output found; standalone OBB artifact is skipped."
             echo "Provide AETHELGARD_COOKED_ROOT with the signed shipping Unreal cook to enable automatic OBB generation."

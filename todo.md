@@ -89,3 +89,5 @@
 - [x] Implement a truthful real-resource download and optional OBB-style expansion contract with measured-byte progress, integrity checks, and no fake size inflation; publish only after original/licensed cooked payloads exist.
 - [ ] Document the exact Unreal cook, asset staging, manifest, Android pack, Play delivery, OBB fallback, and CI validation steps for adding a new optional Stage 1 pack.
 - [x] Document the exact Unreal cook, asset staging, manifest, Android pack, Play delivery, OBB fallback, and CI validation steps for adding a new optional Stage 1 pack.
+- [ ] Add a reusable cooked asset-pack measurement script with per-pack, total, and unassigned-file CI budget enforcement against the project manifest.
+- [x] Add a reusable cooked asset-pack measurement script with per-pack, total, and unassigned-file CI budget enforcement against the project manifest.
