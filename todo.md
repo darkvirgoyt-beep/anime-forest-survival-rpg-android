@@ -91,3 +91,4 @@
 - [x] Document the exact Unreal cook, asset staging, manifest, Android pack, Play delivery, OBB fallback, and CI validation steps for adding a new optional Stage 1 pack.
 - [ ] Add a reusable cooked asset-pack measurement script with per-pack, total, and unassigned-file CI budget enforcement against the project manifest.
 - [x] Add a reusable cooked asset-pack measurement script with per-pack, total, and unassigned-file CI budget enforcement against the project manifest.
+- [x] Document the cooked asset-pack measurement command, JSON report, and strict full-content release behavior.

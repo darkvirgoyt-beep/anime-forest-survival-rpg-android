@@ -72,6 +72,8 @@ jobs:
           test -f tools/test_graphics_tier_contract.py
           test -f tools/test_startup_warmup.py
           test -f tools/stage_cooked_unreal_assets.py
+          test -f tools/measure_cooked_asset_packs.py
+          test -f tools/test_measure_cooked_asset_packs.py
           test -f tools/unreal_pack_mapping.json
           test -f tools/test_production_foundation_contract.py
           test -f tools/test_online_only_contract.py
@@ -162,7 +164,9 @@ jobs:
           echo 'CHECK startup warmup'
           python3 tools/test_startup_warmup.py --repo . || { echo 'FAIL startup warmup'; exit 1; }
           echo 'CHECK Python syntax'
-          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/test_startup_warmup.py tools/build_private_content_manifest.py || { echo 'FAIL Python syntax'; exit 1; }
+          python3 -m py_compile tools/stage_cooked_unreal_assets.py tools/measure_cooked_asset_packs.py tools/test_measure_cooked_asset_packs.py tools/test_startup_warmup.py tools/build_private_content_manifest.py || { echo 'FAIL Python syntax'; exit 1; }
+          echo 'CHECK cooked asset-pack measurement'
+          python3 tools/test_measure_cooked_asset_packs.py || { echo 'FAIL cooked asset-pack measurement'; exit 1; }
           echo 'CHECK Unreal pack mapping JSON'
           python3 -m json.tool tools/unreal_pack_mapping.json >/dev/null || { echo 'FAIL Unreal pack mapping JSON'; exit 1; }
           echo 'CHECK production foundation contract'
@@ -381,6 +385,7 @@ jobs:
               --mapping-file tools/unreal_pack_mapping.json
             python3 tools/measure_cooked_asset_packs.py \
               --staging-root build/obb-staging \
+              --cook-root "$COOK_ROOT" \
               --budget-manifest assets/full_content_budget.json \
               --mapping-file tools/unreal_pack_mapping.json \
               --require-nonempty \

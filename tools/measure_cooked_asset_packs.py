@@ -16,6 +16,11 @@ from typing import Any
 
 MIB = 1024 * 1024
 INSTALL_TIME_CEILING_MIB = 1024
+EDITOR_ONLY_SUFFIXES = {".uasset", ".umap", ".ubulk", ".uexp"}
+RUNTIME_SUFFIXES = {
+    ".pak", ".ucas", ".utoc", ".sig", ".so", ".dll", ".bin", ".json",
+    ".ini", ".locres", ".ushaderbytecode", ".metallib",
+}
 
 
 def fail(message: str) -> "NoReturn":
@@ -46,12 +51,57 @@ def mib(value: int) -> float:
     return value / MIB
 
 
+def is_runtime_file(path: Path) -> bool:
+    suffix = path.suffix.lower()
+    return suffix not in EDITOR_ONLY_SUFFIXES and (not suffix or suffix in RUNTIME_SUFFIXES)
+
+
+def audit_raw_cook(cook_root: Path, mapping: dict[str, Any], staged_dirs: dict[str, Path]) -> dict[str, int]:
+    if not cook_root.is_dir():
+        fail(f"cooked Unreal directory does not exist: {cook_root}")
+    missing_staged = sorted(set(mapping) - set(staged_dirs))
+    if missing_staged:
+        fail(f"staging is missing mapped asset-pack directories: {', '.join(missing_staged)}")
+    selected: dict[Path, str] = {}
+    for pack_name, patterns in mapping.items():
+        if not isinstance(patterns, list) or not patterns:
+            fail(f"mapping for {pack_name} must be a non-empty list of globs")
+        for pattern in patterns:
+            for path in cook_root.glob(pattern):
+                if path.is_symlink():
+                    fail(f"symlink is not allowed in cooked input: {path}")
+                if not path.is_file():
+                    continue
+                if not is_runtime_file(path):
+                    fail(f"editor-only or unsupported cooked input selected: {path}")
+                previous = selected.get(path)
+                if previous and previous != pack_name:
+                    fail(f"cooked file is mapped to multiple packs: {path}")
+                selected[path] = pack_name
+
+    runtime_files = [path for path in cook_root.rglob("*") if path.is_file() and is_runtime_file(path)]
+    unassigned = sorted(path for path in runtime_files if path not in selected)
+    if unassigned:
+        formatted = ", ".join(str(path.relative_to(cook_root)) for path in unassigned[:5])
+        suffix = "" if len(unassigned) <= 5 else f" (+{len(unassigned) - 5} more)"
+        fail(f"unassigned cooked runtime files: {formatted}{suffix}")
+
+    source_bytes_by_pack = {pack_name: 0 for pack_name in mapping}
+    for source, pack_name in selected.items():
+        staged = staged_dirs[pack_name] / source.relative_to(cook_root)
+        if not staged.is_file() or staged.stat().st_size != source.stat().st_size:
+            fail(f"staged cooked file is missing or size-mismatched: {staged}")
+        source_bytes_by_pack[pack_name] += source.stat().st_size
+    return source_bytes_by_pack
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     repo_root = Path(__file__).resolve().parents[1]
     parser.add_argument("--staging-root", type=Path, required=True, help="staging directory containing asset_packs/<pack>/...")
     parser.add_argument("--budget-manifest", type=Path, default=repo_root / "assets/full_content_budget.json")
     parser.add_argument("--mapping-file", type=Path, default=repo_root / "tools/unreal_pack_mapping.json")
+    parser.add_argument("--cook-root", type=Path, help="optional raw cooked directory to audit for unassigned runtime files")
     parser.add_argument("--require-nonempty", action="store_true", help="require every declared pack to contain at least one cooked file")
     parser.add_argument("--report-json", type=Path, help="optional machine-readable output path")
     args = parser.parse_args()
@@ -101,6 +151,8 @@ def main() -> int:
     if unknown_dirs:
         fail(f"staging contains unassigned asset-pack directories: {', '.join(unknown_dirs)}")
 
+    source_bytes_by_pack = audit_raw_cook(args.cook_root.resolve(), mapping, staged_dirs) if args.cook_root else None
+
     report_packs: list[dict[str, Any]] = []
     actual_total_bytes = 0
     print(f"COOKED_ASSET_PACK_BUDGET planned_total_mib={planned_total_mib}")
@@ -120,6 +172,8 @@ def main() -> int:
             fail(f"{name} cooked payload is {actual_bytes} bytes, above its {target_mib} MiB budget")
         if args.require_nonempty and empty:
             fail(f"{name} has no cooked runtime files; a full-content build requires non-empty mapped packs")
+        if source_bytes_by_pack is not None and actual_bytes != source_bytes_by_pack[name]:
+            fail(f"{name} staged bytes {actual_bytes} differ from raw cooked assignment {source_bytes_by_pack[name]}")
         report_packs.append(
             {
                 "name": name,
@@ -141,6 +195,7 @@ def main() -> int:
         "plannedTotalMiB": planned_total_mib,
         "actualTotalBytes": actual_total_bytes,
         "actualTotalMiB": mib(actual_total_bytes),
+        "rawCookRoot": str(args.cook_root.resolve()) if args.cook_root else None,
         "packs": report_packs,
     }
     if args.report_json:

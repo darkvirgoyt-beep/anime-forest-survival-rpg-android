@@ -42,6 +42,7 @@ python3 "$ROOT/tools/stage_cooked_unreal_assets.py" \
 
 python3 "$ROOT/tools/measure_cooked_asset_packs.py" \
   --staging-root "$STAGING_ROOT" \
+  --cook-root "$COOK_ROOT" \
   --budget-manifest "$ROOT/assets/full_content_budget.json" \
   --mapping-file "$ROOT/tools/unreal_pack_mapping.json" \
   --require-nonempty \

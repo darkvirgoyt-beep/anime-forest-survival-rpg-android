@@ -26,10 +26,16 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         staging = root / "stage/asset_packs"
+        cook = root / "cook"
         for pack in ("assetpack_core", "assetpack_optional"):
             (staging / pack).mkdir(parents=True)
-        (staging / "assetpack_core/core.pak").write_bytes(b"core")
-        (staging / "assetpack_optional/optional.pak").write_bytes(b"optional")
+        (cook / "Content/Paks").mkdir(parents=True)
+        (staging / "assetpack_core/Content/Paks").mkdir(parents=True)
+        (staging / "assetpack_optional/Content/Paks").mkdir(parents=True)
+        (staging / "assetpack_core/Content/Paks/core.pak").write_bytes(b"core")
+        (staging / "assetpack_optional/Content/Paks/optional.pak").write_bytes(b"optional")
+        (cook / "Content/Paks/core.pak").write_bytes(b"core")
+        (cook / "Content/Paks/optional.pak").write_bytes(b"optional")
         budget = root / "budget.json"
         mapping = root / "mapping.json"
         report = root / "report.json"
@@ -44,8 +50,8 @@ def main() -> None:
                 ],
             },
         )
-        write_json(mapping, {"assetpack_core": ["**/pakchunk0"], "assetpack_optional": ["**/pakchunk1"]})
-        passed = run("--staging-root", str(root / "stage"), "--budget-manifest", str(budget), "--mapping-file", str(mapping), "--require-nonempty", "--report-json", str(report))
+        write_json(mapping, {"assetpack_core": ["**/core.pak"], "assetpack_optional": ["**/optional.pak"]})
+        passed = run("--staging-root", str(root / "stage"), "--budget-manifest", str(budget), "--mapping-file", str(mapping), "--cook-root", str(cook), "--require-nonempty", "--report-json", str(report))
         assert passed.returncode == 0, passed.stderr
         assert "COOKED_ASSET_PACK_BUDGET_PASS=1" in passed.stdout
         assert json.loads(report.read_text(encoding="utf-8"))["actualTotalBytes"] == len(b"coreoptional")
@@ -55,9 +61,14 @@ def main() -> None:
         assert unknown.returncode != 0 and "unassigned" in unknown.stderr
         (staging / "assetpack_unknown").rmdir()
 
-        (staging / "assetpack_optional/oversized.pak").write_bytes(b"x" * (2 * 1024 * 1024 + 1))
+        (staging / "assetpack_optional/Content/Paks/oversized.pak").write_bytes(b"x" * (2 * 1024 * 1024 + 1))
         oversized = run("--staging-root", str(root / "stage"), "--budget-manifest", str(budget), "--mapping-file", str(mapping))
         assert oversized.returncode != 0 and "above its 2 MiB budget" in oversized.stderr
+
+        (staging / "assetpack_optional/Content/Paks/oversized.pak").unlink()
+        (cook / "Content/Paks/unmapped.pak").write_bytes(b"unmapped")
+        unassigned = run("--staging-root", str(root / "stage"), "--budget-manifest", str(budget), "--mapping-file", str(mapping), "--cook-root", str(cook))
+        assert unassigned.returncode != 0 and "unassigned cooked runtime files" in unassigned.stderr
 
     print("MEASURE_COOKED_ASSET_PACKS_TEST_PASS=1")
 
