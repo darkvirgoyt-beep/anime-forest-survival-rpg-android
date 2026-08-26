@@ -2864,7 +2864,8 @@ class MainActivity : Activity(), SensorEventListener {
         val liveMapView = AethelgardWorldMapView(this)
         liveMapView.setPlayerState(latestWorldMapPlayerState)
         worldMapView = liveMapView
-        content.addView(liveMapView, LinearLayout.LayoutParams(-1, dp(360)))
+        val mapHeight = minOf(dp(560), (resources.displayMetrics.heightPixels * 0.70f).toInt())
+        content.addView(liveMapView, LinearLayout.LayoutParams(-1, mapHeight))
         content.addView(TextView(this).apply {
             text = "GOLD: TOWER / LANDMARK     CYAN: RIVER     WHITE: YOU     REGIONS: FOREST  •  SAND  •  SNOW"
             textSize = 10f
@@ -2881,6 +2882,7 @@ class MainActivity : Activity(), SensorEventListener {
             onClosed()
         }
         dialog.show()
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.96f).toInt(), WindowManager.LayoutParams.WRAP_CONTENT)
         return dialog
     }
 

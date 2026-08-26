@@ -206,10 +206,10 @@ constexpr float kWorldMinX = 0.0f;
 constexpr float kWorldMaxX = 100.0f;
 constexpr float kWorldMinY = 0.0f;
 constexpr float kWorldMaxY = 100.0f;
-constexpr float kSimulationMinX = -0.90f;
-constexpr float kSimulationMaxX = 0.90f;
-constexpr float kSimulationMinY = -0.50f;
-constexpr float kSimulationMaxY = 0.52f;
+constexpr float kSimulationMinX = -1.55f;
+constexpr float kSimulationMaxX = 1.55f;
+constexpr float kSimulationMinY = -1.00f;
+constexpr float kSimulationMaxY = 1.00f;
 
 float worldXFromSimulation(float simulationX) {
     const float normalized = (simulationX - kSimulationMinX) / (kSimulationMaxX - kSimulationMinX);
@@ -351,7 +351,15 @@ void applySynchronizedWorldTime() {
 
 const forest::physics::StaticObstacle gObstacles[] = {
     {{{-0.30f, -0.28f}, {0.07f, 0.04f}}},
-    {{{0.60f, -0.32f}, {0.06f, 0.04f}}}
+    {{{0.60f, -0.32f}, {0.06f, 0.04f}}},
+    // Collision-backed escarpments mark the wide plains edges. The Android
+    // harness keeps these as simple walkable-plane blockers; UE Landscape and
+    // navigation own final slope collision in the production world.
+    {{{-1.10f, 0.48f}, {0.22f, 0.17f}}},
+    {{{-0.76f, 0.67f}, {0.18f, 0.21f}}},
+    {{{0.92f, 0.52f}, {0.24f, 0.19f}}},
+    {{{1.22f, -0.44f}, {0.18f, 0.23f}}},
+    {{{0.22f, -0.78f}, {0.16f, 0.14f}}}
 };
 
 // The central valley stream carries both visual flow and gameplay force. Its current
@@ -1598,8 +1606,8 @@ void draw3DMapOverlay() {
     for (const auto& landmark : landmarks) {
         drawCircle(mapX(landmark[0]), mapY(landmark[1]), 0.012f, 0.95f, 0.80f, 0.35f, 0.98f);
     }
-    const float playerMapX = mapX(std::clamp((gPlayerX + 0.90f) / 1.80f * 100.0f, 0.0f, 100.0f));
-    const float playerMapY = mapY(std::clamp((gPlayerY + 0.55f) / 1.10f * 100.0f, 0.0f, 100.0f));
+    const float playerMapX = mapX(worldXFromSimulation(gPlayerX));
+    const float playerMapY = mapY(worldYFromSimulation(gPlayerY));
     drawCircle(playerMapX, playerMapY, 0.030f, 1.0f, 0.76f, 0.24f, 1.0f);
     drawCircle(playerMapX, playerMapY, 0.012f, 0.10f, 0.12f, 0.15f, 1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -1669,6 +1677,43 @@ void drawTerrainChunks(const Mat4& viewProjection, float daylight) {
     }
 }
 
+void draw3DPlainsAndMountainRanges(const Mat4& viewProjection, float daylight) {
+    // Broad, low-cost silhouettes make the expanded harness world read as open
+    // plains with navigable mountain borders instead of a small boxed arena.
+    struct MountainRange {
+        float x;
+        float z;
+        float width;
+        float height;
+        float r;
+        float g;
+        float b;
+    };
+    constexpr MountainRange ranges[] = {
+        {-7.4f, 3.8f, 3.1f, 1.55f, 0.15f, 0.28f, 0.18f},
+        {-4.6f, 4.9f, 2.4f, 1.95f, 0.22f, 0.34f, 0.24f},
+        { 4.8f, 4.6f, 3.2f, 2.20f, 0.38f, 0.44f, 0.54f},
+        { 7.2f, 2.1f, 2.5f, 1.62f, 0.32f, 0.39f, 0.48f},
+        { 6.8f,-3.8f, 3.6f, 1.36f, 0.42f, 0.28f, 0.14f},
+    };
+    for (const MountainRange& range : ranges) {
+        const float shade = 0.62f + 0.38f * daylight;
+        draw3DBox(viewProjection, range.x, range.height * 0.20f, range.z,
+                  range.width, range.height * 0.40f, range.width * 0.72f,
+                  range.r * shade, range.g * shade, range.b * shade, 0.96f);
+        draw3DSphere(viewProjection, range.x, range.height * 0.54f, range.z,
+                     range.width * 0.34f, range.r * shade, range.g * shade, range.b * shade, 0.94f);
+        draw3DSphere(viewProjection, range.x - range.width * 0.18f, range.height * 0.78f,
+                     range.z + range.width * 0.06f, range.width * 0.16f,
+                     std::min(1.0f, range.r * shade + 0.18f), std::min(1.0f, range.g * shade + 0.18f),
+                     std::min(1.0f, range.b * shade + 0.18f), 0.88f);
+    }
+    draw3DBox(viewProjection, -5.9f, 0.02f, -2.8f, 4.5f, 0.05f, 3.0f,
+              0.15f * daylight, 0.37f * daylight, 0.19f * daylight, 0.92f);
+    draw3DBox(viewProjection, 1.1f, 0.02f, -3.2f, 4.2f, 0.05f, 2.7f,
+              0.29f * daylight, 0.24f * daylight, 0.11f * daylight, 0.92f);
+}
+
 void draw3DWorld() {
     const float aspect = gWidth / std::max(1.0f, gHeight);
     const float px = gPlayerX * 4.3f;
@@ -1735,10 +1780,11 @@ void draw3DWorld() {
     glCullFace(GL_BACK);
     draw3DSkyOrb(viewProjection, px, pz, yaw, daylight);
     drawTerrainChunks(viewProjection, daylight);
-    draw3DBox(viewProjection, -4.4f, 0.055f, 0.7f, 4.2f, 0.08f, 7.0f, 0.10f, 0.25f, 0.19f);
-    draw3DBox(viewProjection, 0.0f, -0.01f, 0.7f, 4.3f, 0.08f, 7.0f, 0.54f, 0.31f, 0.12f);
-    draw3DBox(viewProjection, 4.4f, 0.0f, 0.7f, 4.2f, 0.08f, 7.0f, 0.40f, 0.62f, 0.72f);
-    draw3DBox(viewProjection, 0.4f, -0.015f, 1.0f, 0.90f, 0.04f, 7.0f, 0.15f, 0.38f, 0.39f);
+    draw3DPlainsAndMountainRanges(viewProjection, daylight);
+    draw3DBox(viewProjection, -6.4f, 0.055f, 0.0f, 6.2f, 0.08f, 9.8f, 0.10f, 0.25f, 0.19f);
+    draw3DBox(viewProjection, 0.0f, -0.01f, 0.0f, 6.6f, 0.08f, 9.8f, 0.54f, 0.31f, 0.12f);
+    draw3DBox(viewProjection, 6.4f, 0.0f, 0.0f, 6.2f, 0.08f, 9.8f, 0.40f, 0.62f, 0.72f);
+    draw3DBox(viewProjection, 0.4f, -0.015f, 0.0f, 0.90f, 0.04f, 9.8f, 0.15f, 0.38f, 0.39f);
     // A narrow reflective stream and warm path make the biome transition feel authored
     // rather than like three disconnected color planes.
     draw3DBox(viewProjection, 0.42f, 0.045f, 0.85f, 0.52f, 0.035f, 7.1f, 0.045f, 0.26f, 0.38f, 0.90f);
@@ -2532,6 +2578,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gGyroY = 0.0f;
     gGyroEnabled = false;
     gController.body.position = {-0.55f, -0.08f};
+    gController.body.minWalkablePosition = {kSimulationMinX, kSimulationMinY};
+    gController.body.maxWalkablePosition = {kSimulationMaxX, kSimulationMaxY};
     gController.body.velocity = {0.0f, 0.0f};
     gController.body.verticalPosition = 0.0f;
     gController.body.verticalVelocity = 0.0f;

@@ -94,3 +94,4 @@
 - [x] Document the cooked asset-pack measurement command, JSON report, and strict full-content release behavior.
 - [x] Diagnose and repair the Android harness map behavior and character movement so touch input updates position reliably; retain physical-device validation as a separate step.
 - [x] Run native C++ physics validation and repair Android repeated action-button presses plus buffered jump delivery; retain physical-device validation as a separate step.
+- [x] Expand the Android harness into a larger bounded plains-and-mountains terrain layout with physical collision features and updated live-map coverage; retain Unreal as the final production-world path.

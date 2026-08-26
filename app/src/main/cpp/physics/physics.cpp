@@ -140,10 +140,10 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
         for (int i = 0; i < obstacleCount; ++i) resolveCollision(*this, obstacles[i]);
     }
 
-    if (position.x <= -0.90f || position.x >= 0.90f) velocity.x = 0.0f;
-    if (position.y <= -0.50f || position.y >= 0.52f) velocity.y = 0.0f;
-    position.x = std::clamp(position.x, -0.90f, 0.90f);
-    position.y = std::clamp(position.y, -0.50f, 0.52f);
+    if (position.x <= minWalkablePosition.x || position.x >= maxWalkablePosition.x) velocity.x = 0.0f;
+    if (position.y <= minWalkablePosition.y || position.y >= maxWalkablePosition.y) velocity.y = 0.0f;
+    position.x = std::clamp(position.x, minWalkablePosition.x, maxWalkablePosition.x);
+    position.y = std::clamp(position.y, minWalkablePosition.y, maxWalkablePosition.y);
     water = sampleWater(*this, waterVolumes, waterCount);
 }
 

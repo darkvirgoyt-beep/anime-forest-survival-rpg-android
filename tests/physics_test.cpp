@@ -19,6 +19,15 @@ int main() {
     assert(body.position.x > 0.0f);
     assert(std::abs(body.position.y - (-0.50f)) < 0.01f);
 
+    CharacterBody expandedWorldMover;
+    expandedWorldMover.minWalkablePosition = {-1.55f, -1.00f};
+    expandedWorldMover.maxWalkablePosition = {1.55f, 1.00f};
+    expandedWorldMover.position = {1.48f, 0.90f};
+    expandedWorldMover.velocity = {2.0f, 2.0f};
+    expandedWorldMover.step({1.0f, 1.0f}, 1.0f / 30.0f, nullptr, 0);
+    assert(expandedWorldMover.position.x > 0.90f && expandedWorldMover.position.y > 0.52f);
+    assert(expandedWorldMover.position.x <= 1.55f && expandedWorldMover.position.y <= 1.00f);
+
     body.jump();
     assert(body.verticalVelocity > 0.0f);
     body.jump();

@@ -69,6 +69,10 @@ struct CharacterBody {
     float waterSpeedMultiplier = 0.52f;
     float waterJumpMultiplier = 0.68f;
     float collisionSkinWidth = 0.005f;
+    // Generic physics stays reusable, while each world owner can set its own
+    // traversable limits instead of hard-coding one small arena into the solver.
+    Vec2 minWalkablePosition{-0.90f, -0.50f};
+    Vec2 maxWalkablePosition{0.90f, 0.52f};
     bool grounded = true;
     WaterState water{};
 

@@ -29,6 +29,7 @@ def main() -> None:
         "worldMapView = liveMapView",
         "latestWorldMapPlayerState = state",
         "liveMapView.setPlayerState(latestWorldMapPlayerState)",
+        "val mapHeight = minOf(dp(560)",
         "NativeGameBridge.setWorldMapVisible(true)",
         "NativeGameBridge.setWorldMapVisible(false)",
         "hudHandler.removeCallbacks(mapStateUpdater)",
@@ -59,6 +60,15 @@ def main() -> None:
         "gDiscoveredSectors",
         "gPlayerX = gController.body.position.x;",
         "gPlayerY = gController.body.position.y;",
+        "kSimulationMinX = -1.55f",
+        "kSimulationMaxX = 1.55f",
+        "kSimulationMinY = -1.00f",
+        "kSimulationMaxY = 1.00f",
+        "draw3DPlainsAndMountainRanges",
+        "minWalkablePosition = {kSimulationMinX, kSimulationMinY}",
+        "maxWalkablePosition = {kSimulationMaxX, kSimulationMaxY}",
+        "worldXFromSimulation(gPlayerX)",
+        "worldYFromSimulation(gPlayerY)",
     ):
         require(needle in native, f"missing native live-map marker: {needle}")
 
