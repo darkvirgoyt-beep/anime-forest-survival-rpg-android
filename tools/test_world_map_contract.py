@@ -27,6 +27,8 @@ def main() -> None:
         "applyWorldMapState(snapshot)",
         "miniMapView = miniMap",
         "worldMapView = liveMapView",
+        "latestWorldMapPlayerState = state",
+        "liveMapView.setPlayerState(latestWorldMapPlayerState)",
         "NativeGameBridge.setWorldMapVisible(true)",
         "NativeGameBridge.setWorldMapVisible(false)",
         "hudHandler.removeCallbacks(mapStateUpdater)",
@@ -55,6 +57,8 @@ def main() -> None:
         "worldYFromSimulation(gPlayerY)",
         "gController.camera.yaw",
         "gDiscoveredSectors",
+        "gPlayerX = gController.body.position.x;",
+        "gPlayerY = gController.body.position.y;",
     ):
         require(needle in native, f"missing native live-map marker: {needle}")
 

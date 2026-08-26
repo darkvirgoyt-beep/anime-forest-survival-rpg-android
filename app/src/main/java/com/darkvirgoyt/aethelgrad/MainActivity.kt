@@ -127,6 +127,7 @@ class MainActivity : Activity(), SensorEventListener {
     private lateinit var vitalMeter: VitalMeterView
     private var miniMapView: CircularMiniMapView? = null
     private var worldMapView: AethelgardWorldMapView? = null
+    private var latestWorldMapPlayerState = WorldMapPlayerState()
     private lateinit var onboardingOverlay: View
     private var characterSetupOverlay: View? = null
     private var assetPatchOverlay: View? = null
@@ -944,7 +945,11 @@ class MainActivity : Activity(), SensorEventListener {
             }
         }
         sensorManager?.unregisterListener(this)
-        gameView.queueEvent { NativeGameBridge.setGyroEnabled(false) }
+        gameView.queueEvent {
+            NativeGameBridge.setMove(0f, 0f)
+            NativeGameBridge.setSprintHeld(false)
+            NativeGameBridge.setGyroEnabled(false)
+        }
         gameView.onPause()
         super.onPause()
     }
@@ -2830,6 +2835,7 @@ class MainActivity : Activity(), SensorEventListener {
         val yawDegrees = values[2].toFloatOrNull() ?: 0f
         val discoveredMask = values[3].toIntOrNull() ?: 1
         val state = WorldMapPlayerState(xKm, yKm, yawDegrees, discoveredMask)
+        latestWorldMapPlayerState = state
         miniMapView?.setPlayerState(state)
         worldMapView?.setPlayerState(state)
     }
@@ -2846,6 +2852,7 @@ class MainActivity : Activity(), SensorEventListener {
             setPadding(0, 0, 0, dp(8))
         })
         val liveMapView = AethelgardWorldMapView(this)
+        liveMapView.setPlayerState(latestWorldMapPlayerState)
         worldMapView = liveMapView
         content.addView(liveMapView, LinearLayout.LayoutParams(-1, dp(360)))
         content.addView(TextView(this).apply {
@@ -3892,6 +3899,7 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
     private val density = context.resources.displayMetrics.density
     private val deadZone = 0.10f
     private val leftZoneFraction = 0.38f
+    private val activationRadiusMultiplier = 2.20f
     private var sensitivity = 1.0f
     private var responseCurve = 1.12f
 
@@ -3979,7 +3987,9 @@ private class JoystickView(context: Context, private val onMove: (Float, Float) 
         if (x > width * leftZoneFraction) return false
         val dx = x - baseX
         val dy = y - baseY
-        return dx * dx + dy * dy <= (radius * 1.70f) * (radius * 1.70f)
+        // Keep the stick fixed, but make its transparent acquisition area larger
+        // than the artwork so a real thumb reliably starts movement on small phones.
+        return dx * dx + dy * dy <= (radius * activationRadiusMultiplier) * (radius * activationRadiusMultiplier)
     }
 
     private fun beginPointer(event: MotionEvent, index: Int): Boolean {

@@ -92,3 +92,4 @@
 - [ ] Add a reusable cooked asset-pack measurement script with per-pack, total, and unassigned-file CI budget enforcement against the project manifest.
 - [x] Add a reusable cooked asset-pack measurement script with per-pack, total, and unassigned-file CI budget enforcement against the project manifest.
 - [x] Document the cooked asset-pack measurement command, JSON report, and strict full-content release behavior.
+- [x] Diagnose and repair the Android harness map behavior and character movement so touch input updates position reliably; retain physical-device validation as a separate step.

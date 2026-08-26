@@ -2525,10 +2525,18 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gQuestPulse = 0;
     gGraphicsQuality = 2;
     gContentTierReady = false;
+    gMoveX = 0.0f;
+    gMoveY = 0.0f;
+    gSprintHeld = false;
+    gGyroX = 0.0f;
+    gGyroY = 0.0f;
+    gGyroEnabled = false;
     gController.body.position = {-0.55f, -0.08f};
     gController.body.velocity = {0.0f, 0.0f};
     gController.body.verticalPosition = 0.0f;
     gController.body.verticalVelocity = 0.0f;
+    gPlayerX = gController.body.position.x;
+    gPlayerY = gController.body.position.y;
     if (gProgram == 0) createProgram();
     if (g3DProgram == 0) create3DProgram();
     if (gBillboardProgram == 0) createBillboardProgram();

@@ -40,9 +40,12 @@ def main() -> None:
     require("ACTION_POINTER_UP" in main and "ACTION_CANCEL" in main, "touch cancellation must be handled")
     require("private fun isAnchoredTouch" in main, "movement joystick must expose a fixed-anchor touch gate")
     require("if (!isAnchoredTouch(event.getX(index), event.getY(index))) return false" in main, "movement joystick must reject arbitrary left-screen touches")
+    require("activationRadiusMultiplier = 2.20f" in main, "fixed joystick must keep a reliable touch acquisition area")
     require("baseX = event.getX(index)" not in main and "baseY = event.getY(index)" not in main, "movement joystick must not relocate to touch-down")
     require("radius = (width.coerceAtMost(dp(360)) * 0.075f).coerceAtLeast(dp(36).toFloat())" in main, "movement joystick must use the compact anchored radius")
     require("x >= width * 0.50f" in main, "look controls must remain on the right half of the screen")
+    require("NativeGameBridge.setMove(0f, 0f)" in main and "NativeGameBridge.setSprintHeld(false)" in main, "pause must clear held movement state")
+    require("gMoveX = 0.0f;" in game and "gSprintHeld = false;" in game, "renderer initialization must clear stale movement state")
 
     print("MOVEMENT_LOOK_CONTRACT_PASS=1")
     print("JOYSTICK_AXES=direct")
