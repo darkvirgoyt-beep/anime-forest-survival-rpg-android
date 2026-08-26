@@ -87,3 +87,5 @@
 - [x] Prepare an evidence-based presenter script explaining Unreal memory limits, asset-pack ceilings, CI guardrails, and remaining Unreal cook/device-profiling boundaries.
 - [x] Prepare an evidence-based presenter script explaining Unreal memory limits, asset-pack ceilings, CI guardrails, and remaining Unreal cook/device-profiling boundaries.
 - [x] Implement a truthful real-resource download and optional OBB-style expansion contract with measured-byte progress, integrity checks, and no fake size inflation; publish only after original/licensed cooked payloads exist.
+- [ ] Document the exact Unreal cook, asset staging, manifest, Android pack, Play delivery, OBB fallback, and CI validation steps for adding a new optional Stage 1 pack.
+- [x] Document the exact Unreal cook, asset staging, manifest, Android pack, Play delivery, OBB fallback, and CI validation steps for adding a new optional Stage 1 pack.
