@@ -363,6 +363,17 @@ const forest::physics::StaticObstacle gObstacles[] = {
     {{{0.22f, -0.78f}, {0.16f, 0.14f}}}
 };
 
+const char* terrainAudioName() {
+    float nearestEscarpment = 10.0f;
+    for (size_t i = 2; i < sizeof(gObstacles) / sizeof(gObstacles[0]); ++i) {
+        const auto& escarpment = gObstacles[i].bounds;
+        const float dx = gController.body.position.x - escarpment.center.x;
+        const float dy = gController.body.position.y - escarpment.center.y;
+        nearestEscarpment = std::min(nearestEscarpment, std::sqrt(dx * dx + dy * dy));
+    }
+    return nearestEscarpment < 0.72f || currentBiome() == Biome::Snow ? "MOUNTAIN" : "PLAINS";
+}
+
 float terrainFollowDistance() {
     // The broad plains use a wide view. Near the mountain escarpments or world
     // boundary, the camera eases inward so the player remains readable and the
@@ -3043,7 +3054,8 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_getHudState(JNIEnv* env, jobject
           << (gCapturedMobIndex >= 0 ? "CAPTURED_COMPANION" : forest::rpg::emberlingStatus(gEmberling)) << '|'
           << nearestMobStatus() << '|'
           << (gCampBuilt ? "CAMP_BUILT" : "NO_CAMP") << '|'
-          << gDiscoveredSectors;
+          << gDiscoveredSectors << '|'
+          << terrainAudioName();
     const std::string value = state.str();
     return env->NewStringUTF(value.c_str());
 }

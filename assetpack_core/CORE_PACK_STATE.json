@@ -2,7 +2,7 @@
   "packName": "assetpack_core",
   "delivery": "install-time",
   "published": true,
-  "measuredPayloadBytes": 254,
+  "measuredPayloadBytes": 245,
   "plannedBudgetMiB": 96,
   "content": "AETHELGRAD forest launch-slice contract metadata only",
   "verification": {

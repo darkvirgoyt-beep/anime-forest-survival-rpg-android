@@ -40,13 +40,24 @@ class GameAudio(context: Context) {
     private val sounds = mutableMapOf<String, Int>()
     private var musicStream = 0
     private var loadingMusicStream = 0
+    private var movementStream = 0
+    private var ambienceStream = 0
+    private var ambienceName = ""
+    private var movementName = ""
+    private var wasAirborne = false
     private var loadingMusicRequested = false
 
     init {
         load("music_forest", R.raw.aethelgard_forest_exploration)
         load("music_loading", R.raw.aethelgard_wisteria_loading_ambience)
         load("footsteps", R.raw.sfx_footsteps_forest)
+        load("footsteps_plains", R.raw.sfx_footsteps_plains)
+        load("footsteps_mountain", R.raw.sfx_footsteps_mountain)
         load("sprint", R.raw.sfx_sprint_loop)
+        load("jump", R.raw.sfx_jump)
+        load("landing", R.raw.sfx_landing)
+        load("wind_plains", R.raw.ambience_wind_plains)
+        load("mountain_echo", R.raw.ambience_mountain_echo)
         load("slide", R.raw.sfx_slide)
         load("attack", R.raw.sfx_attack_sword)
         load("bow", R.raw.sfx_bow_release)
@@ -66,6 +77,65 @@ class GameAudio(context: Context) {
         val volume = effective(settings.effects)
         if (volume <= 0f) return
         soundPool.play(id, volume, volume, 1, loop, rate)
+    }
+
+    /** Updates low-cost movement and terrain ambience from the native gameplay state. */
+    fun updateGameplayAudio(terrain: String, locomotion: String, water: String) {
+        val normalizedTerrain = terrain.uppercase()
+        val normalizedLocomotion = locomotion.uppercase()
+        val normalizedWater = water.uppercase()
+        val airborne = normalizedLocomotion == "JUMP" || normalizedLocomotion == "FALL"
+        if (!wasAirborne && airborne) playEffect("jump", rate = 1.0f)
+        if (wasAirborne && !airborne && normalizedLocomotion != "SWIM") playEffect("landing", rate = 0.96f)
+        wasAirborne = airborne
+
+        val moving = normalizedLocomotion == "WALK" || normalizedLocomotion == "SPRINT"
+        val desiredMovement = when {
+            !moving || normalizedWater == "SWIMMING" -> ""
+            normalizedLocomotion == "SPRINT" -> "sprint"
+            normalizedTerrain == "MOUNTAIN" -> "footsteps_mountain"
+            else -> "footsteps_plains"
+        }
+        if (desiredMovement != movementName) {
+            stopMovement()
+            if (desiredMovement.isNotEmpty()) {
+                val id = sounds[desiredMovement]
+                val volume = effective(settings.effects) * if (desiredMovement == "sprint") 0.72f else 0.92f
+                if (id != null && volume > 0f) {
+                    movementStream = soundPool.play(id, volume, volume, 1, -1, if (desiredMovement == "sprint") 1.05f else 1f)
+                    if (movementStream != 0) movementName = desiredMovement
+                }
+            }
+        }
+
+        val desiredAmbience = if (normalizedTerrain == "MOUNTAIN") "mountain_echo" else "wind_plains"
+        if (desiredAmbience != ambienceName) {
+            stopAmbience()
+            val id = sounds[desiredAmbience]
+            val volume = effective(settings.ambience) * 0.62f
+            if (id != null && volume > 0f) {
+                ambienceStream = soundPool.play(id, volume, volume, 0, -1, 1f)
+                if (ambienceStream != 0) ambienceName = desiredAmbience
+            }
+        }
+    }
+
+    fun stopGameplayAudio() {
+        stopMovement()
+        stopAmbience()
+        wasAirborne = false
+    }
+
+    private fun stopMovement() {
+        if (movementStream != 0) soundPool.stop(movementStream)
+        movementStream = 0
+        movementName = ""
+    }
+
+    private fun stopAmbience() {
+        if (ambienceStream != 0) soundPool.stop(ambienceStream)
+        ambienceStream = 0
+        ambienceName = ""
     }
 
     fun playMusic() {
@@ -103,8 +173,22 @@ class GameAudio(context: Context) {
         if (loadingMusicRequested) playLoadingMusic() else playMusic()
         persist()
     }
-    fun setEffects(value: Float) { settings.effects = clamp(value); persist() }
-    fun setAmbience(value: Float) { settings.ambience = clamp(value); persist() }
+    fun setEffects(value: Float) {
+        settings.effects = clamp(value)
+        if (movementStream != 0) {
+            val volume = effective(settings.effects)
+            soundPool.setVolume(movementStream, volume, volume)
+        }
+        persist()
+    }
+    fun setAmbience(value: Float) {
+        settings.ambience = clamp(value)
+        if (ambienceStream != 0) {
+            val volume = effective(settings.ambience) * 0.62f
+            soundPool.setVolume(ambienceStream, volume, volume)
+        }
+        persist()
+    }
     fun setVoice(value: Float) { settings.voice = clamp(value); persist() }
     fun playVoice(name: String, loop: Int = 0, rate: Float = 1f) {
         val id = sounds[name] ?: return
@@ -129,6 +213,7 @@ class GameAudio(context: Context) {
     fun release() {
         stopMusic()
         stopLoadingMusic()
+        stopGameplayAudio()
         soundPool.release()
     }
 

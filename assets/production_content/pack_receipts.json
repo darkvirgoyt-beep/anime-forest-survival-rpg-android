@@ -26,11 +26,11 @@
       "pack": "assetpack_forest",
       "status": "authored-launch-slice",
       "files": [
-        "launch_slice/forest_region.json",
-        "launch_slice/water_surface.json",
-        "launch_slice/forest_prop_kit.obj",
+        "launch_slice/forest_prop_kit.json",
         "launch_slice/forest_prop_kit.mtl",
-        "launch_slice/forest_prop_kit.json"
+        "launch_slice/forest_prop_kit.obj",
+        "launch_slice/forest_region.json",
+        "launch_slice/water_surface.json"
       ],
       "origin": "original procedural and repository-owned AETHELGRAD content",
       "license": "AETHELGRAD project-owned generated source; no third-party game assets"
@@ -40,15 +40,15 @@
       "status": "authored-launch-slice",
       "files": [
         "launch_slice/aurora_palette.png",
-        "launch_slice/character_runtime_contract.json",
-        "launch_slice/forest_warden_boss_asset.json",
+        "launch_slice/boss_forest_warden.mtl",
+        "launch_slice/boss_forest_warden_diffuse.jpg",
         "launch_slice/boss_forest_warden_lod0.obj",
         "launch_slice/boss_forest_warden_lod1.obj",
-        "launch_slice/boss_forest_warden.mtl",
-        "launch_slice/boss_forest_warden_diffuse.jpg"
+        "launch_slice/character_runtime_contract.json",
+        "launch_slice/forest_warden_boss_asset.json"
       ],
-      "origin": "User-supplied Hi3D source archive, repository-derived mobile LOD meshes, and AETHELGRAD runtime contracts",
-      "license": "User-provided source; commercial distribution rights and final source license require confirmation before public/commercial release"
+      "origin": "original procedural and repository-owned AETHELGRAD content",
+      "license": "AETHELGRAD project-owned generated source; no third-party game assets"
     },
     {
       "pack": "assetpack_shaders_gles",
@@ -102,6 +102,8 @@
       "status": "authored-launch-slice",
       "files": [
         "launch_slice/audio/aethelgard_forest_exploration.wav",
+        "launch_slice/audio/ambience_mountain_echo.wav",
+        "launch_slice/audio/ambience_wind_plains.wav",
         "launch_slice/audio/sfx_animal_companion_call.wav",
         "launch_slice/audio/sfx_attack_sword.wav",
         "launch_slice/audio/sfx_aurora_magic_pulse.mp3",
@@ -110,7 +112,11 @@
         "launch_slice/audio/sfx_bow_release.wav",
         "launch_slice/audio/sfx_craft_workbench.wav",
         "launch_slice/audio/sfx_footsteps_forest.wav",
+        "launch_slice/audio/sfx_footsteps_mountain.wav",
+        "launch_slice/audio/sfx_footsteps_plains.wav",
         "launch_slice/audio/sfx_gather_resource.wav",
+        "launch_slice/audio/sfx_jump.wav",
+        "launch_slice/audio/sfx_landing.wav",
         "launch_slice/audio/sfx_slide.wav",
         "launch_slice/audio/sfx_sprint_loop.wav",
         "launch_slice/audio/sfx_ui_click.wav"

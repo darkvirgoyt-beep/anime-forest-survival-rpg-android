@@ -921,6 +921,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onPause() {
         audio.stopMusic()
+        audio.stopGameplayAudio()
         gyroEnabled = false
         hudHandler.removeCallbacks(hudUpdater)
         hudHandler.removeCallbacks(mapStateUpdater)
@@ -2824,7 +2825,11 @@ class MainActivity : Activity(), SensorEventListener {
         val companionState = values.getOrNull(24)?.replace('_', ' ')?.ifBlank { companion } ?: companion
         val campState = values.getOrNull(25)?.replace('_', ' ')?.ifBlank { "NO CAMP" } ?: "NO CAMP"
         val discoveredSectors = number(26)
+        val terrainAudio = values.getOrNull(27)?.ifBlank { "PLAINS" } ?: "PLAINS"
         requestDiscoveredSectorContent(discoveredSectors)
+        if (worldEntryRevealed && ::audio.isInitialized) {
+            audio.updateGameplayAudio(terrainAudio, locomotion, water)
+        }
         if (::vitalMeter.isInitialized) vitalMeter.updateVitals(health, stamina, hunger)
         stateLabel.text = "$biome  •  DAY $daysPlayed  •  $weather"
         stateLabel.setTextColor(

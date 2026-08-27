@@ -10,12 +10,12 @@
       "contentId": "aethelgard-forest-launch-v1",
       "mode": "authored-pad-slice",
       "published": true,
-      "measuredBytes": 4803743,
+      "measuredBytes": 6489321,
       "coreBootstrap": {
         "packName": "assetpack_core",
         "delivery": "install-time",
         "published": true,
-        "measuredBytes": 254,
+        "measuredBytes": 245,
         "highTierExcluded": true
       },
       "plannedStageBudgetMiB": 1024,
@@ -53,7 +53,7 @@
       "id": "stage-1",
       "label": "STAGE 1 FOREST LAUNCH — 1 GB PLAN",
       "plannedBudgetMiB": 1024,
-      "measuredBytes": 4803743,
+      "measuredBytes": 6489321,
       "graphicsQuality": "mobile-launch-ready",
       "description": "The first staged release targets a 1 GiB source budget. Only measured authored launch-slice bytes are published; the remaining budget is future real content, never padding.",
       "packs": ["assetpack_core", "assetpack_graphics_base", "assetpack_forest", "assetpack_characters", "assetpack_audio_hd", "assetpack_shaders_gles", "assetpack_world_streaming", "assetpack_terrain_lod", "assetpack_animation_sets", "assetpack_foliage_lods"]
@@ -69,13 +69,13 @@
     }
   ],
   "packs": [
-    {"name": "assetpack_core", "delivery": "install-time", "targetMiB": 96, "measuredBytes": 254, "published": true, "requiredBeforeStart": true, "contents": "AETHELGRAD forest launch-slice contract metadata only; no cooked Unreal payload or future biome data"},
+    {"name": "assetpack_core", "delivery": "install-time", "targetMiB": 96, "measuredBytes": 245, "published": true, "requiredBeforeStart": true, "contents": "AETHELGRAD forest launch-slice contract metadata only; no cooked Unreal payload or future biome data"},
     {"name": "assetpack_graphics_base", "delivery": "on-demand", "targetMiB": 450, "measuredBytes": 40249, "published": true, "requiredBeforeStart": true, "contents": "authored mobile shared materials, shaders, meshes and render-resource metadata; high-tier cooked content is not published"},
-    {"name": "assetpack_forest", "delivery": "fast-follow", "targetMiB": 350, "measuredBytes": 15985, "published": true, "requiredBeforeStart": true, "contents": "authored forest launch-region descriptors and mobile scene metadata; high-tier cooked content is not published"},
+    {"name": "assetpack_forest", "delivery": "fast-follow", "targetMiB": 350, "measuredBytes": 15548, "published": true, "requiredBeforeStart": true, "contents": "authored forest launch-region descriptors and mobile scene metadata; high-tier cooked content is not published"},
     {"name": "assetpack_sand", "delivery": "on-demand", "targetMiB": 400, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original sand-biome terrain, settlements, rocks, foliage and weather; no cooked sand payload is published", "expansionTrigger": "discover_sand_frontier"},
     {"name": "assetpack_snow", "delivery": "on-demand", "targetMiB": 400, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original snow-biome terrain, caves, ice materials and weather; no cooked snow payload is published", "expansionTrigger": "discover_snow_frontier"},
     {"name": "assetpack_characters", "delivery": "on-demand", "targetMiB": 500, "measuredBytes": 4821178, "published": true, "requiredBeforeStart": true, "contents": "authored original character launch-slice assets and animation-binding metadata; high-tier cooked content is not published"},
-    {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "measuredBytes": 3277712, "published": true, "requiredBeforeStart": false, "contents": "authored launch-slice music, ambience, combat and wildlife audio; high-tier mixes are not published"},
+    {"name": "assetpack_audio_hd", "delivery": "on-demand", "targetMiB": 450, "measuredBytes": 4963736, "published": true, "requiredBeforeStart": false, "contents": "authored launch-slice music, ambience, combat and wildlife audio; high-tier mixes are not published"},
     {"name": "assetpack_cinematics", "delivery": "on-demand", "targetMiB": 450, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original story scenes, sequences and camera animation data; no cooked cinematic payload is published"},
     {"name": "assetpack_hd_textures", "delivery": "on-demand", "targetMiB": 500, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original PBR textures, virtual-texture pages and decals; no cooked HD texture payload is published"},
     {"name": "assetpack_dungeons", "delivery": "on-demand", "targetMiB": 400, "measuredBytes": 0, "published": false, "requiredBeforeStart": false, "contents": "planned original dungeon cells, props, traps, encounter data and lighting data; no cooked dungeon payload is published", "expansionTrigger": "reach_root_dungeon_gate"},

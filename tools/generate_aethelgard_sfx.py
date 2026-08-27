@@ -121,6 +121,54 @@ def boss_roar() -> np.ndarray:
     return roar.astype(np.float32) * env(n, 0.08, 0.65)
 
 
+def terrain_steps(base_frequency: float, grit: float) -> np.ndarray:
+    step = mix(noise(0.13, 15.0) * grit, tone(0.13, base_frequency, 16) * 0.42)
+    gap = np.zeros(int(SR * 0.14), dtype=np.float32)
+    return np.concatenate([step * env(len(step), 0.002, 0.075), gap, step * env(len(step), 0.002, 0.075)])
+
+
+def jump() -> np.ndarray:
+    n = int(SR * 0.34)
+    t = np.arange(n, dtype=np.float32) / SR
+    rising = np.sin(2 * math.pi * (170 + 270 * t) * t) * 0.32
+    air = noise(0.34, 7.0) * 0.08
+    return mix(rising, air) * env(n, 0.006, 0.16)
+
+
+def landing() -> np.ndarray:
+    impact = mix(noise(0.22, 18.0) * 0.8, tone(0.22, 72, 15) * 0.65)
+    tail = tone(0.42, 118, 8.5) * 0.22
+    out = mix(impact, tail)
+    return out * env(len(out), 0.001, 0.16)
+
+
+def plains_wind() -> np.ndarray:
+    n = int(SR * 8.0)
+    t = np.arange(n, dtype=np.float32) / SR
+    gust = 0.5 + 0.5 * np.sin(2 * math.pi * 0.11 * t + 0.4 * np.sin(2 * math.pi * 0.037 * t))
+    airy = noise(8.0, 0.18) * (0.12 + 0.20 * gust)
+    low = np.sin(2 * math.pi * 62 * t) * 0.035
+    out = mix(airy, low) * 0.65
+    fade = min(int(SR * 0.35), n // 2)
+    out[:fade] *= np.linspace(0.0, 1.0, fade, dtype=np.float32)
+    out[-fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
+    return out
+
+
+def mountain_echo() -> np.ndarray:
+    n = int(SR * 8.0)
+    t = np.arange(n, dtype=np.float32) / SR
+    out = noise(8.0, 0.22) * 0.07 + np.sin(2 * math.pi * 48 * t) * 0.055
+    for start, freq, amp in ((0.6, 92, 0.18), (2.65, 132, 0.13), (5.05, 76, 0.16)):
+        i = int(SR * start)
+        tail = tone(1.7, freq, 2.7) * amp
+        out[i:i + len(tail)] += tail
+    fade = min(int(SR * 0.45), n // 2)
+    out[:fade] *= np.linspace(0.0, 1.0, fade, dtype=np.float32)
+    out[-fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
+    return mix(out) * 0.72
+
+
 ROOT.mkdir(parents=True, exist_ok=True)
 save("sfx_footsteps_forest.wav", footsteps())
 save("sfx_sprint_loop.wav", sprint())
@@ -132,4 +180,10 @@ save("sfx_craft_workbench.wav", craft())
 save("sfx_animal_companion_call.wav", animal())
 save("sfx_ui_click.wav", ui_click())
 save("sfx_boss_roar.wav", boss_roar())
-print(f"Generated 10 original procedural SFX assets in {ROOT}")
+save("sfx_footsteps_plains.wav", terrain_steps(92, 0.34))
+save("sfx_footsteps_mountain.wav", terrain_steps(148, 0.52))
+save("sfx_jump.wav", jump())
+save("sfx_landing.wav", landing())
+save("ambience_wind_plains.wav", plains_wind())
+save("ambience_mountain_echo.wav", mountain_echo())
+print(f"Generated 16 original procedural SFX/ambience assets in {ROOT}")
