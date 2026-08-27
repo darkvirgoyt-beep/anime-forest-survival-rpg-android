@@ -41,6 +41,7 @@ GLint g3DEmissive = -1;
 GLint g3DWeather = -1;
 GLint g3DAmbientOcclusion = -1;
 GLuint gBillboardProgram = 0;
+GLuint gActiveProgram = 0;
 GLint gBillboardPosition = -1;
 GLint gBillboardUv = -1;
 GLint gBillboardMvp = -1;
@@ -599,6 +600,12 @@ Mat4 modelMatrix(float x, float y, float z, float width, float height, float dep
 
 GLuint compileShader(GLenum type, const char* source);
 
+void bindProgram(GLuint program) {
+    if (gActiveProgram == program) return;
+    glUseProgram(program);
+    gActiveProgram = program;
+}
+
 void createBillboardProgram() {
     const GLuint vertex = compileShader(GL_VERTEX_SHADER, kBillboardVertexShader);
     const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, kBillboardFragmentShader);
@@ -652,15 +659,10 @@ void draw3DBox(const Mat4& viewProjection, float x, float y, float z, float widt
         -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f,-0.5f, 0.5f,
         -0.5f,-0.5f,-0.5f,  0.5f,-0.5f, 0.5f, -0.5f,-0.5f, 0.5f
     };
-    glUseProgram(g3DProgram);
+    bindProgram(g3DProgram);
     const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
     glUniformMatrix4fv(g3DMvp, 1, GL_FALSE, mvp.v);
     glUniform4f(g3DColor, r, g, b, a);
-    glUniform1f(g3DLightLevel, gSceneLightLevel);
-    glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
-    glUniform1f(g3DFogAmount, gSceneFogAmount);
-    glUniform1f(g3DTime, gTime);
-    glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
     glUniform1f(g3DEmissive, emissive);
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, cube);
     glEnableVertexAttribArray(g3DPosition);
@@ -672,15 +674,10 @@ void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices
                  float r, float g, float b, float a = 1.0f, GLenum primitive = GL_TRIANGLES,
                  float emissive = 0.0f) {
     if (vertices.empty()) return;
-    glUseProgram(g3DProgram);
+    bindProgram(g3DProgram);
     const Mat4 mvp = multiplyMatrix(viewProjection, modelMatrix(x, y, z, width, height, depth));
     glUniformMatrix4fv(g3DMvp, 1, GL_FALSE, mvp.v);
     glUniform4f(g3DColor, r, g, b, a);
-    glUniform1f(g3DLightLevel, gSceneLightLevel);
-    glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
-    glUniform1f(g3DFogAmount, gSceneFogAmount);
-    glUniform1f(g3DTime, gTime);
-    glUniform1f(g3DQuality, static_cast<float>(gGraphicsQuality));
     glUniform1f(g3DEmissive, emissive);
     glVertexAttribPointer(g3DPosition, 3, GL_FLOAT, GL_FALSE, 0, vertices.data());
     glEnableVertexAttribArray(g3DPosition);
@@ -690,7 +687,7 @@ void draw3DMesh(const Mat4& viewProjection, const std::vector<GLfloat>& vertices
 void drawBillboard(const Mat4& viewProjection, const std::vector<GLfloat>& vertices) {
     if (gPlayerTexture == 0 || vertices.empty()) return;
     glDisable(GL_CULL_FACE);
-    glUseProgram(gBillboardProgram);
+    bindProgram(gBillboardProgram);
     glUniformMatrix4fv(gBillboardMvp, 1, GL_FALSE, viewProjection.v);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gPlayerTexture);
@@ -728,56 +725,69 @@ void drawTextured3DPlayer(const Mat4& viewProjection, float px, float y, float p
     drawBillboard(viewProjection, vertices);
 }
 
+const std::vector<GLfloat>& unitCylinderMesh() {
+    static const std::vector<GLfloat> vertices = [] {
+        constexpr int segments = 12;
+        std::vector<GLfloat> mesh;
+        mesh.reserve(segments * 36);
+        for (int i = 0; i < segments; ++i) {
+            const float angle0 = (static_cast<float>(i) / segments) * 2.0f * PI;
+            const float angle1 = (static_cast<float>(i + 1) / segments) * 2.0f * PI;
+            const float x0 = std::cos(angle0);
+            const float z0 = std::sin(angle0);
+            const float x1 = std::cos(angle1);
+            const float z1 = std::sin(angle1);
+            mesh.insert(mesh.end(), {
+                x0, -0.5f, z0, x1, -0.5f, z1, x1, 0.5f, z1,
+                x0, -0.5f, z0, x1, 0.5f, z1, x0, 0.5f, z0,
+                0.0f, 0.5f, 0.0f, x1, 0.5f, z1, x0, 0.5f, z0,
+                0.0f, -0.5f, 0.0f, x0, -0.5f, z0, x1, -0.5f, z1
+            });
+        }
+        return mesh;
+    }();
+    return vertices;
+}
+
 void draw3DCylinder(const Mat4& viewProjection, float x, float y, float z,
                     float radius, float height, float r, float g, float b, float a = 1.0f) {
-    constexpr int segments = 12;
-    std::vector<GLfloat> vertices;
-    vertices.reserve(segments * 36);
-    const float halfHeight = height * 0.5f;
-    for (int i = 0; i < segments; ++i) {
-        const float angle0 = (static_cast<float>(i) / segments) * 2.0f * PI;
-        const float angle1 = (static_cast<float>(i + 1) / segments) * 2.0f * PI;
-        const float x0 = std::cos(angle0) * radius;
-        const float z0 = std::sin(angle0) * radius;
-        const float x1 = std::cos(angle1) * radius;
-        const float z1 = std::sin(angle1) * radius;
-        vertices.insert(vertices.end(), {
-            x0, -halfHeight, z0, x1, -halfHeight, z1, x1, halfHeight, z1,
-            x0, -halfHeight, z0, x1, halfHeight, z1, x0, halfHeight, z0,
-            0.0f, halfHeight, 0.0f, x1, halfHeight, z1, x0, halfHeight, z0,
-            0.0f, -halfHeight, 0.0f, x0, -halfHeight, z0, x1, -halfHeight, z1
-        });
-    }
-    draw3DMesh(viewProjection, vertices, x, y, z, 1.0f, 1.0f, 1.0f, r, g, b, a);
+    draw3DMesh(viewProjection, unitCylinderMesh(), x, y, z, radius, height, radius, r, g, b, a);
+}
+
+const std::vector<GLfloat>& unitSphereMesh() {
+    static const std::vector<GLfloat> vertices = [] {
+        constexpr int slices = 14;
+        constexpr int stacks = 8;
+        std::vector<GLfloat> mesh;
+        mesh.reserve(slices * stacks * 18);
+        for (int stack = 0; stack < stacks; ++stack) {
+            const float phi0 = -PI * 0.5f + PI * static_cast<float>(stack) / stacks;
+            const float phi1 = -PI * 0.5f + PI * static_cast<float>(stack + 1) / stacks;
+            for (int slice = 0; slice < slices; ++slice) {
+                const float theta0 = 2.0f * PI * static_cast<float>(slice) / slices;
+                const float theta1 = 2.0f * PI * static_cast<float>(slice + 1) / slices;
+                const auto point = [](float phi, float theta) {
+                    return Vec3{std::cos(phi) * std::cos(theta), std::sin(phi), std::cos(phi) * std::sin(theta)};
+                };
+                const Vec3 a0 = point(phi0, theta0);
+                const Vec3 b0 = point(phi0, theta1);
+                const Vec3 a1 = point(phi1, theta0);
+                const Vec3 b1 = point(phi1, theta1);
+                mesh.insert(mesh.end(), {
+                    a0.x, a0.y, a0.z, b0.x, b0.y, b0.z, b1.x, b1.y, b1.z,
+                    a0.x, a0.y, a0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z
+                });
+            }
+        }
+        return mesh;
+    }();
+    return vertices;
 }
 
 void draw3DSphere(const Mat4& viewProjection, float x, float y, float z,
                   float radius, float r, float g, float b, float a = 1.0f,
                   float emissive = 0.0f) {
-    constexpr int slices = 14;
-    constexpr int stacks = 8;
-    std::vector<GLfloat> vertices;
-    vertices.reserve(slices * stacks * 18);
-    for (int stack = 0; stack < stacks; ++stack) {
-        const float phi0 = -PI * 0.5f + PI * static_cast<float>(stack) / stacks;
-        const float phi1 = -PI * 0.5f + PI * static_cast<float>(stack + 1) / stacks;
-        for (int slice = 0; slice < slices; ++slice) {
-            const float theta0 = 2.0f * PI * static_cast<float>(slice) / slices;
-            const float theta1 = 2.0f * PI * static_cast<float>(slice + 1) / slices;
-            const auto point = [](float phi, float theta) {
-                return Vec3{std::cos(phi) * std::cos(theta), std::sin(phi), std::cos(phi) * std::sin(theta)};
-            };
-            const Vec3 a0 = point(phi0, theta0);
-            const Vec3 b0 = point(phi0, theta1);
-            const Vec3 a1 = point(phi1, theta0);
-            const Vec3 b1 = point(phi1, theta1);
-            vertices.insert(vertices.end(), {
-                a0.x, a0.y, a0.z, b0.x, b0.y, b0.z, b1.x, b1.y, b1.z,
-                a0.x, a0.y, a0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z
-            });
-        }
-    }
-    draw3DMesh(viewProjection, vertices, x, y, z, radius, radius, radius, r, g, b, a, GL_TRIANGLES, emissive);
+    draw3DMesh(viewProjection, unitSphereMesh(), x, y, z, radius, radius, radius, r, g, b, a, GL_TRIANGLES, emissive);
 }
 
 void draw3DGlowOrb(const Mat4& viewProjection, float x, float y, float z, float radius,
@@ -1447,16 +1457,29 @@ void draw3DHighQualityDetails(const Mat4& viewProjection, float daylight) {
     draw3DGlowOrb(viewProjection, 3.8f, 0.42f, -1.2f, 0.12f, 1.0f, 0.28f, 0.06f, firePulse);
 }
 
+std::vector<GLfloat> makeUnitRingMesh(int segments) {
+    std::vector<GLfloat> mesh;
+    mesh.reserve(static_cast<size_t>(segments + 1) * 3u);
+    for (int i = 0; i <= segments; ++i) {
+        const float angle = (static_cast<float>(i) / static_cast<float>(segments)) * 2.0f * PI;
+        mesh.insert(mesh.end(), {std::cos(angle), 0.0f, std::sin(angle)});
+    }
+    return mesh;
+}
+
+const std::vector<GLfloat>& unitRingMesh(int segments) {
+    static const std::vector<GLfloat> ring16 = makeUnitRingMesh(16);
+    static const std::vector<GLfloat> ring18 = makeUnitRingMesh(18);
+    static const std::vector<GLfloat> ring24 = makeUnitRingMesh(24);
+    if (segments == 16) return ring16;
+    if (segments == 18) return ring18;
+    return ring24;
+}
+
 void draw3DVfxRing(const Mat4& viewProjection, float x, float y, float z, float radius,
                    float r, float g, float b, float alpha, int segments = 24) {
     if (radius <= 0.0f || alpha <= 0.0f) return;
-    std::vector<GLfloat> vertices;
-    vertices.reserve(static_cast<size_t>(segments + 1) * 3u);
-    for (int i = 0; i <= segments; ++i) {
-        const float angle = (static_cast<float>(i) / static_cast<float>(segments)) * 2.0f * PI;
-        vertices.insert(vertices.end(), {std::cos(angle), 0.0f, std::sin(angle)});
-    }
-    draw3DMesh(viewProjection, vertices, x, y, z, radius, 1.0f, radius,
+    draw3DMesh(viewProjection, unitRingMesh(segments), x, y, z, radius, 1.0f, radius,
                r, g, b, alpha, GL_LINE_STRIP, 0.62f);
 }
 
@@ -1603,7 +1626,7 @@ void draw3DWeather(const Mat4& viewProjection) {
 
 void draw3DMapOverlay() {
     glDisable(GL_DEPTH_TEST);
-    glUseProgram(gProgram);
+    bindProgram(gProgram);
     constexpr float left = -0.86f;
     constexpr float right = -0.26f;
     constexpr float bottom = 0.02f;
@@ -1719,17 +1742,24 @@ void draw3DPlainsAndMountainRanges(const Mat4& viewProjection, float daylight) {
         { 7.2f, 2.1f, 2.5f, 1.62f, 0.32f, 0.39f, 0.48f},
         { 6.8f,-3.8f, 3.6f, 1.36f, 0.42f, 0.28f, 0.14f},
     };
+    const int quality = effectiveGraphicsQuality();
+    const bool showMidRangePeaks = quality >= 2;
+    const bool showFinePeaks = quality >= 3;
+    const float shade = 0.62f + 0.38f * daylight;
     for (const MountainRange& range : ranges) {
-        const float shade = 0.62f + 0.38f * daylight;
         draw3DBox(viewProjection, range.x, range.height * 0.20f, range.z,
                   range.width, range.height * 0.40f, range.width * 0.72f,
                   range.r * shade, range.g * shade, range.b * shade, 0.96f);
-        draw3DSphere(viewProjection, range.x, range.height * 0.54f, range.z,
-                     range.width * 0.34f, range.r * shade, range.g * shade, range.b * shade, 0.94f);
-        draw3DSphere(viewProjection, range.x - range.width * 0.18f, range.height * 0.78f,
-                     range.z + range.width * 0.06f, range.width * 0.16f,
-                     std::min(1.0f, range.r * shade + 0.18f), std::min(1.0f, range.g * shade + 0.18f),
-                     std::min(1.0f, range.b * shade + 0.18f), 0.88f);
+        if (showMidRangePeaks) {
+            draw3DSphere(viewProjection, range.x, range.height * 0.54f, range.z,
+                         range.width * 0.34f, range.r * shade, range.g * shade, range.b * shade, 0.94f);
+        }
+        if (showFinePeaks) {
+            draw3DSphere(viewProjection, range.x - range.width * 0.18f, range.height * 0.78f,
+                         range.z + range.width * 0.06f, range.width * 0.16f,
+                         std::min(1.0f, range.r * shade + 0.18f), std::min(1.0f, range.g * shade + 0.18f),
+                         std::min(1.0f, range.b * shade + 0.18f), 0.88f);
+        }
     }
     draw3DBox(viewProjection, -5.9f, 0.02f, -2.8f, 4.5f, 0.05f, 3.0f,
               0.15f * daylight, 0.37f * daylight, 0.19f * daylight, 0.92f);
@@ -1791,7 +1821,7 @@ void draw3DWorld() {
     glClearColor(skyR, skyG, skyB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
-    glUseProgram(g3DProgram);
+    bindProgram(g3DProgram);
     glUniform1f(g3DLightLevel, gSceneLightLevel);
     glUniform3f(g3DFogColor, gSceneFogR, gSceneFogG, gSceneFogB);
     glUniform1f(g3DFogAmount, gSceneFogAmount);
@@ -2443,7 +2473,7 @@ void drawWorld() {
     }
     glClearColor(clearR, clearG, clearB, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    glUseProgram(gProgram);
+    bindProgram(gProgram);
 
     // Three side-by-side regions keep the mobile launch area traversable while making the
     // biome contrast immediately readable on a phone screen.
@@ -2595,6 +2625,9 @@ Java_com_darvirgoyt_aethelgrad_NativeGameBridge_init(JNIEnv*, jobject, jint widt
     gQuestPulse = 0;
     gGraphicsQuality = 2;
     gContentTierReady = false;
+    // A surface recreation may keep the old C++ handle value while the GLES
+    // context has discarded its state; force the first draw to bind explicitly.
+    gActiveProgram = 0;
     gMoveX = 0.0f;
     gMoveY = 0.0f;
     gSprintHeld = false;

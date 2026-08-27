@@ -92,6 +92,13 @@ CHECKS = (
     ("app/src/main/cpp/forest_game.cpp", "uWeather", "weather-aware Android OpenGL material lighting"),
     ("app/src/main/cpp/forest_game.cpp", "uAmbientOcclusion", "quality-bounded Android OpenGL ambient occlusion"),
     ("Unreal/ANDROID_RENDERER_GRAPHICS_BOUNDARY.md", "OpenGL ES 3", "truthful Android renderer graphics boundary"),
+    ("app/src/main/cpp/forest_game.cpp", "void bindProgram(GLuint program)", "cached GLES program binding"),
+    ("app/src/main/cpp/forest_game.cpp", "const std::vector<GLfloat>& unitCylinderMesh()", "cached cylinder geometry"),
+    ("app/src/main/cpp/forest_game.cpp", "const std::vector<GLfloat>& unitSphereMesh()", "cached sphere geometry"),
+    ("app/src/main/cpp/forest_game.cpp", "const std::vector<GLfloat>& unitRingMesh(int segments)", "cached VFX ring geometry"),
+    ("app/src/main/cpp/forest_game.cpp", "const bool showMidRangePeaks = quality >= 2", "mountain mid-range LOD"),
+    ("app/src/main/cpp/forest_game.cpp", "const bool showFinePeaks = quality >= 3", "mountain fine LOD"),
+    ("app/src/main/cpp/physics/physics.cpp", "const int collisionIterations = speedSquared > 0.36f ? 3 : 1", "adaptive collision iterations"),
 )
 
 

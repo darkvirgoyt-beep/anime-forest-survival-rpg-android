@@ -61,9 +61,9 @@ WaterState sampleWater(const CharacterBody& body, const WaterVolume* volumes, in
 
     const float bottom = body.position.y - body.halfExtents.y;
     const float top = body.position.y + body.halfExtents.y;
+    const Aabb bodyBox{body.position, body.halfExtents};
     for (int i = 0; i < volumeCount; ++i) {
         const WaterVolume& volume = volumes[i];
-        const Aabb bodyBox{body.position, body.halfExtents};
         if (!bodyBox.overlaps(volume.bounds)) continue;
 
         const float depth = std::clamp((volume.surfaceY - bottom) / (body.halfExtents.y * 2.0f), 0.0f, 1.0f);
@@ -134,9 +134,12 @@ void CharacterBody::step(const Vec2& input, float deltaSeconds,
     }
 
     position += velocity * dt;
-    // Resolve several contacts in one fixed step so fast dodge/sprint motion
-    // cannot tunnel through adjacent obstacles on high-refresh devices.
-    for (int iteration = 0; iteration < 3; ++iteration) {
+    // One contact pass is sufficient for normal walk/idle motion. Retain the
+    // extra passes for high-speed dodge/sprint movement where adjacent mountain
+    // blockers need additional separation on high-refresh devices.
+    const float speedSquared = velocity.x * velocity.x + velocity.y * velocity.y;
+    const int collisionIterations = speedSquared > 0.36f ? 3 : 1;
+    for (int iteration = 0; iteration < collisionIterations; ++iteration) {
         for (int i = 0; i < obstacleCount; ++i) resolveCollision(*this, obstacles[i]);
     }
 

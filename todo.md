@@ -99,3 +99,4 @@
 - [x] Add a live minimap/radar for the expanded plains and mountains with player heading, nearby physical escarpments, and gameplay landmarks; preserve private-map boundaries.
 - [x] Diagnose and fix the device-reported joystick horizontal reversal so a rightward thumb movement produces rightward camera-relative character movement.
 - [x] Add more authored radar landmark categories and user-selectable zoom levels while preserving live heading, map launch, and private-map boundaries.
+- [x] Optimize native C++ physics and rendering for expanded mountain regions with bounded work and no regression to movement, collision, camera, or radar behavior.
